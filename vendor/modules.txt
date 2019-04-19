@@ -1,0 +1,6 @@
+# github.com/sapcc/go-bits v0.0.0-20190111093410-620b317f22bc
+github.com/sapcc/go-bits/logg
+# gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d
+gopkg.in/asn1-ber.v1
+# gopkg.in/ldap.v3 v3.0.3
+gopkg.in/ldap.v3

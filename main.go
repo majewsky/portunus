@@ -18,5 +18,66 @@
 
 package main
 
+import (
+	"github.com/majewsky/portunus/internal/core"
+	"github.com/majewsky/portunus/internal/ldap"
+	"github.com/sapcc/go-bits/logg"
+)
+
 func main() {
+	logg.ShowDebug = true
+
+	//run LDAP engine
+	engine := mockEngine{}
+	eventsChan := engine.Subscribe()
+	go ldap.RunServer(eventsChan)
+
+	for {
+		select {}
+	}
+}
+
+type mockEngine struct{}
+
+//Subscribe implements the core.Engine interface.
+func (mockEngine) Subscribe() <-chan core.Event {
+	users := []core.User{
+		{
+			LoginName:  "john",
+			GivenName:  "John",
+			FamilyName: "Doe",
+			Password:   core.Password{Algorithm: "sha1", Hash: "8cb2237d0679ca88db6464eac60da96345513964"},
+		},
+		{
+			LoginName:  "jane",
+			GivenName:  "Jane",
+			FamilyName: "Doe",
+			Password:   core.Password{Algorithm: "sha1", Hash: "5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8"},
+		},
+	}
+	groups := []core.Group{
+		{
+			Name:             "admins",
+			Description:      "system administrators",
+			MemberLoginNames: []string{"jane"},
+			Permissions: core.Permissions{
+				LDAP: core.LDAPAccessFullRead,
+			},
+		},
+		{
+			Name:             "users",
+			Description:      "contains everyone",
+			MemberLoginNames: []string{"jane", "john"},
+			Permissions: core.Permissions{
+				LDAP: core.LDAPAccessNone,
+			},
+		},
+	}
+
+	channel := make(chan core.Event, 10)
+	channel <- core.Event{
+		AddedUsers:  users,
+		AddedGroups: groups,
+	}
+	return channel
 }

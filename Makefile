@@ -3,7 +3,7 @@ PREFIX=/usr
 
 all: build/portunus
 
-GO            = GO111MODULE=on GOPATH=$(CURDIR)/.gopath GOBIN=$(CURDIR)/build go
+GO            = GOPATH= GOBIN=$(CURDIR)/build go
 GO_BUILDFLAGS =
 GO_LDFLAGS    = -s -w
 
