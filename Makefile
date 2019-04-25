@@ -3,7 +3,10 @@ PREFIX=/usr
 
 all: build/portunus
 
-GO            = GOPATH= GOBIN=$(CURDIR)/build go
+# NOTE: This repo uses Go modules, and uses a synthetic GOPATH at
+# $(CURDIR)/.gopath that is only used for the build cache. $GOPATH/src/ is
+# empty.
+GO            = GOPATH=$(CURDIR)/.gopath GOBIN=$(CURDIR)/build go
 GO_BUILDFLAGS =
 GO_LDFLAGS    = -s -w
 
