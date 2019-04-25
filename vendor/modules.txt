@@ -1,5 +1,9 @@
 # github.com/sapcc/go-bits v0.0.0-20190111093410-620b317f22bc
 github.com/sapcc/go-bits/logg
+# github.com/tredoe/osutil v0.0.0-20161130133508-7d3ee1afa71c
+github.com/tredoe/osutil/user/crypt/sha256_crypt
+github.com/tredoe/osutil/user/crypt
+github.com/tredoe/osutil/user/crypt/common
 # gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d
 gopkg.in/asn1-ber.v1
 # gopkg.in/ldap.v3 v3.0.3

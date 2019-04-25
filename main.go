@@ -43,16 +43,16 @@ type mockEngine struct{}
 func (mockEngine) Subscribe() <-chan core.Event {
 	users := []core.User{
 		{
-			LoginName:  "john",
-			GivenName:  "John",
-			FamilyName: "Doe",
-			Password:   core.Password{Algorithm: "sha1", Hash: "8cb2237d0679ca88db6464eac60da96345513964"},
+			LoginName:    "john",
+			GivenName:    "John",
+			FamilyName:   "Doe",
+			PasswordHash: core.HashPasswordForLDAP("12345"),
 		},
 		{
-			LoginName:  "jane",
-			GivenName:  "Jane",
-			FamilyName: "Doe",
-			Password:   core.Password{Algorithm: "sha1", Hash: "5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8"},
+			LoginName:    "jane",
+			GivenName:    "Jane",
+			FamilyName:   "Doe",
+			PasswordHash: core.HashPasswordForLDAP("password"),
 		},
 	}
 	groups := []core.Group{

@@ -8,6 +8,6 @@ TODO explain more
 
 Notes:
 
-- `slapd` and `slappasswd` must be in `$PATH`
+- `slapd` must be in `$PATH` (TODO: allow to read binary path from env var)
 - schema files are read from `/etc/openldap/schema/*.schema`
 - required env variables: `$PORTUNUS_LDAP_SUFFIX`, `$XDG_RUNTIME_DIR`

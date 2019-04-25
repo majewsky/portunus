@@ -139,6 +139,7 @@ func (w Worker) getUserAttributes(u core.User) []goldap.Attribute {
 		mkAttr("sn", u.FamilyName),
 		mkAttr("givenName", u.GivenName),
 		mkAttr("objectClass", "inetOrgPerson", "organizationalPerson", "person", "top"),
+		mkAttr("userPassword", u.PasswordHash),
 	}
 }
 func (w Worker) getGroupAttributes(g core.Group) []goldap.Attribute {

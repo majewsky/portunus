@@ -80,13 +80,13 @@ func RunServer(eventsChan <-chan core.Event) {
 	//generate configuration
 	suffix := mustGetenv("PORTUNUS_LDAP_SUFFIX") //TODO validate
 	userDN := "cn=portunus," + suffix
-	password, hashedPassword := generateServiceUserPassword()
+	password, passwordHash := generateServiceUserPassword()
 	logg.Debug("password for %s is %s", userDN, password)
 
 	config := configTemplate
 	config = strings.Replace(config, "%SUFFIX%", suffix, -1)
 	config = strings.Replace(config, "%RUNTIMEPATH%", runtimePath, -1)
-	config = strings.Replace(config, "%PASSWORD%", hashedPassword, -1)
+	config = strings.Replace(config, "%PASSWORD%", passwordHash, -1)
 
 	configPath := filepath.Join(runtimePath, "slapd.conf")
 	err = ioutil.WriteFile(configPath, []byte(config), 0400)
@@ -117,8 +117,6 @@ func RunServer(eventsChan <-chan core.Event) {
 		logg.Info("Since slapd logs to syslog only, check there for more information.")
 		os.Exit(1)
 	}
-
-	//TODO: branch out a goroutine for dealing with the events
 }
 
 func generateServiceUserPassword() (plain, hashed string) {
@@ -128,16 +126,7 @@ func generateServiceUserPassword() (plain, hashed string) {
 		logg.Fatal(err.Error())
 	}
 	plain = hex.EncodeToString(buf[:])
-
-	cmd := exec.Command("slappasswd", "-T", "/dev/stdin")
-	cmd.Stdin = strings.NewReader(plain)
-	cmd.Stderr = os.Stderr
-	out, err := cmd.Output()
-	if err != nil {
-		logg.Fatal("could not run slappasswd to generate service user password: " + err.Error())
-	}
-
-	return plain, strings.TrimSpace(string(out))
+	return plain, core.HashPasswordForLDAP(plain)
 }
 
 func mustGetenv(key string) string {
