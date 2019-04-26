@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/majewsky/portunus/internal/core"
@@ -34,10 +35,10 @@ import (
 //Notes on this configuration template:
 //- Only Portunus' own technical user has any sort of write access.
 var configTemplate = `
-include /etc/openldap/schema/core.schema
-include /etc/openldap/schema/cosine.schema
-include /etc/openldap/schema/inetorgperson.schema
-include /etc/openldap/schema/nis.schema
+include %SLAPDSCHEMADIR%/core.schema
+include %SLAPDSCHEMADIR%/cosine.schema
+include %SLAPDSCHEMADIR%/inetorgperson.schema
+include %SLAPDSCHEMADIR%/nis.schema
 
 access to dn.base="" by * read
 access to dn.base="cn=Subschema" by * read
@@ -56,6 +57,8 @@ directory  "%RUNTIMEPATH%/slapd-data"
 index objectClass eq
 `
 
+var ldapSuffixRx = regexp.MustCompile(`^dc=[a-z0-9_-]+(?:,dc=[a-z0-9_-]+)*$`)
+
 //TODO: TLS (bind to ldap://127.0.0.1 and ldaps:///)
 //TODO: restrict read access to users in groups with respective permissions
 
@@ -63,7 +66,7 @@ index objectClass eq
 //This function does not return.
 func RunServer(eventsChan <-chan core.Event) {
 	//prepare the runtime directory for slapd
-	runtimePath := filepath.Join(mustGetenv("XDG_RUNTIME_DIR"), "portunus")
+	runtimePath := filepath.Join(core.Getenv("XDG_RUNTIME_DIR").Must(), "portunus")
 	err := os.RemoveAll(runtimePath)
 	if err != nil {
 		logg.Fatal(err.Error())
@@ -78,7 +81,7 @@ func RunServer(eventsChan <-chan core.Event) {
 	}
 
 	//generate configuration
-	suffix := mustGetenv("PORTUNUS_LDAP_SUFFIX") //TODO validate
+	suffix := core.Getenv("PORTUNUS_LDAP_SUFFIX").Format(ldapSuffixRx).Must()
 	userDN := "cn=portunus," + suffix
 	password, passwordHash := generateServiceUserPassword()
 	logg.Debug("password for %s is %s", userDN, password)
@@ -87,6 +90,7 @@ func RunServer(eventsChan <-chan core.Event) {
 	config = strings.Replace(config, "%SUFFIX%", suffix, -1)
 	config = strings.Replace(config, "%RUNTIMEPATH%", runtimePath, -1)
 	config = strings.Replace(config, "%PASSWORD%", passwordHash, -1)
+	config = strings.Replace(config, "%SLAPDSCHEMADIR%", core.Getenv("PORTUNUS_SLAPD_SCHEMA_DIR").Or("/etc/openldap/schema"), -1)
 
 	configPath := filepath.Join(runtimePath, "slapd.conf")
 	err = ioutil.WriteFile(configPath, []byte(config), 0400)
@@ -103,7 +107,7 @@ func RunServer(eventsChan <-chan core.Event) {
 	go worker.HandleEvents(eventsChan)
 
 	//run slapd
-	cmd := exec.Command("slapd",
+	cmd := exec.Command(core.Getenv("PORTUNUS_SLAPD_BINARY").Or("slapd"),
 		"-h", "ldap:///",
 		"-f", configPath,
 		"-d", "0", //no debug logging (but still important because presence of `-d` keeps slapd from daemonizing)
@@ -127,12 +131,4 @@ func generateServiceUserPassword() (plain, hashed string) {
 	}
 	plain = hex.EncodeToString(buf[:])
 	return plain, core.HashPasswordForLDAP(plain)
-}
-
-func mustGetenv(key string) string {
-	val := os.Getenv(key)
-	if val == "" {
-		logg.Fatal("missing required environment variable: " + key)
-	}
-	return val
 }

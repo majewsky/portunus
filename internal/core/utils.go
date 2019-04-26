@@ -18,7 +18,13 @@
 
 package core
 
-import "github.com/tredoe/osutil/user/crypt/sha256_crypt"
+import (
+	"os"
+	"regexp"
+
+	"github.com/sapcc/go-bits/logg"
+	"github.com/tredoe/osutil/user/crypt/sha256_crypt"
+)
 
 //HashPasswordForLDAP produces a password hash in the format expected by LDAP,
 //like the libc function crypt(3).
@@ -27,4 +33,40 @@ func HashPasswordForLDAP(password string) string {
 	//when the second argument is nil
 	result, _ := sha256_crypt.New().Generate([]byte(password), nil)
 	return "{CRYPT}" + result
+}
+
+//GetenvResult is a helper type returned by Getenv().
+type GetenvResult struct {
+	Key   string
+	Value string
+}
+
+//Getenv wraps os.Getenv with a nicer interface.
+func Getenv(key string) GetenvResult {
+	return GetenvResult{key, os.Getenv(key)}
+}
+
+//Format checks that the variable's value matches the given format, and
+//produces a fatal error if not.
+func (r GetenvResult) Format(rx *regexp.Regexp) GetenvResult {
+	if r.Value != "" && !rx.MatchString(r.Value) {
+		logg.Fatal("malformed environment variable: %s must look like /%s/", r.Value, rx.String())
+	}
+	return r
+}
+
+//Must returns the variable's value, or produces a fatal error if it was not set.
+func (r GetenvResult) Must() string {
+	if r.Value == "" {
+		logg.Fatal("missing required environment variable: " + r.Key)
+	}
+	return r.Value
+}
+
+//Or returns the variable's value, or the given default value if it was not set.
+func (r GetenvResult) Or(defaultValue string) string {
+	if r.Value == "" {
+		return defaultValue
+	}
+	return r.Value
 }
