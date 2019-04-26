@@ -19,7 +19,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -67,8 +66,6 @@ func prepareFilesystem(environment map[string]string) {
 	if err != nil {
 		logg.Fatal(err.Error())
 	}
-
-	fmt.Println("portunus-orchestrator")
 }
 
 func getGIDForName(name string) int {

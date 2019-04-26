@@ -18,23 +18,24 @@
 
 package core
 
-//Engine contains the interface that other parts of the application (e.g. the
-//LDAP server or the web GUI) use to query the user/group database.
-type Engine interface {
-	//Subscription returns a sink that provides all updates to the data model.
-	//The first event will contain the entire set of users and groups in its
-	//AddedUsers and AddedGroups field.
-	Subscribe() <-chan Event
+import (
+	"fmt"
+
+	goldap "gopkg.in/ldap.v3"
+)
+
+//Entity is the interface satisfied by all our model classes (at the moment,
+//Group and User).
+type Entity interface {
+	//Render this entity into an AddRequest for LDAP. The argument is the
+	//PORTUNUS_LDAP_SUFFIX.
+	RenderToLDAP(suffix string) goldap.AddRequest
 }
 
-//Event describes a change to an Engine's data model.
+//Event describes a change to the data model.
 type Event struct {
-	AddedUsers     []User
-	AddedGroups    []Group
-	ModifiedUsers  []User
-	ModifiedGroups []Group
-	DeletedUsers   []User
-	DeletedGroups  []Group
+	Added []Entity
+	//TODO .Modified, .Deleted
 }
 
 //User represents a single user account.
@@ -46,6 +47,22 @@ type User struct {
 	PasswordHash string `json:"password"`
 }
 
+//RenderToLDAP implements the Entity interface.
+func (u User) RenderToLDAP(suffix string) goldap.AddRequest {
+	//TODO: make this a posixAccount (requires attributes uidNumber, gidNumber, homeDirectory; optional attributes loginShell, gecos, description)
+	return goldap.AddRequest{
+		DN: fmt.Sprintf("uid=%s,ou=users,%s", u.LoginName, suffix),
+		Attributes: []goldap.Attribute{
+			mkAttr("uid", u.LoginName),
+			mkAttr("cn", u.GivenName+" "+u.FamilyName), //TODO: allow flipped order (family name first)
+			mkAttr("sn", u.FamilyName),
+			mkAttr("givenName", u.GivenName),
+			mkAttr("userPassword", u.PasswordHash),
+			mkAttr("objectClass", "inetOrgPerson", "organizationalPerson", "person", "top"),
+		},
+	}
+}
+
 //Group represents a single group of users. Membership in a group implicitly
 //grants its Permissions to all users in that group.
 type Group struct {
@@ -53,6 +70,26 @@ type Group struct {
 	Description      string      `json:"description"`
 	MemberLoginNames []string    `json:"members"`
 	Permissions      Permissions `json:"permissions"`
+}
+
+//RenderToLDAP implements the Entity interface.
+func (g Group) RenderToLDAP(suffix string) goldap.AddRequest {
+	//TODO: allow making this a posixGroup instead of a groupOfNames (requires gidNumber attribute)
+	//NOTE: maybe duplicate posixGroups under a different ou so that we can have both a groupOfNames and a posixGroup for the same Group
+
+	memberDNames := make([]string, len(g.MemberLoginNames))
+	for idx, name := range g.MemberLoginNames {
+		memberDNames[idx] = fmt.Sprintf("uid=%s,ou=users,%s", name, suffix)
+	}
+
+	return goldap.AddRequest{
+		DN: fmt.Sprintf("cn=%s,ou=groups,%s", g.Name, suffix),
+		Attributes: []goldap.Attribute{
+			mkAttr("cn", g.Name),
+			mkAttr("member", memberDNames...),
+			mkAttr("objectClass", "groupOfNames", "top"),
+		},
+	}
 }
 
 //Permissions represents
@@ -70,3 +107,7 @@ const (
 	//LDAPAccessFullRead allows users to read all entries in the LDAP directory.
 	LDAPAccessFullRead = "full-read"
 )
+
+func mkAttr(typeName string, values ...string) goldap.Attribute {
+	return goldap.Attribute{Type: typeName, Vals: values}
+}

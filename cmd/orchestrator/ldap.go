@@ -54,17 +54,18 @@ database   mdb
 maxsize    1073741824
 suffix     "%PORTUNUS_LDAP_SUFFIX%"
 rootdn     "cn=portunus,%PORTUNUS_LDAP_SUFFIX%"
-rootpw     "%PORTUNUS_LDAP_PASSWORD%"
+rootpw     "%PORTUNUS_LDAP_PASSWORD_HASH%"
 directory  "%XDG_RUNTIME_DIR%/portunus/slapd-data"
 
 index objectClass eq
 `
 
 func renderLDAPConfig(environment map[string]string) {
-	var password string
-	password, environment["PORTUNUS_LDAP_PASSWORD"] = generateServiceUserPassword()
+	password := generateServiceUserPassword()
 	logg.Debug("password for cn=portunus,%s is %s",
 		environment["PORTUNUS_LDAP_SUFFIX"], password)
+	environment["PORTUNUS_LDAP_PASSWORD"] = password
+	environment["PORTUNUS_LDAP_PASSWORD_HASH"] = core.HashPasswordForLDAP(password)
 
 	config := regexp.MustCompile(`%\w+%`).
 		ReplaceAllStringFunc(configTemplate, func(match string) string {
@@ -83,14 +84,13 @@ func ldapConfigPath(environment map[string]string) string {
 	return filepath.Join(environment["XDG_RUNTIME_DIR"], "portunus", "slapd.conf")
 }
 
-func generateServiceUserPassword() (plain, hashed string) {
+func generateServiceUserPassword() string {
 	buf := make([]byte, 32)
 	_, err := rand.Read(buf[:])
 	if err != nil {
 		logg.Fatal(err.Error())
 	}
-	plain = hex.EncodeToString(buf[:])
-	return plain, core.HashPasswordForLDAP(plain)
+	return hex.EncodeToString(buf[:])
 }
 
 //Does not return. Call with `go`.

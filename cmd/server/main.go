@@ -20,14 +20,78 @@ package main
 
 import (
 	"os"
+	"strconv"
+	"syscall"
 
+	"github.com/majewsky/portunus/internal/core"
 	"github.com/sapcc/go-bits/logg"
 )
 
 func main() {
-	for _, env := range os.Environ() {
-		logg.Info("received env: " + env)
-	}
-	//TODO: setuid to PORTUNUS_SERVER_UID/GID
+	logg.ShowDebug = true //TODO make configurable
+	dropPrivileges()
+	ldapWorker := newLDAPWorker()
+
+	go ldapWorker.processEvents(mockEventsChan())
+
 	select {}
+}
+
+func dropPrivileges() {
+	gidParsed, err := strconv.ParseUint(os.Getenv("PORTUNUS_SERVER_GID"), 10, 32)
+	if err != nil {
+		logg.Fatal("cannot parse PORTUNUS_SERVER_GID: " + err.Error())
+	}
+	gid := int(gidParsed)
+	err = syscall.Setresgid(gid, gid, gid)
+	if err != nil {
+		logg.Fatal("change GID failed: " + err.Error())
+	}
+
+	uidParsed, err := strconv.ParseUint(os.Getenv("PORTUNUS_SERVER_UID"), 10, 32)
+	if err != nil {
+		logg.Fatal("cannot parse PORTUNUS_SERVER_UID: " + err.Error())
+	}
+	uid := int(uidParsed)
+	err = syscall.Setresuid(uid, uid, uid)
+	if err != nil {
+		logg.Fatal("change UID failed: " + err.Error())
+	}
+}
+
+func mockEventsChan() <-chan core.Event {
+	channel := make(chan core.Event, 1)
+	channel <- core.Event{
+		Added: []core.Entity{
+			core.User{
+				LoginName:    "john",
+				GivenName:    "John",
+				FamilyName:   "Doe",
+				PasswordHash: core.HashPasswordForLDAP("12345"),
+			},
+			core.User{
+				LoginName:    "jane",
+				GivenName:    "Jane",
+				FamilyName:   "Doe",
+				PasswordHash: core.HashPasswordForLDAP("password"),
+			},
+			core.Group{
+				Name:             "admins",
+				Description:      "system administrators",
+				MemberLoginNames: []string{"jane"},
+				Permissions: core.Permissions{
+					LDAP: core.LDAPAccessFullRead,
+				},
+			},
+			core.Group{
+				Name:             "users",
+				Description:      "contains everyone",
+				MemberLoginNames: []string{"jane", "john"},
+				Permissions: core.Permissions{
+					LDAP: core.LDAPAccessNone,
+				},
+			},
+		},
+	}
+	return channel
 }

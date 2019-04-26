@@ -54,6 +54,8 @@ var (
 )
 
 func main() {
+	logg.ShowDebug = true //TODO make configurable
+
 	//read and validate all relevant environment variables
 	environment := make(map[string]string)
 	for key, defaultValue := range envDefaults {
