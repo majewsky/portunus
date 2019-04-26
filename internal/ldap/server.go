@@ -19,11 +19,7 @@
 package ldap
 
 import (
-	"os"
-	"os/exec"
-
 	"github.com/majewsky/portunus/internal/core"
-	"github.com/sapcc/go-bits/logg"
 )
 
 //RunServer runs slapd and updates its database whenever an event is received.
@@ -36,20 +32,4 @@ func RunServer(eventsChan <-chan core.Event) {
 		Password: password,
 	}
 	go worker.HandleEvents(eventsChan)
-
-	//run slapd
-	cmd := exec.Command(core.Getenv("PORTUNUS_SLAPD_BINARY").Or("slapd"),
-		"-h", "ldap:///",
-		"-f", configPath,
-		"-d", "0", //no debug logging (but still important because presence of `-d` keeps slapd from daemonizing)
-	)
-	cmd.Stdin = nil
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
-	if err != nil {
-		logg.Error("error encountered while running slapd: " + err.Error())
-		logg.Info("Since slapd logs to syslog only, check there for more information.")
-		os.Exit(1)
-	}
 }

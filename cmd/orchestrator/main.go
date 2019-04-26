@@ -72,4 +72,7 @@ func main() {
 
 	prepareFilesystem(environment)
 	renderLDAPConfig(environment)
+	go runLDAPServer(environment)
+
+	select {}
 }

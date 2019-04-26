@@ -22,6 +22,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"io/ioutil"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -71,11 +73,14 @@ func renderLDAPConfig(environment map[string]string) {
 			return environment[match]
 		})
 
-	configPath := filepath.Join(environment["XDG_RUNTIME_DIR"], "portunus", "slapd.conf")
-	err := ioutil.WriteFile(configPath, []byte(config), 0444)
+	err := ioutil.WriteFile(ldapConfigPath(environment), []byte(config), 0444)
 	if err != nil {
 		logg.Fatal(err.Error())
 	}
+}
+
+func ldapConfigPath(environment map[string]string) string {
+	return filepath.Join(environment["XDG_RUNTIME_DIR"], "portunus", "slapd.conf")
 }
 
 func generateServiceUserPassword() (plain, hashed string) {
@@ -86,4 +91,24 @@ func generateServiceUserPassword() (plain, hashed string) {
 	}
 	plain = hex.EncodeToString(buf[:])
 	return plain, core.HashPasswordForLDAP(plain)
+}
+
+//Does not return. Call with `go`.
+func runLDAPServer(environment map[string]string) {
+	logg.Info("starting LDAP server")
+	//run slapd
+	cmd := exec.Command(environment["PORTUNUS_SLAPD_BINARY"],
+		"-h", "ldap:///",
+		"-f", ldapConfigPath(environment),
+		"-d", "0", //no debug logging (but still important because presence of `-d` keeps slapd from daemonizing)
+	)
+	cmd.Stdin = nil
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		logg.Error("error encountered while running slapd: " + err.Error())
+		logg.Info("Since slapd logs to syslog only, check there for more information.")
+		os.Exit(1)
+	}
 }
