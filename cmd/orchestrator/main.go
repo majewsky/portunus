@@ -19,7 +19,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"regexp"
 
 	"github.com/sapcc/go-bits/logg"
@@ -29,8 +31,9 @@ var (
 	envDefaults = map[string]string{
 		//empty value = not optional
 		"PORTUNUS_LDAP_SUFFIX":      "",
-		"PORTUNUS_GROUP":            "portunus",
-		"PORTUNUS_USER":             "portunus",
+		"PORTUNUS_SERVER_BINARY":    "portunus-server",
+		"PORTUNUS_SERVER_GROUP":     "portunus",
+		"PORTUNUS_SERVER_USER":      "portunus",
 		"PORTUNUS_SLAPD_BINARY":     "slapd",
 		"PORTUNUS_SLAPD_GROUP":      "ldap",
 		"PORTUNUS_SLAPD_SCHEMA_DIR": "/etc/openldap/schema",
@@ -42,11 +45,11 @@ var (
 	ldapSuffixRx  = regexp.MustCompile(`^dc=[a-z0-9_-]+(?:,dc=[a-z0-9_-]+)*$`)
 	userOrGroupRx = regexp.MustCompile(`^[a-z_][a-z0-9_-]*\$?$`)
 	envFormats    = map[string]*regexp.Regexp{
-		"PORTUNUS_LDAP_SUFFIX": ldapSuffixRx,
-		"PORTUNUS_GROUP":       userOrGroupRx,
-		"PORTUNUS_USER":        userOrGroupRx,
-		"PORTUNUS_SLAPD_GROUP": userOrGroupRx,
-		"PORTUNUS_SLAPD_USER":  userOrGroupRx,
+		"PORTUNUS_LDAP_SUFFIX":  ldapSuffixRx,
+		"PORTUNUS_SERVER_GROUP": userOrGroupRx,
+		"PORTUNUS_SERVER_USER":  userOrGroupRx,
+		"PORTUNUS_SLAPD_GROUP":  userOrGroupRx,
+		"PORTUNUS_SLAPD_USER":   userOrGroupRx,
 	}
 )
 
@@ -74,5 +77,22 @@ func main() {
 	renderLDAPConfig(environment)
 	go runLDAPServer(environment)
 
-	select {}
+	//run portunus-server (thus blocking this goroutine)
+	portunusUID := getUIDForName(environment["PORTUNUS_SERVER_USER"])
+	portunusGID := getGIDForName(environment["PORTUNUS_SERVER_GROUP"])
+
+	cmd := exec.Command(environment["PORTUNUS_SERVER_BINARY"])
+	cmd.Stdin = nil
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("PORTUNUS_SERVER_UID=%d", portunusUID),
+		fmt.Sprintf("PORTUNUS_SERVER_GID=%d", portunusGID),
+		"PORTUNUS_LDAP_SUFFIX="+environment["PORTUNUS_LDAP_SUFFIX"],
+		"PORTUNUS_LDAP_PASSWORD="+environment["PORTUNUS_LDAP_PASSWORD"],
+	)
+	err := cmd.Run()
+	if err != nil {
+		logg.Fatal("error encountered while running portunus-server: " + err.Error())
+	}
 }

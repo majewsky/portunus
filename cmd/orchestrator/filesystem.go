@@ -29,8 +29,8 @@ import (
 
 func prepareFilesystem(environment map[string]string) {
 	//resolve user/group names into IDs for os.Chown()
-	portunusUID := getUIDForName(environment["PORTUNUS_USER"])
-	portunusGID := getGIDForName(environment["PORTUNUS_GROUP"])
+	portunusUID := getUIDForName(environment["PORTUNUS_SERVER_USER"])
+	portunusGID := getGIDForName(environment["PORTUNUS_SERVER_GROUP"])
 	slapdUID := getUIDForName(environment["PORTUNUS_SLAPD_USER"])
 	slapdGID := getGIDForName(environment["PORTUNUS_SLAPD_GROUP"])
 

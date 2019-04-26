@@ -18,8 +18,16 @@
 
 package main
 
-import "fmt"
+import (
+	"os"
+
+	"github.com/sapcc/go-bits/logg"
+)
 
 func main() {
-	fmt.Println("portunus-server")
+	for _, env := range os.Environ() {
+		logg.Info("received env: " + env)
+	}
+	//TODO: setuid to PORTUNUS_SERVER_UID/GID
+	select {}
 }
