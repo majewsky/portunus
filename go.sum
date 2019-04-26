@@ -1,5 +1,7 @@
 github.com/sapcc/go-bits v0.0.0-20190111093410-620b317f22bc h1:sIOSzr29YZS0LSl8Ocku6RCRNjxUgbdb6faHjDaA1Fs=
 github.com/sapcc/go-bits v0.0.0-20190111093410-620b317f22bc/go.mod h1:KeP5OOqQIgrauiDb/8shKWOq1YoplBALYNvpV4jizPo=
+github.com/tredoe/goutil v0.0.0-20161130132832-0a73aea41b0b h1:vQuE0Dv2IzwAzfuBj0RuiBkc1Cy4lrwWQQ0CM8U/qhQ=
+github.com/tredoe/goutil v0.0.0-20161130132832-0a73aea41b0b/go.mod h1:dp4VPOLeEFYbsf1ikgd+uytWDnpCdMiTHMg6mh7hHuQ=
 github.com/tredoe/osutil v0.0.0-20161130133508-7d3ee1afa71c h1:5q7IHeqvAA4hWR1CfpTOS7RFsTDC36TaSZ8Dvc00bPk=
 github.com/tredoe/osutil v0.0.0-20161130133508-7d3ee1afa71c/go.mod h1:M/I710pXKQToMdqt/D+mJ4QsnW6WDaajyB6DWFmDXBs=
 gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d h1:TxyelI5cVkbREznMhfzycHdkp5cLA7DpE+GKjSslYhM=
