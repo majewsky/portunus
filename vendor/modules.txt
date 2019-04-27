@@ -1,3 +1,5 @@
+# github.com/gorilla/mux v1.7.1
+github.com/gorilla/mux
 # github.com/sapcc/go-bits v0.0.0-20190111093410-620b317f22bc
 github.com/sapcc/go-bits/logg
 # github.com/tredoe/goutil v0.0.0-20161130132832-0a73aea41b0b

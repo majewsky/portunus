@@ -19,11 +19,13 @@
 package main
 
 import (
+	"net/http"
 	"os"
 	"strconv"
 	"syscall"
 
 	"github.com/majewsky/portunus/internal/core"
+	"github.com/majewsky/portunus/internal/frontend"
 	"github.com/sapcc/go-bits/logg"
 )
 
@@ -34,7 +36,8 @@ func main() {
 
 	go ldapWorker.processEvents(mockEventsChan())
 
-	select {}
+	//TODO make HTTP listen address configurable
+	logg.Fatal(http.ListenAndServe(":8080", frontend.HTTPHandler()).Error())
 }
 
 func dropPrivileges() {
