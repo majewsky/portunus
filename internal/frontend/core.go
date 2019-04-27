@@ -20,12 +20,11 @@ package frontend
 
 import (
 	"bytes"
-	"fmt"
-	"html"
 	"net/http"
 	"path"
 
 	"github.com/gorilla/mux"
+	h "github.com/majewsky/portunus/internal/html"
 	"github.com/majewsky/portunus/internal/static"
 )
 
@@ -56,107 +55,68 @@ func staticHandler(w http.ResponseWriter, r *http.Request) {
 func entryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(
-		tag("html",
-			tag("head",
-				tag("link",
-					attr("rel", "stylesheet"),
-					attr("href", "/static/css/portunus.css"),
+		h.Tag("html",
+			h.Tag("head",
+				h.Tag("link",
+					h.Attr("rel", "stylesheet"),
+					h.Attr("href", "/static/css/portunus.css"),
 				),
 			),
-			tag("body",
-				tag("nav",
-					tag("ul",
-						tag("li", tag("h1", text("Portunus"))),
-						tag("li", tag("a", attr("href", "#"), attr("class", "current"), text("Users"))),
-						tag("li", tag("a", attr("href", "#"), text("Groups"))),
+			h.Tag("body",
+				h.Tag("nav",
+					h.Tag("ul",
+						h.Tag("li", h.Tag("h1", h.Text("Portunus"))),
+						h.Tag("li", h.Tag("a", h.Attr("href", "#"), h.Attr("class", "current"), h.Text("Users"))),
+						h.Tag("li", h.Tag("a", h.Attr("href", "#"), h.Text("Groups"))),
 					),
 				),
-				tag("main",
-					tag("table",
-						tag("thead",
-							tag("tr",
-								tag("th", text("User ID")),
-								tag("th", text("Name")),
-								tag("th", text("Groups")),
-								tag("th", attr("class", "actions"),
-									tag("a",
-										attr("href", "#"),
-										attr("class", "btn btn-primary"),
-										text("New user"),
+				h.Tag("main",
+					h.Tag("table",
+						h.Tag("thead",
+							h.Tag("tr",
+								h.Tag("th", h.Text("User ID")),
+								h.Tag("th", h.Text("Name")),
+								h.Tag("th", h.Text("Groups")),
+								h.Tag("th", h.Attr("class", "actions"),
+									h.Tag("a",
+										h.Attr("href", "#"),
+										h.Attr("class", "btn btn-primary"),
+										h.Text("New user"),
 									),
 								),
 							),
 						),
-						tag("tbody",
-							tag("tr",
-								tag("td", text("jane")),
-								tag("td", text("Jane Doe")),
-								tag("td",
-									tag("a", attr("href", "#"), text("Administrators")),
-									text(", "),
-									tag("a", attr("href", "#"), text("Users")),
+						h.Tag("tbody",
+							h.Tag("tr",
+								h.Tag("td", h.Text("jane")),
+								h.Tag("td", h.Text("Jane Doe")),
+								h.Tag("td",
+									h.Tag("a", h.Attr("href", "#"), h.Text("Administrators")),
+									h.Text(", "),
+									h.Tag("a", h.Attr("href", "#"), h.Text("Users")),
 								),
-								tag("td", attr("class", "actions"),
-									tag("a", attr("href", "#"), text("Edit")),
-									text(" · "),
-									tag("a", attr("href", "#"), text("Delete")),
+								h.Tag("td", h.Attr("class", "actions"),
+									h.Tag("a", h.Attr("href", "#"), h.Text("Edit")),
+									h.Text(" · "),
+									h.Tag("a", h.Attr("href", "#"), h.Text("Delete")),
 								),
 							),
-							tag("tr",
-								tag("td", text("john")),
-								tag("td", text("John Doe")),
-								tag("td",
-									tag("a", attr("href", "#"), text("Users")),
+							h.Tag("tr",
+								h.Tag("td", h.Text("john")),
+								h.Tag("td", h.Text("John Doe")),
+								h.Tag("td",
+									h.Tag("a", h.Attr("href", "#"), h.Text("Users")),
 								),
-								tag("td", attr("class", "actions"),
-									tag("a", attr("href", "#"), text("Edit")),
-									text(" · "),
-									tag("a", attr("href", "#"), text("Delete")),
+								h.Tag("td", h.Attr("class", "actions"),
+									h.Tag("a", h.Attr("href", "#"), h.Text("Edit")),
+									h.Text(" · "),
+									h.Tag("a", h.Attr("href", "#"), h.Text("Delete")),
 								),
 							),
 						),
 					),
 				),
 			),
-		),
+		).String(),
 	))
-}
-
-type htmlAttr struct {
-	Key   string
-	Value string
-}
-
-type htmlText string
-
-type htmlTagArgument interface {
-	isHTMLTagArgument()
-}
-
-func (htmlAttr) isHTMLTagArgument() {}
-func (htmlText) isHTMLTagArgument() {}
-
-func attr(key, value string) htmlAttr {
-	return htmlAttr{key, value}
-}
-
-func text(str string) htmlText {
-	return htmlText(html.EscapeString(str))
-}
-
-func tag(name string, args ...htmlTagArgument) htmlText {
-	var (
-		attrText, childText string
-	)
-	for _, arg := range args {
-		switch arg := arg.(type) {
-		case htmlAttr:
-			attrText += fmt.Sprintf(` %s="%s"`, arg.Key, html.EscapeString(arg.Value))
-		case htmlText:
-			childText += string(arg)
-		default:
-			panic(fmt.Sprintf("unexpected argument of type %T in tag()", arg))
-		}
-	}
-	return htmlText(fmt.Sprintf("<%s%s>%s</%s>", name, attrText, childText, name))
 }
