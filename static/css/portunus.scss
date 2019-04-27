@@ -1,0 +1,10 @@
+/* This file only does CSS resets. Everything else is in the imported files. */
+
+*, *:before, *:after {
+	box-sizing: border-box;
+}
+
+@import 'typography.scss';
+@import 'structure.scss';
+@import 'buttons.scss';
+@import 'tables.scss';

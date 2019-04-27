@@ -15,7 +15,9 @@ build/%: internal/static/bindata.go FORCE
 	$(GO) install $(GO_BUILDFLAGS) -ldflags '$(GO_LDFLAGS)' '$(PKG)/cmd/$*'
 
 internal/static/bindata.go: $(shell find static -type f)
-	go-bindata -prefix static/ -o $@ static/...
+	go-bindata -ignore '\.scss$$' -prefix static/ -o $@ static/...
+static/css/portunus.css: static/css/*.scss
+	sassc -t compressed -I static/css static/css/portunus.scss static/css/portunus.css
 
 install: FORCE all
 	for CMD in $(CMDS); do install -D -m 0755 "build/$${CMD}" "$(DESTDIR)$(PREFIX)/bin/portunus-$${CMD}"; done

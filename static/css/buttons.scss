@@ -1,0 +1,16 @@
+.btn {
+	display: inline-block;
+	padding: 0.5rem;
+	vertical-align: middle;
+	line-height: 1;
+	white-space: nowrap;
+
+	&.btn-primary {
+		background: #00F;
+		color: white;
+
+		&:active, &:hover, &:focus {
+			background: #66F;
+		}
+	}
+}
