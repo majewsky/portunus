@@ -6,7 +6,10 @@ management and authentication service.
 
 TODO explain more
 
-## Environment variables
+## Running
+
+Once installed, run `portunus-orchestrator` with root privileges. Config is passed to it via the
+following environment variables:
 
 | Variable | Default | Explanation |
 | -------- | ------- | ----------- |
@@ -19,6 +22,13 @@ TODO explain more
 | `PORTUNUS_SLAPD_SCHEMA_DIR` | `/etc/openldap/schema` | Where to find OpenLDAP's schema definitions. |
 | `PORTUNUS_SLAPD_STATE_DIR` | `/var/run/portunus-slapd` | The path where slapd stores its database. The contents of this directory are ephemeral and will be wiped when Portunus restarts, so you do not need to back this up. Place this on a tmpfs for optimal performance. |
 
-## LDAP directory structure
+Root privileges are required for the orchestrator because it needs to setup runtime directories and
+bind the LDAP port which is a privileged port (389 without TLS, 636 with TLS). No process managed by
+Portunus will offer a network service while running as root:
+
+- LDAP and LDAPS are offered by slapd which is running as `ldap:ldap` by default.
+- HTTP is offered by `portunus-server` which is running as `portunus:portunus` by default.
+
+### LDAP directory structure
 
 TODO
