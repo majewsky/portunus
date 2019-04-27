@@ -21,7 +21,6 @@ package main
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -55,12 +54,12 @@ maxsize    1073741824
 suffix     "%PORTUNUS_LDAP_SUFFIX%"
 rootdn     "cn=portunus,%PORTUNUS_LDAP_SUFFIX%"
 rootpw     "%PORTUNUS_LDAP_PASSWORD_HASH%"
-directory  "%XDG_RUNTIME_DIR%/portunus/slapd-data"
+directory  "%PORTUNUS_SLAPD_STATE_DIR%/data"
 
 index objectClass eq
 `
 
-func renderLDAPConfig(environment map[string]string) {
+func renderSlapdConfig(environment map[string]string, ids map[string]int) []byte {
 	password := generateServiceUserPassword()
 	logg.Debug("password for cn=portunus,%s is %s",
 		environment["PORTUNUS_LDAP_SUFFIX"], password)
@@ -74,14 +73,7 @@ func renderLDAPConfig(environment map[string]string) {
 			return environment[match]
 		})
 
-	err := ioutil.WriteFile(ldapConfigPath(environment), []byte(config), 0444)
-	if err != nil {
-		logg.Fatal(err.Error())
-	}
-}
-
-func ldapConfigPath(environment map[string]string) string {
-	return filepath.Join(environment["XDG_RUNTIME_DIR"], "portunus", "slapd.conf")
+	return []byte(config)
 }
 
 func generateServiceUserPassword() string {
@@ -98,8 +90,10 @@ func runLDAPServer(environment map[string]string) {
 	logg.Info("starting LDAP server")
 	//run slapd
 	cmd := exec.Command(environment["PORTUNUS_SLAPD_BINARY"],
+		"-u", environment["PORTUNUS_SLAPD_USER"],
+		"-g", environment["PORTUNUS_SLAPD_GROUP"],
 		"-h", "ldap:///",
-		"-f", ldapConfigPath(environment),
+		"-f", filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "slapd.conf"),
 		"-d", "0", //no debug logging (but still important because presence of `-d` keeps slapd from daemonizing)
 	)
 	cmd.Stdin = nil
