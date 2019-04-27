@@ -101,6 +101,15 @@ func Tag(name string, args ...TagArgument) RenderedHTML {
 	return RenderedHTML{fmt.Sprintf("<%s%s>%s</%s>", name, attrText, childText, name)}
 }
 
+//Join concatenates multiple pieces of RenderedHTML into one.
+func Join(args ...RenderedHTML) RenderedHTML {
+	var result string
+	for _, arg := range args {
+		result += arg.plain
+	}
+	return RenderedHTML{result}
+}
+
 //String returns the rendered HTML as a string.
 func (h RenderedHTML) String() string {
 	return h.plain
