@@ -134,6 +134,8 @@ func (s *FileStore) loadDB(allowEmpty bool) (db Database) {
 	if err != nil {
 		logg.Fatal("cannot load main database: " + err.Error())
 	}
+
+	//TODO validate DB (e.g. groups should only contain users that actually exist)
 	return
 }
 

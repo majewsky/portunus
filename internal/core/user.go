@@ -40,6 +40,11 @@ func (u User) connect(e Engine) User {
 	return u
 }
 
+//FullName returns the user's full name.
+func (u User) FullName() string {
+	return u.GivenName + " " + u.FamilyName //TODO: allow flipped order (family name first)
+}
+
 //IsEqualTo implements the Entity interface.
 func (u User) IsEqualTo(other Entity) bool {
 	lhs := u
@@ -60,7 +65,7 @@ func (u User) RenderToLDAP(suffix string) goldap.AddRequest {
 		DN: fmt.Sprintf("uid=%s,ou=users,%s", u.LoginName, suffix),
 		Attributes: []goldap.Attribute{
 			mkAttr("uid", u.LoginName),
-			mkAttr("cn", u.GivenName+" "+u.FamilyName), //TODO: allow flipped order (family name first)
+			mkAttr("cn", u.FullName()),
 			mkAttr("sn", u.FamilyName),
 			mkAttr("givenName", u.GivenName),
 			mkAttr("userPassword", u.PasswordHash),

@@ -20,6 +20,7 @@ package core
 
 import (
 	"github.com/tredoe/osutil/user/crypt/sha256_crypt"
+	goldap "gopkg.in/ldap.v3"
 )
 
 //HashPasswordForLDAP produces a password hash in the format expected by LDAP,
@@ -29,4 +30,8 @@ func HashPasswordForLDAP(password string) string {
 	//when the second argument is nil
 	result, _ := sha256_crypt.New().Generate([]byte(password), nil)
 	return "{CRYPT}" + result
+}
+
+func mkAttr(typeName string, values ...string) goldap.Attribute {
+	return goldap.Attribute{Type: typeName, Vals: values}
 }

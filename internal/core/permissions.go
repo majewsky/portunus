@@ -18,26 +18,33 @@
 
 package core
 
-import goldap "gopkg.in/ldap.v3"
-
 //Permissions represents the permissions that membership in a certain group
 //gives its members.
 type Permissions struct {
-	LDAP LDAPAccessLevel `json:"ldap"`
+	Portunus PortunusPermissions `json:"portunus"`
+	LDAP     LDAPPermissions     `json:"ldap"`
 }
 
-//LDAPAccessLevel is an enum of permission levels for LDAP.
-//TODO This is pathetic and needs to be way more granular.
-type LDAPAccessLevel string
+//PortunusPermissions appears in type Permissions.
+type PortunusPermissions struct {
+	IsAdmin bool `json:"is_admin"`
+}
 
-const (
-	//LDAPAccessNone is the access level for users that do not have access to
-	//LDAP, i.e. bind requests will fail.
-	LDAPAccessNone LDAPAccessLevel = ""
-	//LDAPAccessFullRead allows users to read all entries in the LDAP directory.
-	LDAPAccessFullRead = "full-read"
-)
+//LDAPPermissions appears in type Permissions.
+type LDAPPermissions struct {
+	CanRead bool `json:"can_read"`
+}
 
-func mkAttr(typeName string, values ...string) goldap.Attribute {
-	return goldap.Attribute{Type: typeName, Vals: values}
+//Includes returns true when all the permissions are included in this
+//Permissions instance.
+func (p Permissions) Includes(other Permissions) bool {
+	return p.Union(other) == p
+}
+
+//Union returns the union of the given permission sets.
+func (p Permissions) Union(other Permissions) Permissions {
+	var result Permissions
+	result.Portunus.IsAdmin = p.Portunus.IsAdmin || other.Portunus.IsAdmin
+	result.LDAP.CanRead = p.LDAP.CanRead || other.LDAP.CanRead
+	return result
 }

@@ -28,7 +28,6 @@ import (
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
 	"github.com/majewsky/portunus/internal/core"
-	h "github.com/majewsky/portunus/internal/html"
 	"github.com/majewsky/portunus/internal/static"
 	"github.com/sapcc/go-bits/logg"
 )
@@ -37,13 +36,18 @@ import (
 func HTTPHandler(engine core.Engine, isBehindTLSProxy bool) http.Handler {
 	r := mux.NewRouter()
 	r.Methods("GET").Path(`/static/{path:.+}`).HandlerFunc(staticHandler)
-	r.Methods("GET").Path(`/users`).HandlerFunc(testHandler) //TODO remove
-	r.Methods("GET").Path(`/login`).HandlerFunc(getLoginHandler)
-	r.Methods("POST").Path(`/login`).HandlerFunc(postLoginHandler)
-	r.Methods("GET").Path(`/logout`).HandlerFunc(getLogoutHandler)
-	//TODO logout
+
+	r.Methods("GET").Path(`/login`).HandlerFunc(getLoginHandler(engine))
+	r.Methods("POST").Path(`/login`).HandlerFunc(postLoginHandler(engine))
+	r.Methods("GET").Path(`/logout`).HandlerFunc(getLogoutHandler(engine))
+
+	r.Methods("GET").Path(`/users`).HandlerFunc(getUsersHandler(engine))
 	//TODO CRUD users
 	//TODO CRUD groups
+	//TODO self-service UI (view own user, change password)
+	//TODO first-time setup hint
+
+	//TODO FIXME CSRF validation error should redirect to the same form with a flash message (and we should not logg.Error() that anymore then)
 
 	//setup CSRF with maxAge = 30 minutes
 	csrfKey := securecookie.GenerateRandomKey(32)
@@ -92,59 +96,27 @@ func getSessionOrFail(w http.ResponseWriter, r *http.Request) *sessions.Session 
 	return session
 }
 
-func testHandler(w http.ResponseWriter, r *http.Request) {
-	WriteHTMLPage(w, http.StatusOK, "Users",
-		h.Join(
-			RenderNavbar("Jane Doe", //TODO: use actual user ID
-				NavbarItem{URL: "/users", Title: "Users", Active: true},
-				NavbarItem{URL: "/groups", Title: "Groups"},
-			),
-			h.Tag("main",
-				h.Tag("table",
-					h.Tag("thead",
-						h.Tag("tr",
-							h.Tag("th", h.Text("User ID")),
-							h.Tag("th", h.Text("Name")),
-							h.Tag("th", h.Text("Groups")),
-							h.Tag("th", h.Attr("class", "actions"),
-								h.Tag("a",
-									h.Attr("href", "#"),
-									h.Attr("class", "btn btn-primary"),
-									h.Text("New user"),
-								),
-							),
-						),
-					),
-					h.Tag("tbody",
-						h.Tag("tr",
-							h.Tag("td", h.Text("jane")),
-							h.Tag("td", h.Text("Jane Doe")),
-							h.Tag("td",
-								h.Tag("a", h.Attr("href", "#"), h.Text("Administrators")),
-								h.Text(", "),
-								h.Tag("a", h.Attr("href", "#"), h.Text("Users")),
-							),
-							h.Tag("td", h.Attr("class", "actions"),
-								h.Tag("a", h.Attr("href", "#"), h.Text("Edit")),
-								h.Text(" · "),
-								h.Tag("a", h.Attr("href", "#"), h.Text("Delete")),
-							),
-						),
-						h.Tag("tr",
-							h.Tag("td", h.Text("john")),
-							h.Tag("td", h.Text("John Doe")),
-							h.Tag("td",
-								h.Tag("a", h.Attr("href", "#"), h.Text("Users")),
-							),
-							h.Tag("td", h.Attr("class", "actions"),
-								h.Tag("a", h.Attr("href", "#"), h.Text("Edit")),
-								h.Text(" · "),
-								h.Tag("a", h.Attr("href", "#"), h.Text("Delete")),
-							),
-						),
-					),
-				),
-			),
-		),
-	)
+//Checks whether the user making the request is authenticated and has at least
+//the given permissions.
+func checkAuth(w http.ResponseWriter, r *http.Request, e core.Engine, requiredPerms core.Permissions) (core.User, core.Permissions, bool) {
+	//TODO replace redirectToLoginPageUnlessLoggedIn with consistent usage of this
+	s := getSessionOrFail(w, r)
+	if s == nil {
+		return core.User{}, core.Permissions{}, false
+	}
+	uid, ok := s.Values["uid"].(string)
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return core.User{}, core.Permissions{}, false
+	}
+	user, userPerms, ok := e.FindUser(uid)
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return core.User{}, core.Permissions{}, false
+	}
+	if !userPerms.Includes(requiredPerms) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return core.User{}, core.Permissions{}, false
+	}
+	return user, userPerms, true
 }

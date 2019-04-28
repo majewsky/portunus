@@ -51,6 +51,9 @@ type Modification struct {
 
 //Engine is the core engine of portunus-server.
 type Engine interface {
+	FindUser(loginName string) (u User, p Permissions, exists bool)
+	ListGroups() []Group
+	ListUsers() []User
 }
 
 //engine implements the Engine interface.
@@ -81,7 +84,7 @@ func RunEngineAsync(fsAPI *FileStoreAPI) (Engine, <-chan Event) {
 		}
 	}()
 
-	return e, eventsChan
+	return &e, eventsChan
 }
 
 func (e *engine) handleLoadEvent(db Database) {
@@ -103,6 +106,8 @@ func (e *engine) handleLoadEvent(db Database) {
 		} else {
 			event.Added = append(event.Added, userNew.connect(e))
 		}
+		clone := userNew
+		e.Users[userNew.LoginName] = &clone
 	}
 
 	for _, groupNew := range db.Groups {
@@ -116,6 +121,8 @@ func (e *engine) handleLoadEvent(db Database) {
 		} else {
 			event.Added = append(event.Added, groupNew.connect(e))
 		}
+		clone := groupNew
+		e.Groups[groupNew.Name] = &clone
 	}
 
 	for _, userOld := range e.Users {
@@ -135,4 +142,48 @@ func (e *engine) handleLoadEvent(db Database) {
 	}
 
 	e.EventsChan <- event
+}
+
+//FindUser implements the Engine interface.
+func (e *engine) FindUser(loginName string) (User, Permissions, bool) {
+	e.Mutex.RLock()
+	defer e.Mutex.RUnlock()
+
+	user, exists := e.Users[loginName]
+	if !exists {
+		return User{}, Permissions{}, false
+	}
+
+	var perms Permissions
+	for _, group := range e.Groups {
+		if group.ContainsUser(*user) {
+			perms = perms.Union(group.Permissions)
+		}
+	}
+
+	return user.connect(e), perms, true
+}
+
+//ListGroups implements the Engine interface.
+func (e *engine) ListGroups() []Group {
+	e.Mutex.RLock()
+	defer e.Mutex.RUnlock()
+
+	var result []Group
+	for _, group := range e.Groups {
+		result = append(result, group.connect(e))
+	}
+	return result
+}
+
+//ListUsers implements the Engine interface.
+func (e *engine) ListUsers() []User {
+	e.Mutex.RLock()
+	defer e.Mutex.RUnlock()
+
+	var result []User
+	for _, user := range e.Users {
+		result = append(result, user.connect(e))
+	}
+	return result
 }

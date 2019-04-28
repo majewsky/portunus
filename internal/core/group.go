@@ -41,6 +41,16 @@ func (g Group) connect(e Engine) Group {
 	return g
 }
 
+//ContainsUser checks whether this group contains the given user.
+func (g Group) ContainsUser(u User) bool {
+	for _, name := range g.MemberLoginNames {
+		if name == u.LoginName {
+			return true
+		}
+	}
+	return false
+}
+
 //IsEqualTo implements the Entity interface.
 func (g Group) IsEqualTo(other Entity) bool {
 	lhs := g

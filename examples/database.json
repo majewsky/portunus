@@ -21,7 +21,12 @@
 				"jane"
 			],
 			"permissions": {
-				"ldap": "full-read"
+				"portunus": {
+					"is_admin": true
+				},
+				"ldap": {
+					"can_read": true
+				}
 			}
 		},
 		{
@@ -32,7 +37,8 @@
 				"john"
 			],
 			"permissions": {
-				"ldap": ""
+				"portunus": {},
+				"ldap": {}
 			}
 		}
 	]
