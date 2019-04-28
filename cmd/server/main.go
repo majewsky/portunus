@@ -32,12 +32,12 @@ import (
 func main() {
 	logg.ShowDebug = true //TODO make configurable
 	dropPrivileges()
-	ldapWorker := newLDAPWorker()
 
+	ldapWorker := newLDAPWorker()
 	go ldapWorker.processEvents(mockEventsChan())
 
-	//TODO make HTTP listen address configurable
-	logg.Fatal(http.ListenAndServe(":8080", frontend.HTTPHandler()).Error())
+	handler := frontend.HTTPHandler(os.Getenv("PORTUNUS_SERVER_HTTP_SECURE") == "true")
+	logg.Fatal(http.ListenAndServe(os.Getenv("PORTUNUS_SERVER_HTTP_LISTEN"), handler).Error())
 }
 
 func dropPrivileges() {

@@ -29,26 +29,30 @@ import (
 var (
 	envDefaults = map[string]string{
 		//empty value = not optional
-		"PORTUNUS_LDAP_SUFFIX":      "",
-		"PORTUNUS_SERVER_BINARY":    "portunus-server",
-		"PORTUNUS_SERVER_GROUP":     "portunus",
-		"PORTUNUS_SERVER_STATE_DIR": "/var/lib/portunus",
-		"PORTUNUS_SERVER_USER":      "portunus",
-		"PORTUNUS_SLAPD_BINARY":     "slapd",
-		"PORTUNUS_SLAPD_GROUP":      "ldap",
-		"PORTUNUS_SLAPD_SCHEMA_DIR": "/etc/openldap/schema",
-		"PORTUNUS_SLAPD_STATE_DIR":  "/var/run/portunus-slapd",
-		"PORTUNUS_SLAPD_USER":       "ldap",
+		"PORTUNUS_LDAP_SUFFIX":        "",
+		"PORTUNUS_SERVER_BINARY":      "portunus-server",
+		"PORTUNUS_SERVER_GROUP":       "portunus",
+		"PORTUNUS_SERVER_HTTP_LISTEN": "127.0.0.1:8080",
+		"PORTUNUS_SERVER_HTTP_SECURE": "true",
+		"PORTUNUS_SERVER_STATE_DIR":   "/var/lib/portunus",
+		"PORTUNUS_SERVER_USER":        "portunus",
+		"PORTUNUS_SLAPD_BINARY":       "slapd",
+		"PORTUNUS_SLAPD_GROUP":        "ldap",
+		"PORTUNUS_SLAPD_SCHEMA_DIR":   "/etc/openldap/schema",
+		"PORTUNUS_SLAPD_STATE_DIR":    "/var/run/portunus-slapd",
+		"PORTUNUS_SLAPD_USER":         "ldap",
 	}
 
 	ldapSuffixRx  = regexp.MustCompile(`^dc=[a-z0-9_-]+(?:,dc=[a-z0-9_-]+)*$`)
 	userOrGroupRx = regexp.MustCompile(`^[a-z_][a-z0-9_-]*\$?$`)
 	envFormats    = map[string]*regexp.Regexp{
-		"PORTUNUS_LDAP_SUFFIX":  ldapSuffixRx,
-		"PORTUNUS_SERVER_GROUP": userOrGroupRx,
-		"PORTUNUS_SERVER_USER":  userOrGroupRx,
-		"PORTUNUS_SLAPD_GROUP":  userOrGroupRx,
-		"PORTUNUS_SLAPD_USER":   userOrGroupRx,
+		"PORTUNUS_LDAP_SUFFIX":        ldapSuffixRx,
+		"PORTUNUS_SERVER_GROUP":       userOrGroupRx,
+		"PORTUNUS_SERVER_HTTP_LISTEN": regexp.MustCompile(`^(?:[0-9.]+|\[[0-9a-f:]+\]):[0-9]+$`),
+		"PORTUNUS_SERVER_HTTP_SECURE": regexp.MustCompile(`^(?:true|false)$`),
+		"PORTUNUS_SERVER_USER":        userOrGroupRx,
+		"PORTUNUS_SLAPD_GROUP":        userOrGroupRx,
+		"PORTUNUS_SLAPD_USER":         userOrGroupRx,
 	}
 )
 

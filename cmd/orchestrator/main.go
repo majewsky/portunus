@@ -64,6 +64,8 @@ func main() {
 		fmt.Sprintf("PORTUNUS_SERVER_GID=%d", ids["PORTUNUS_SERVER_GID"]),
 		"PORTUNUS_LDAP_SUFFIX="+environment["PORTUNUS_LDAP_SUFFIX"],
 		"PORTUNUS_LDAP_PASSWORD="+environment["PORTUNUS_LDAP_PASSWORD"],
+		"PORTUNUS_SERVER_HTTP_LISTEN="+environment["PORTUNUS_SERVER_HTTP_LISTEN"],
+		"PORTUNUS_SERVER_HTTP_SECURE="+environment["PORTUNUS_SERVER_HTTP_SECURE"],
 	)
 	err := cmd.Run()
 	if err != nil {

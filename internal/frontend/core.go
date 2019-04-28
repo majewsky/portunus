@@ -23,16 +23,26 @@ import (
 	"net/http"
 	"path"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/securecookie"
 	h "github.com/majewsky/portunus/internal/html"
 	"github.com/majewsky/portunus/internal/static"
+
+	//will be added in the next commit
+	_ "github.com/gorilla/sessions"
 )
 
 //HTTPHandler returns the main http.Handler.
-func HTTPHandler() http.Handler {
+func HTTPHandler(isBehindTLSProxy bool) http.Handler {
 	r := mux.NewRouter()
 	r.Methods("GET").Path(`/static/{path:.+}`).HandlerFunc(staticHandler)
 	r.Methods("GET").Path(`/`).HandlerFunc(entryHandler)
+
+	//setup CSRF with maxAge = 30 minutes
+	csrfKey := securecookie.GenerateRandomKey(32)
+	r.Use(csrf.Protect(csrfKey, csrf.MaxAge(1800), csrf.Secure(isBehindTLSProxy)))
+
 	return r
 }
 
