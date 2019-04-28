@@ -1,3 +1,5 @@
+# github.com/fsnotify/fsnotify v1.4.7
+github.com/fsnotify/fsnotify
 # github.com/gorilla/context v1.1.1
 github.com/gorilla/context
 # github.com/gorilla/csrf v1.5.1
@@ -25,6 +27,8 @@ github.com/tredoe/osutil/user/crypt
 github.com/tredoe/osutil/user/crypt/md5_crypt
 github.com/tredoe/osutil/user/crypt/sha512_crypt
 github.com/tredoe/osutil/user/crypt/common
+# golang.org/x/sys v0.0.0-20190426135247-a129542de9ae
+golang.org/x/sys/unix
 # gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d
 gopkg.in/asn1-ber.v1
 # gopkg.in/ldap.v3 v3.0.3

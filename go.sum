@@ -1,3 +1,5 @@
+github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
+github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/gorilla/context v1.1.1 h1:AWwleXJkX/nhcU9bZSnZoi3h/qGYqQAGhq6zZe/aQW8=
 github.com/gorilla/context v1.1.1/go.mod h1:kBGZzfjB9CEq2AlWe17Uuf7NDRt0dE0s8S51q0aT7Yg=
 github.com/gorilla/csrf v1.5.1 h1:UASc2+EB0T51tvl6/2ls2ciA8/qC7KdTO7DsOEKbttQ=
@@ -16,6 +18,8 @@ github.com/tredoe/goutil v0.0.0-20161130132832-0a73aea41b0b h1:vQuE0Dv2IzwAzfuBj
 github.com/tredoe/goutil v0.0.0-20161130132832-0a73aea41b0b/go.mod h1:dp4VPOLeEFYbsf1ikgd+uytWDnpCdMiTHMg6mh7hHuQ=
 github.com/tredoe/osutil v0.0.0-20161130133508-7d3ee1afa71c h1:5q7IHeqvAA4hWR1CfpTOS7RFsTDC36TaSZ8Dvc00bPk=
 github.com/tredoe/osutil v0.0.0-20161130133508-7d3ee1afa71c/go.mod h1:M/I710pXKQToMdqt/D+mJ4QsnW6WDaajyB6DWFmDXBs=
+golang.org/x/sys v0.0.0-20190426135247-a129542de9ae h1:mQLHiymj/JXKnnjc62tb7nD5pZLs940/sXJu+Xp3DBA=
+golang.org/x/sys v0.0.0-20190426135247-a129542de9ae/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d h1:TxyelI5cVkbREznMhfzycHdkp5cLA7DpE+GKjSslYhM=
 gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d/go.mod h1:cuepJuh7vyXfUyUwEgHQXw849cJrilpS5NeIjOWESAw=
 gopkg.in/ldap.v3 v3.0.3 h1:YKRHW/2sIl05JsCtx/5ZuUueFuJyoj/6+DGXe3wp6ro=
