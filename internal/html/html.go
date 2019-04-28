@@ -36,6 +36,7 @@ package h
 import (
 	"fmt"
 	"html"
+	"html/template"
 )
 
 //TagArgument is implemented by Attribute and RenderedHTML. Therefore, these two
@@ -80,6 +81,12 @@ func Text(str string) RenderedHTML {
 //that no XSS vulnerabilities are introduced.
 func UnsafeText(str string) RenderedHTML {
 	return RenderedHTML{str}
+}
+
+//Embed converts template.HTML into RenderedHTML, thus allowing HTML generated
+//by other libraries to be used by this library.
+func Embed(str template.HTML) RenderedHTML {
+	return RenderedHTML{string(str)}
 }
 
 //Tag renders an HTML tag. Attributes and child nodes can be given in the

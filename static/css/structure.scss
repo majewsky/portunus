@@ -17,10 +17,14 @@ nav {
 		margin: 0 auto;
 		padding: 0;
 		list-style: none;
+		display: flex;
 
 		li {
-			display: inline-block;
 			vertical-align: middle;
+
+			&.spacer {
+				flex: auto;
+			}
 
 			h1 {
 				margin: 0;
@@ -48,5 +52,5 @@ nav {
 
 main {
 	max-width: 800px;
-	margin: 0 auto 2rem auto;
+	margin: 1rem auto 2rem auto;
 }

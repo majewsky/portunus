@@ -4,7 +4,7 @@ table {
 	border-spacing: 0;
 
 	thead tr {
-		border-bottom: 1px solid #333;
+		border-bottom: 1px solid black;
 
 		th {
 			line-height: 3rem;
@@ -12,7 +12,7 @@ table {
 	}
 
 	tbody tr {
-		border-bottom: 1px solid #999;
+		border-bottom: 1px solid #CCC;
 
 		td {
 			line-height: 2.5rem;
@@ -22,5 +22,6 @@ table {
 	.actions {
 		width: 1%;
 		text-align: center;
+		white-space: nowrap;
 	}
 }

@@ -17,3 +17,101 @@
 *******************************************************************************/
 
 package frontend
+
+import (
+	"net/http"
+	"strings"
+
+	"github.com/gorilla/csrf"
+	h "github.com/majewsky/portunus/internal/html"
+)
+
+func redirectToLoginPageUnlessLoggedIn(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		//the login workflow and everything required by it are accessible to everyone
+		if r.URL.Path == "/login" || strings.HasPrefix(r.URL.Path, "/static/") {
+			h.ServeHTTP(w, r)
+			return
+		}
+
+		s := getSessionOrFail(w, r)
+		if s == nil {
+			return
+		}
+		if _, ok := s.Values["uid"].(string); ok {
+			//logged-in users can proceed to the other pages
+			h.ServeHTTP(w, r)
+			return
+		}
+
+		//redirect everything else to the login page
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	})
+}
+
+//Handles GET /login.
+func getLoginHandler(w http.ResponseWriter, r *http.Request) {
+	s := getSessionOrFail(w, r)
+	if s == nil {
+		return
+	}
+	if _, ok := s.Values["uid"].(string); ok {
+		//already logged in
+		http.Redirect(w, r, "/users", http.StatusSeeOther)
+		return
+	}
+
+	WriteHTMLPage(w, http.StatusOK, "Login", h.Join(
+		RenderNavbar("", NavbarItem{URL: "/login", Title: "Login", Active: true}),
+		h.Tag("main",
+			h.Tag("form", h.Attr("method", "POST"), h.Attr("action", "/login"),
+				h.Embed(csrf.TemplateField(r)),
+				h.Tag("div", h.Attr("class", "form-row"),
+					h.Tag("label", h.Attr("for", "uid"), h.Text("User ID")),
+					h.Tag("input", h.Attr("name", "uid"), h.Attr("type", "text")),
+				),
+				h.Tag("div", h.Attr("class", "form-row"),
+					h.Tag("label", h.Attr("for", "password"), h.Text("Password")),
+					h.Tag("input", h.Attr("name", "username"), h.Attr("type", "password")),
+				),
+				h.Tag("div", h.Attr("class", "button-row"),
+					h.Tag("button", h.Attr("type", "submit"), h.Attr("class", "btn btn-primary"), h.Text("Login")),
+				),
+			),
+		),
+	))
+}
+
+//Handles POST /login.
+func postLoginHandler(w http.ResponseWriter, r *http.Request) {
+	s := getSessionOrFail(w, r)
+	if s == nil {
+		return
+	}
+
+	//TODO stub, needs to actually look at r.PostForm
+	s.Values["uid"] = "jane"
+	err := s.Save(r, w)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/users", http.StatusSeeOther)
+}
+
+//Handles GET /logout.
+func getLogoutHandler(w http.ResponseWriter, r *http.Request) {
+	s := getSessionOrFail(w, r)
+	if s == nil {
+		return
+	}
+	delete(s.Values, "uid")
+	err := s.Save(r, w)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}

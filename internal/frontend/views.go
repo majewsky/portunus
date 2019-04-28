@@ -63,3 +63,37 @@ func WriteHTMLPage(w http.ResponseWriter, status int, title string, bodyContents
 	w.WriteHeader(status)
 	w.Write([]byte(htmlTag.String()))
 }
+
+//NavbarItem is an item that appears in the top navbar.
+type NavbarItem struct {
+	URL    string
+	Title  string
+	Active bool
+}
+
+//RenderNavbar renders the top navbar that appears in every view.
+func RenderNavbar(currentUserID string, items ...NavbarItem) h.RenderedHTML {
+	fields := []h.TagArgument{
+		h.Tag("li", h.Tag("h1", h.Text("Portunus"))),
+	}
+	for _, item := range items {
+		linkArgs := []h.TagArgument{
+			h.Text(item.Title), h.Attr("href", item.URL),
+		}
+		if item.Active {
+			linkArgs = append(linkArgs, h.Attr("class", "current"))
+		}
+		fields = append(fields, h.Tag("li", h.Tag("a", linkArgs...)))
+	}
+
+	if currentUserID != "" {
+		fields = append(fields, h.Tag("li", h.Attr("class", "spacer")))
+		fields = append(fields, h.Tag("li", h.Tag("a", h.Attr("class", "current"), h.Text(currentUserID))))
+		fields = append(fields, h.Tag("li", h.Tag("a",
+			h.Attr("href", "/logout"),
+			h.Text("Logout"),
+		)))
+	}
+
+	return h.Tag("nav", h.Tag("ul", fields...))
+}

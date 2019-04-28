@@ -26,24 +26,32 @@ import (
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/securecookie"
+	"github.com/gorilla/sessions"
 	h "github.com/majewsky/portunus/internal/html"
 	"github.com/majewsky/portunus/internal/static"
-
-	//will be added in the next commit
-	_ "github.com/gorilla/sessions"
+	"github.com/sapcc/go-bits/logg"
 )
 
 //HTTPHandler returns the main http.Handler.
 func HTTPHandler(isBehindTLSProxy bool) http.Handler {
 	r := mux.NewRouter()
 	r.Methods("GET").Path(`/static/{path:.+}`).HandlerFunc(staticHandler)
-	r.Methods("GET").Path(`/`).HandlerFunc(entryHandler)
+	r.Methods("GET").Path(`/users`).HandlerFunc(testHandler) //TODO remove
+	r.Methods("GET").Path(`/login`).HandlerFunc(getLoginHandler)
+	r.Methods("POST").Path(`/login`).HandlerFunc(postLoginHandler)
+	r.Methods("GET").Path(`/logout`).HandlerFunc(getLogoutHandler)
+	//TODO logout
+	//TODO CRUD users
+	//TODO CRUD groups
 
 	//setup CSRF with maxAge = 30 minutes
 	csrfKey := securecookie.GenerateRandomKey(32)
-	r.Use(csrf.Protect(csrfKey, csrf.MaxAge(1800), csrf.Secure(isBehindTLSProxy)))
+	csrfMiddleware := csrf.Protect(csrfKey, csrf.MaxAge(1800), csrf.Secure(isBehindTLSProxy))
+	handler := csrfMiddleware(r)
 
-	return r
+	handler = redirectToLoginPageUnlessLoggedIn(handler)
+
+	return handler
 }
 
 func staticHandler(w http.ResponseWriter, r *http.Request) {
@@ -62,15 +70,33 @@ func staticHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, path.Base(assetPath), assetInfo.ModTime(), bytes.NewReader(assetBytes))
 }
 
-func entryHandler(w http.ResponseWriter, r *http.Request) {
+var sessionStore = sessions.NewCookieStore(securecookie.GenerateRandomKey(32))
+
+func getSessionOrFail(w http.ResponseWriter, r *http.Request) *sessions.Session {
+	session, err := sessionStore.Get(r, "portunus-login")
+	if err != nil {
+		//the session is broken - start a fresh one
+		logg.Error("could not decode user session cookie: " + err.Error())
+		r.Header.Del("Cookie")
+		session, err = sessionStore.New(r, "portunus-login")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return nil
+		}
+	}
+	if session == nil {
+		http.Error(w, "unexpected empty session", http.StatusInternalServerError)
+		return nil
+	}
+	return session
+}
+
+func testHandler(w http.ResponseWriter, r *http.Request) {
 	WriteHTMLPage(w, http.StatusOK, "Users",
 		h.Join(
-			h.Tag("nav",
-				h.Tag("ul",
-					h.Tag("li", h.Tag("h1", h.Text("Portunus"))),
-					h.Tag("li", h.Tag("a", h.Attr("href", "#"), h.Attr("class", "current"), h.Text("Users"))),
-					h.Tag("li", h.Tag("a", h.Attr("href", "#"), h.Text("Groups"))),
-				),
+			RenderNavbar("Jane Doe", //TODO: use actual user ID
+				NavbarItem{URL: "/users", Title: "Users", Active: true},
+				NavbarItem{URL: "/groups", Title: "Groups"},
 			),
 			h.Tag("main",
 				h.Tag("table",
