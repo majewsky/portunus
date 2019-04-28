@@ -21,6 +21,7 @@ package main
 import (
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"syscall"
 
@@ -33,10 +34,17 @@ func main() {
 	logg.ShowDebug = true //TODO make configurable
 	dropPrivileges()
 
-	ldapWorker := newLDAPWorker()
-	go ldapWorker.processEvents(mockEventsChan())
+	fs := core.FileStore{
+		Path: filepath.Join(os.Getenv("PORTUNUS_SERVER_STATE_DIR"), "database.json"),
+	}
+	fsAPI := fs.RunAsync()
 
-	handler := frontend.HTTPHandler(os.Getenv("PORTUNUS_SERVER_HTTP_SECURE") == "true")
+	engine, eventsChan := core.RunEngineAsync(fsAPI)
+
+	ldapWorker := newLDAPWorker()
+	go ldapWorker.processEvents(eventsChan)
+
+	handler := frontend.HTTPHandler(engine, os.Getenv("PORTUNUS_SERVER_HTTP_SECURE") == "true")
 	logg.Fatal(http.ListenAndServe(os.Getenv("PORTUNUS_SERVER_HTTP_LISTEN"), handler).Error())
 }
 
@@ -60,41 +68,4 @@ func dropPrivileges() {
 	if err != nil {
 		logg.Fatal("change UID failed: " + err.Error())
 	}
-}
-
-func mockEventsChan() <-chan core.Event {
-	channel := make(chan core.Event, 1)
-	channel <- core.Event{
-		Added: []core.Entity{
-			core.User{
-				LoginName:    "john",
-				GivenName:    "John",
-				FamilyName:   "Doe",
-				PasswordHash: core.HashPasswordForLDAP("12345"),
-			},
-			core.User{
-				LoginName:    "jane",
-				GivenName:    "Jane",
-				FamilyName:   "Doe",
-				PasswordHash: core.HashPasswordForLDAP("password"),
-			},
-			core.Group{
-				Name:             "admins",
-				Description:      "system administrators",
-				MemberLoginNames: []string{"jane"},
-				Permissions: core.Permissions{
-					LDAP: core.LDAPAccessFullRead,
-				},
-			},
-			core.Group{
-				Name:             "users",
-				Description:      "contains everyone",
-				MemberLoginNames: []string{"jane", "john"},
-				Permissions: core.Permissions{
-					LDAP: core.LDAPAccessNone,
-				},
-			},
-		},
-	}
-	return channel
 }

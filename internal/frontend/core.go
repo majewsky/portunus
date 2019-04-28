@@ -27,13 +27,14 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
+	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
 	"github.com/majewsky/portunus/internal/static"
 	"github.com/sapcc/go-bits/logg"
 )
 
 //HTTPHandler returns the main http.Handler.
-func HTTPHandler(isBehindTLSProxy bool) http.Handler {
+func HTTPHandler(engine core.Engine, isBehindTLSProxy bool) http.Handler {
 	r := mux.NewRouter()
 	r.Methods("GET").Path(`/static/{path:.+}`).HandlerFunc(staticHandler)
 	r.Methods("GET").Path(`/users`).HandlerFunc(testHandler) //TODO remove

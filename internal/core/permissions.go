@@ -18,15 +18,26 @@
 
 package core
 
-import (
-	"github.com/tredoe/osutil/user/crypt/sha256_crypt"
+import goldap "gopkg.in/ldap.v3"
+
+//Permissions represents the permissions that membership in a certain group
+//gives its members.
+type Permissions struct {
+	LDAP LDAPAccessLevel `json:"ldap"`
+}
+
+//LDAPAccessLevel is an enum of permission levels for LDAP.
+//TODO This is pathetic and needs to be way more granular.
+type LDAPAccessLevel string
+
+const (
+	//LDAPAccessNone is the access level for users that do not have access to
+	//LDAP, i.e. bind requests will fail.
+	LDAPAccessNone LDAPAccessLevel = ""
+	//LDAPAccessFullRead allows users to read all entries in the LDAP directory.
+	LDAPAccessFullRead = "full-read"
 )
 
-//HashPasswordForLDAP produces a password hash in the format expected by LDAP,
-//like the libc function crypt(3).
-func HashPasswordForLDAP(password string) string {
-	//according to documentation, Crypter.Generate() will never return any errors
-	//when the second argument is nil
-	result, _ := sha256_crypt.New().Generate([]byte(password), nil)
-	return "{CRYPT}" + result
+func mkAttr(typeName string, values ...string) goldap.Attribute {
+	return goldap.Attribute{Type: typeName, Vals: values}
 }

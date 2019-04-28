@@ -19,16 +19,23 @@
 package core
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/fsnotify/fsnotify"
-	"github.com/majewsky/portunus/internal/core"
 	"github.com/sapcc/go-bits/logg"
 )
 
 //Database contains the contents of Portunus' database. This is what gets
 //persisted into the database file.
 type Database struct {
-	Users  []core.User
-	Groups []core.Group
+	Users  []User  `json:"users,keepempty"`
+	Groups []Group `json:"groups,keepempty"`
 }
 
 //FileStore is responsible for loading Portunus' database from
@@ -49,9 +56,9 @@ type FileStoreAPI struct {
 	SaveRequests chan<- Database
 }
 
-//Run spawns the goroutine for the FileStore, and returns the API that the
+//RunAsync spawns the goroutine for the FileStore, and returns the API that the
 //engine uses to interact with it.
-func (s *FileStore) Run() *FileStoreAPI {
+func (s *FileStore) RunAsync() *FileStoreAPI {
 	if s.running {
 		panic("cannot call FileStore.Run() twice")
 	}
@@ -64,21 +71,91 @@ func (s *FileStore) Run() *FileStoreAPI {
 }
 
 func (s *FileStore) run(loadChan chan<- Database, saveChan <-chan Database) {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		logg.Fatal("cannot set up filesystem watcher for database: " + err.Error())
-	}
-
-	//TODO perform initial read of the database, initializing it empty if necessary
+	//perform initial read of the database
+	loadChan <- s.loadDB(true)
+	watcher := s.makeWatcher()
 
 	for {
 		select {
-		case event := <-watcher.Events:
-			//TODO
+		case <-watcher.Events:
+			//wait for whatever is updating the file to complete
+			time.Sleep(25 * time.Millisecond)
+			//load updated version of database from file
+			loadChan <- s.loadDB(false)
+			//recreate the watcher (the original file might be gone if it was updated
+			//by an atomic rename() like we do in saveDB())
+			s.cleanupWatcher(watcher)
+			watcher = s.makeWatcher()
 		case err := <-watcher.Errors:
 			logg.Error(err.Error()) //TODO: should this be logg.Fatal()?
-		case dbState := <-saveChan:
+		case db := <-saveChan:
+			//stop watching while we modify the database file, so as not to pick up
+			//our own change
+			s.cleanupWatcher(watcher)
+			s.saveDB(db)
+			watcher = s.makeWatcher()
 			//TODO
 		}
+	}
+}
+
+func (s *FileStore) cleanupWatcher(watcher *fsnotify.Watcher) {
+	err := watcher.Close()
+	if err != nil {
+		logg.Fatal("cannot cleanup filesystem watcher: " + err.Error())
+	}
+}
+
+func (s *FileStore) makeWatcher() *fsnotify.Watcher {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		logg.Fatal("cannot initialize filesystem watcher: " + err.Error())
+	}
+	err = watcher.Add(s.Path)
+	if err != nil {
+		logg.Fatal("cannot setup filesystem watch on %s: %s", s.Path, err.Error())
+	}
+	return watcher
+}
+
+func (s *FileStore) loadDB(allowEmpty bool) (db Database) {
+	dbContents, err := ioutil.ReadFile(s.Path)
+	if err != nil {
+		//initialize empty DB on first run
+		if os.IsNotExist(err) && allowEmpty {
+			dbContents = []byte(`{}`)
+			s.saveDB(Database{Users: []User{}, Groups: []Group{}})
+		} else {
+			logg.Fatal(err.Error())
+		}
+	}
+
+	err = json.Unmarshal(dbContents, &db)
+	if err != nil {
+		logg.Fatal("cannot load main database: " + err.Error())
+	}
+	return
+}
+
+func (s *FileStore) saveDB(db Database) {
+	tmpPath := filepath.Join(
+		filepath.Dir(s.Path),
+		fmt.Sprintf(".%s.%d", filepath.Base(s.Path), os.Getpid()),
+	)
+
+	dbContents, err := json.Marshal(db)
+	if err == nil {
+		var buf bytes.Buffer
+		err = json.Indent(&buf, dbContents, "", "\t")
+		dbContents = buf.Bytes()
+	}
+	if err == nil {
+		err = ioutil.WriteFile(tmpPath, dbContents, 0644)
+	}
+	if err == nil {
+		err = os.Rename(tmpPath, s.Path)
+	}
+	if err != nil {
+		logg.Fatal(err.Error())
 	}
 }
