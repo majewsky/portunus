@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/csrf"
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
 )
@@ -67,22 +66,7 @@ func getLoginHandler(e core.Engine) http.HandlerFunc {
 
 		WriteHTMLPage(w, http.StatusOK, "Login", h.Join(
 			RenderNavbar("", NavbarItem{URL: "/login", Title: "Login", Active: true}),
-			h.Tag("main",
-				h.Tag("form", h.Attr("method", "POST"), h.Attr("action", "/login"),
-					h.Embed(csrf.TemplateField(r)),
-					h.Tag("div", h.Attr("class", "form-row"),
-						h.Tag("label", h.Attr("for", "uid"), h.Text("User ID")),
-						h.Tag("input", h.Attr("name", "uid"), h.Attr("type", "text")),
-					),
-					h.Tag("div", h.Attr("class", "form-row"),
-						h.Tag("label", h.Attr("for", "password"), h.Text("Password")),
-						h.Tag("input", h.Attr("name", "username"), h.Attr("type", "password")),
-					),
-					h.Tag("div", h.Attr("class", "button-row"),
-						h.Tag("button", h.Attr("type", "submit"), h.Attr("class", "btn btn-primary"), h.Text("Login")),
-					),
-				),
-			),
+			h.Tag("main", LoginForm{}.Render(r)),
 		))
 	}
 }
@@ -95,15 +79,55 @@ func postLoginHandler(e core.Engine) http.HandlerFunc {
 			return
 		}
 
-		//TODO stub, needs to actually look at r.PostForm
-		s.Values["uid"] = "jane"
+		var l LoginForm
+		hasErrors := false
+
+		uid := r.PostForm.Get("uid")
+		if uid == "" {
+			l.UserName.ErrorMessage = "is missing"
+			hasErrors = true
+		} else {
+			l.UserName.Value = uid
+		}
+
+		password := r.PostForm.Get("password")
+		if password == "" {
+			l.Password.ErrorMessage = "is missing"
+			hasErrors = true
+		}
+
+		var (
+			user  core.User
+			perms core.Permissions
+		)
+		if !hasErrors {
+			user, perms, _ = e.FindUser(uid)
+			if !core.CheckPasswordHash(password, user.PasswordHash) {
+				l.Password.ErrorMessage = "is not valid for the given user account"
+				hasErrors = true
+			}
+		}
+
+		if hasErrors {
+			WriteHTMLPage(w, http.StatusOK, "Login", h.Join(
+				RenderNavbar("", NavbarItem{URL: "/login", Title: "Login", Active: true}),
+				h.Tag("main", l.Render(r)),
+			))
+			return
+		}
+
+		s.Values["uid"] = uid
 		err := s.Save(r, w)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		http.Redirect(w, r, "/users", http.StatusSeeOther)
+		if perms.Portunus.IsAdmin {
+			http.Redirect(w, r, "/users", http.StatusSeeOther)
+		} else {
+			http.Redirect(w, r, "/self", http.StatusSeeOther)
+		}
 	}
 }
 

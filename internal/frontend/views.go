@@ -21,6 +21,7 @@ package frontend
 import (
 	"net/http"
 
+	"github.com/gorilla/csrf"
 	h "github.com/majewsky/portunus/internal/html"
 )
 
@@ -96,4 +97,50 @@ func RenderNavbar(currentUserID string, items ...NavbarItem) h.RenderedHTML {
 	}
 
 	return h.Tag("nav", h.Tag("ul", fields...))
+}
+
+//FormField represents the state of an <input> field.
+type FormField struct {
+	Value        string
+	ErrorMessage string
+}
+
+//Render returns the HTML for this form field.
+func (f FormField) Render(inputType, name, label string) h.RenderedHTML {
+	labelArgs := []h.TagArgument{h.Attr("for", name), h.Text(label)}
+	inputCSSClass := ""
+	if f.ErrorMessage != "" {
+		labelArgs = append(labelArgs, h.Tag("span",
+			h.Attr("class", "form-error"),
+			h.Text(f.ErrorMessage),
+		))
+		inputCSSClass = "form-error"
+	}
+	return h.Tag("div", h.Attr("class", "form-row"),
+		h.Tag("label", labelArgs...),
+		h.Tag("input",
+			h.Attr("class", inputCSSClass),
+			h.Attr("name", name),
+			h.Attr("type", inputType),
+			h.Attr("value", f.Value),
+		),
+	)
+}
+
+//LoginForm represents the state of the login form.
+type LoginForm struct {
+	UserName FormField
+	Password FormField
+}
+
+//Render returns the HTML for this form field.
+func (l LoginForm) Render(r *http.Request) h.RenderedHTML {
+	return h.Tag("form", h.Attr("method", "POST"), h.Attr("action", "/login"),
+		h.Embed(csrf.TemplateField(r)),
+		l.UserName.Render("text", "uid", "User ID"),
+		l.Password.Render("password", "password", "Password"),
+		h.Tag("div", h.Attr("class", "button-row"),
+			h.Tag("button", h.Attr("type", "submit"), h.Attr("class", "btn btn-primary"), h.Text("Login")),
+		),
+	)
 }
