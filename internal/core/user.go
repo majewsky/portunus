@@ -73,3 +73,12 @@ func (u User) RenderToLDAP(suffix string) goldap.AddRequest {
 		},
 	}
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+//UserWithPerms is a User that carries its computed set of permissions.
+type UserWithPerms struct {
+	User
+	Perms            Permissions
+	GroupMemberships []Group
+}

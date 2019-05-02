@@ -57,9 +57,9 @@ func getLoginHandler(e core.Engine) http.HandlerFunc {
 			return
 		}
 		if uid, ok := s.Values["uid"].(string); ok {
-			if _, _, ok := e.FindUser(uid); ok {
+			if e.FindUser(uid) != nil {
 				//already logged in
-				http.Redirect(w, r, "/users", http.StatusSeeOther)
+				http.Redirect(w, r, "/self", http.StatusSeeOther)
 				return
 			}
 		}
@@ -96,9 +96,9 @@ func postLoginHandler(e core.Engine) http.HandlerFunc {
 			hasErrors = true
 		}
 
-		var user core.User
+		var user *core.UserWithPerms
 		if !hasErrors {
-			user, _, _ = e.FindUser(uid)
+			user = e.FindUser(uid)
 			if !core.CheckPasswordHash(password, user.PasswordHash) {
 				l.Password.ErrorMessage = "is not valid (or the user account does not exist)"
 				hasErrors = true

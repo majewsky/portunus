@@ -101,25 +101,25 @@ func getSessionOrFail(w http.ResponseWriter, r *http.Request) *sessions.Session 
 
 //Checks whether the user making the request is authenticated and has at least
 //the given permissions.
-func checkAuth(w http.ResponseWriter, r *http.Request, e core.Engine, requiredPerms core.Permissions) (core.User, core.Permissions, bool) {
+func checkAuth(w http.ResponseWriter, r *http.Request, e core.Engine, requiredPerms core.Permissions) *core.UserWithPerms {
 	//TODO replace redirectToLoginPageUnlessLoggedIn with consistent usage of this
 	s := getSessionOrFail(w, r)
 	if s == nil {
-		return core.User{}, core.Permissions{}, false
+		return nil
 	}
 	uid, ok := s.Values["uid"].(string)
 	if !ok {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return core.User{}, core.Permissions{}, false
+		return nil
 	}
-	user, userPerms, ok := e.FindUser(uid)
+	user := e.FindUser(uid)
 	if !ok {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return core.User{}, core.Permissions{}, false
+		return nil
 	}
-	if !userPerms.Includes(requiredPerms) {
+	if !user.Perms.Includes(requiredPerms) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
-		return core.User{}, core.Permissions{}, false
+		return nil
 	}
-	return user, userPerms, true
+	return user
 }

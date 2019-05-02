@@ -75,13 +75,13 @@ type NavbarItem struct {
 }
 
 //RenderNavbarForUser returns the top navbar for a logged-in user.
-func RenderNavbarForUser(user core.User, perms core.Permissions, r *http.Request) h.RenderedHTML {
+func RenderNavbarForUser(user core.UserWithPerms, r *http.Request) h.RenderedHTML {
 	items := []NavbarItem{{
 		URL:    "/self",
 		Title:  "My profile",
 		Active: strings.HasPrefix(r.URL.Path, "/self"),
 	}}
-	if perms.Portunus.IsAdmin {
+	if user.Perms.Portunus.IsAdmin {
 		items = append(items,
 			NavbarItem{
 				URL:    "/users",
@@ -186,8 +186,7 @@ func (f LoginForm) Render(r *http.Request) h.RenderedHTML {
 
 //SelfServiceForm represents the state of the self-service form.
 type SelfServiceForm struct {
-	User      core.User
-	AllGroups []core.Group
+	User      core.UserWithPerms
 	Password1 FormField
 	Password2 FormField
 }
@@ -203,7 +202,7 @@ func (f SelfServiceForm) Render(r *http.Request) h.RenderedHTML {
 			h.Text(" "),
 			h.Tag("span", h.Attr("class", "family-name"), h.Text(f.User.FamilyName)),
 		),
-		RenderDisplayField("Group memberships", RenderGroupMemberships(f.User, f.AllGroups)),
+		RenderDisplayField("Group memberships", RenderGroupMemberships(f.User.User, f.User.GroupMemberships, f.User)),
 		f.Password1.Render("password", "password1", "New password"),
 		f.Password2.Render("password", "password1", "Repeat password"),
 		h.Tag("div", h.Attr("class", "button-row"),
@@ -212,21 +211,26 @@ func (f SelfServiceForm) Render(r *http.Request) h.RenderedHTML {
 	)
 }
 
-//RenderGroupMemberships renders a list of all groups this user is part of.
-func RenderGroupMemberships(user core.User, allGroups []core.Group) h.RenderedHTML {
+//RenderGroupMemberships renders a list of all groups the given user is part of.
+func RenderGroupMemberships(user core.User, groups []core.Group, currentUser core.UserWithPerms) h.RenderedHTML {
 	//TODO use links only if user has perms.Portunus.IsAdmin
+	isAdmin := currentUser.Perms.Portunus.IsAdmin
 	var groupMemberships []h.RenderedHTML
-	for _, group := range allGroups {
+	for _, group := range groups {
 		if !group.ContainsUser(user) {
 			continue
 		}
 		if len(groupMemberships) > 0 {
 			groupMemberships = append(groupMemberships, h.Text(", "))
 		}
-		groupMemberships = append(groupMemberships, h.Tag("a",
-			h.Attr("href", "/groups/"+group.Name),
-			h.Text(group.Name),
-		))
+		if isAdmin {
+			groupMemberships = append(groupMemberships, h.Tag("a",
+				h.Attr("href", "/groups/"+group.Name),
+				h.Text(group.Name),
+			))
+		} else {
+			groupMemberships = append(groupMemberships, h.Text(group.Name))
+		}
 	}
 	return h.Join(groupMemberships...)
 }

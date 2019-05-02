@@ -51,7 +51,7 @@ type Modification struct {
 
 //Engine is the core engine of portunus-server.
 type Engine interface {
-	FindUser(loginName string) (u User, p Permissions, exists bool)
+	FindUser(loginName string) *UserWithPerms
 	ListGroups() []Group
 	ListUsers() []User
 }
@@ -145,23 +145,23 @@ func (e *engine) handleLoadEvent(db Database) {
 }
 
 //FindUser implements the Engine interface.
-func (e *engine) FindUser(loginName string) (User, Permissions, bool) {
+func (e *engine) FindUser(loginName string) *UserWithPerms {
 	e.Mutex.RLock()
 	defer e.Mutex.RUnlock()
 
 	user, exists := e.Users[loginName]
 	if !exists {
-		return User{}, Permissions{}, false
+		return nil
 	}
 
-	var perms Permissions
+	curr := UserWithPerms{User: user.connect(e)}
 	for _, group := range e.Groups {
 		if group.ContainsUser(*user) {
-			perms = perms.Union(group.Permissions)
+			curr.GroupMemberships = append(curr.GroupMemberships, group.connect(e))
+			curr.Perms = curr.Perms.Union(group.Permissions)
 		}
 	}
-
-	return user.connect(e), perms, true
+	return &curr
 }
 
 //ListGroups implements the Engine interface.

@@ -27,25 +27,22 @@ import (
 
 func getSelfHandler(e core.Engine) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		currentUser, perms, ok := checkAuth(w, r, e, core.Permissions{})
-		if !ok {
+		currentUser := checkAuth(w, r, e, core.Permissions{})
+		if currentUser == nil {
 			return
 		}
 
-		f := SelfServiceForm{
-			User:      currentUser,
-			AllGroups: e.ListGroups(),
-		}
 		WriteHTMLPage(w, http.StatusOK, "Users",
 			h.Join(
-				RenderNavbarForUser(currentUser, perms, r),
-				h.Tag("main", f.Render(r)),
+				RenderNavbarForUser(*currentUser, r),
+				h.Tag("main", SelfServiceForm{User: *currentUser}.Render(r)),
 			),
 		)
 	})
 }
 
 func postSelfHandler(e core.Engine) http.HandlerFunc {
+	//TODO implement POST /self
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	})
 }
