@@ -1,41 +1,50 @@
 form {
-  div.form-row {
+  div.form-row, div.display-row {
     margin: 1rem 0;
+  }
 
-    label {
-      display: block;
-      font-size: 0.8rem;
+  div.form-row label, div.display-row div.row-label {
+    display: block;
+    font-size: 0.8rem;
 
-      span.form-error {
-        padding-left: 0.2rem;
-        color: red;
-      }
+    span.form-error {
+      padding-left: 0.2rem;
+      color: red;
+    }
+  }
+
+  div.form-row input, div.display-row div.row-value {
+    display: block;
+    width: 100%;
+    padding: 0 0.5rem;
+    border: 1px solid #CCC;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    line-height: 1.6rem;
+    height: 1.6rem;
+  }
+
+  div.form-row input {
+    &:hover {
+      border-color: #999;
+    }
+    &:active, &:focus {
+      border-color: #333;
     }
 
-    input {
-      display: block;
-      width: 100%;
-      padding: 0.3rem 0.5rem;
-      border: 1px solid #CCC;
-      border-radius: 3px;
-
+    &.form-error {
+      border-color: #C00;
+      background: #FCC;
       &:hover {
-        border-color: #999;
+        border-color: #900;
       }
       &:active, &:focus {
-        border-color: #333;
-      }
-
-      &.form-error {
-        border-color: #C00;
-        background: #FCC;
-        &:hover {
-          border-color: #900;
-        }
-        &:active, &:focus {
-          border-color: #300;
-        }
+        border-color: #300;
       }
     }
+  }
+
+  div.display-row div.row-value {
+    background: #EEE;
   }
 }

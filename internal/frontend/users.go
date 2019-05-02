@@ -34,7 +34,7 @@ var adminPerms = core.Permissions{
 
 func getUsersHandler(e core.Engine) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		currentUser, _, ok := checkAuth(w, r, e, adminPerms)
+		currentUser, perms, ok := checkAuth(w, r, e, adminPerms)
 		if !ok {
 			return
 		}
@@ -46,25 +46,11 @@ func getUsersHandler(e core.Engine) http.HandlerFunc {
 
 		var userRows []h.TagArgument
 		for _, user := range users {
-			var groupMemberships []h.TagArgument
-			for _, group := range groups {
-				if !group.ContainsUser(user) {
-					continue
-				}
-				if len(groupMemberships) > 0 {
-					groupMemberships = append(groupMemberships, h.Text(", "))
-				}
-				groupMemberships = append(groupMemberships, h.Tag("a",
-					h.Attr("href", "/groups/"+group.Name),
-					h.Text(group.Name),
-				))
-			}
-
 			userURL := "/users/" + user.LoginName
 			userRows = append(userRows, h.Tag("tr",
 				h.Tag("td", h.Text(user.LoginName)),
 				h.Tag("td", h.Text(user.FullName())),
-				h.Tag("td", groupMemberships...),
+				h.Tag("td", RenderGroupMemberships(user, groups)),
 				h.Tag("td", h.Attr("class", "actions"),
 					h.Tag("a", h.Attr("href", userURL), h.Text("Edit")),
 					h.Text(" · "),
@@ -93,10 +79,7 @@ func getUsersHandler(e core.Engine) http.HandlerFunc {
 
 		WriteHTMLPage(w, http.StatusOK, "Users",
 			h.Join(
-				RenderNavbar(currentUser.FullName(),
-					NavbarItem{URL: "/users", Title: "Users", Active: true},
-					NavbarItem{URL: "/groups", Title: "Groups"},
-				),
+				RenderNavbarForUser(currentUser, perms, r),
 				h.Tag("main", usersTable),
 			),
 		)

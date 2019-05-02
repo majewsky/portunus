@@ -20,8 +20,10 @@ package frontend
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/csrf"
+	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
 )
 
@@ -70,6 +72,30 @@ type NavbarItem struct {
 	URL    string
 	Title  string
 	Active bool
+}
+
+//RenderNavbarForUser returns the top navbar for a logged-in user.
+func RenderNavbarForUser(user core.User, perms core.Permissions, r *http.Request) h.RenderedHTML {
+	items := []NavbarItem{{
+		URL:    "/self",
+		Title:  "My profile",
+		Active: strings.HasPrefix(r.URL.Path, "/self"),
+	}}
+	if perms.Portunus.IsAdmin {
+		items = append(items,
+			NavbarItem{
+				URL:    "/users",
+				Title:  "Users",
+				Active: strings.HasPrefix(r.URL.Path, "/users"),
+			},
+			NavbarItem{
+				URL:    "/groups",
+				Title:  "Groups",
+				Active: strings.HasPrefix(r.URL.Path, "/groups"),
+			},
+		)
+	}
+	return RenderNavbar(user.FullName(), items...)
 }
 
 //RenderNavbar renders the top navbar that appears in every view.
@@ -127,6 +153,19 @@ func (f FormField) Render(inputType, name, label string) h.RenderedHTML {
 	)
 }
 
+//RenderDisplayField renders something that looks like a FormField, but is readonly.
+func RenderDisplayField(label string, value ...h.RenderedHTML) h.RenderedHTML {
+	args := []h.TagArgument{h.Attr("class", "row-value")}
+	for _, v := range value {
+		args = append(args, v)
+	}
+
+	return h.Tag("div", h.Attr("class", "display-row"),
+		h.Tag("div", h.Attr("class", "row-label"), h.Text(label)),
+		h.Tag("div", args...),
+	)
+}
+
 //LoginForm represents the state of the login form.
 type LoginForm struct {
 	UserName FormField
@@ -134,13 +173,60 @@ type LoginForm struct {
 }
 
 //Render returns the HTML for this form field.
-func (l LoginForm) Render(r *http.Request) h.RenderedHTML {
+func (f LoginForm) Render(r *http.Request) h.RenderedHTML {
 	return h.Tag("form", h.Attr("method", "POST"), h.Attr("action", "/login"),
 		h.Embed(csrf.TemplateField(r)),
-		l.UserName.Render("text", "uid", "User ID"),
-		l.Password.Render("password", "password", "Password"),
+		f.UserName.Render("text", "uid", "User ID"),
+		f.Password.Render("password", "password", "Password"),
 		h.Tag("div", h.Attr("class", "button-row"),
 			h.Tag("button", h.Attr("type", "submit"), h.Attr("class", "btn btn-primary"), h.Text("Login")),
 		),
 	)
+}
+
+//SelfServiceForm represents the state of the self-service form.
+type SelfServiceForm struct {
+	User      core.User
+	AllGroups []core.Group
+	Password1 FormField
+	Password2 FormField
+}
+
+//Render returns the HTML for this form field.
+func (f SelfServiceForm) Render(r *http.Request) h.RenderedHTML {
+	return h.Tag("form", h.Attr("method", "POST"), h.Attr("action", "/self"),
+		h.Embed(csrf.TemplateField(r)),
+		RenderDisplayField("Login name", h.Tag("code", h.Text(f.User.LoginName))),
+		RenderDisplayField("Full name",
+			//TODO: allow flipped order (family name first)
+			h.Tag("span", h.Attr("class", "given-name"), h.Text(f.User.GivenName)),
+			h.Text(" "),
+			h.Tag("span", h.Attr("class", "family-name"), h.Text(f.User.FamilyName)),
+		),
+		RenderDisplayField("Group memberships", RenderGroupMemberships(f.User, f.AllGroups)),
+		f.Password1.Render("password", "password1", "New password"),
+		f.Password2.Render("password", "password1", "Repeat password"),
+		h.Tag("div", h.Attr("class", "button-row"),
+			h.Tag("button", h.Attr("type", "submit"), h.Attr("class", "btn btn-primary"), h.Text("Change password")),
+		),
+	)
+}
+
+//RenderGroupMemberships renders a list of all groups this user is part of.
+func RenderGroupMemberships(user core.User, allGroups []core.Group) h.RenderedHTML {
+	//TODO use links only if user has perms.Portunus.IsAdmin
+	var groupMemberships []h.RenderedHTML
+	for _, group := range allGroups {
+		if !group.ContainsUser(user) {
+			continue
+		}
+		if len(groupMemberships) > 0 {
+			groupMemberships = append(groupMemberships, h.Text(", "))
+		}
+		groupMemberships = append(groupMemberships, h.Tag("a",
+			h.Attr("href", "/groups/"+group.Name),
+			h.Text(group.Name),
+		))
+	}
+	return h.Join(groupMemberships...)
 }

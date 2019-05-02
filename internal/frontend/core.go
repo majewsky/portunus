@@ -41,6 +41,9 @@ func HTTPHandler(engine core.Engine, isBehindTLSProxy bool) http.Handler {
 	r.Methods("POST").Path(`/login`).HandlerFunc(postLoginHandler(engine))
 	r.Methods("GET").Path(`/logout`).HandlerFunc(getLogoutHandler(engine))
 
+	r.Methods("GET").Path(`/self`).HandlerFunc(getSelfHandler(engine))
+	r.Methods("POST").Path(`/self`).HandlerFunc(postSelfHandler(engine))
+
 	r.Methods("GET").Path(`/users`).HandlerFunc(getUsersHandler(engine))
 	//TODO CRUD users
 	//TODO CRUD groups

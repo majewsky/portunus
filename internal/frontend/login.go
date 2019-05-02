@@ -96,14 +96,11 @@ func postLoginHandler(e core.Engine) http.HandlerFunc {
 			hasErrors = true
 		}
 
-		var (
-			user  core.User
-			perms core.Permissions
-		)
+		var user core.User
 		if !hasErrors {
-			user, perms, _ = e.FindUser(uid)
+			user, _, _ = e.FindUser(uid)
 			if !core.CheckPasswordHash(password, user.PasswordHash) {
-				l.Password.ErrorMessage = "is not valid for the given user account"
+				l.Password.ErrorMessage = "is not valid (or the user account does not exist)"
 				hasErrors = true
 			}
 		}
@@ -123,11 +120,7 @@ func postLoginHandler(e core.Engine) http.HandlerFunc {
 			return
 		}
 
-		if perms.Portunus.IsAdmin {
-			http.Redirect(w, r, "/users", http.StatusSeeOther)
-		} else {
-			http.Redirect(w, r, "/self", http.StatusSeeOther)
-		}
+		http.Redirect(w, r, "/self", http.StatusSeeOther)
 	}
 }
 
