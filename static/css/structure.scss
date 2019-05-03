@@ -15,7 +15,7 @@ nav {
 	ul {
 		max-width: 800px;
 		margin: 0 auto;
-		padding: 0;
+		padding: 0 0.5rem;
 		list-style: none;
 		display: flex;
 
@@ -53,4 +53,5 @@ nav {
 main {
 	max-width: 800px;
 	margin: 1rem auto 2rem auto;
+	padding: 0 0.5rem;
 }

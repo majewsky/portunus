@@ -34,7 +34,7 @@ var adminPerms = core.Permissions{
 
 func getUsersHandler(e core.Engine) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		currentUser := checkAuth(w, r, e, adminPerms)
+		currentUser, s := checkAuth(w, r, e, adminPerms)
 		if currentUser == nil {
 			return
 		}
@@ -77,11 +77,10 @@ func getUsersHandler(e core.Engine) http.HandlerFunc {
 			h.Tag("tbody", userRows...),
 		)
 
-		WriteHTMLPage(w, http.StatusOK, "Users",
-			h.Join(
-				RenderNavbarForUser(*currentUser, r),
-				h.Tag("main", usersTable),
-			),
-		)
+		page{
+			Status:   http.StatusOK,
+			Title:    "Users",
+			Contents: usersTable,
+		}.Render(w, r, currentUser, s)
 	}
 }

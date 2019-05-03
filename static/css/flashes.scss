@@ -1,0 +1,15 @@
+.flash {
+  display: block;
+  margin: 0.5rem 0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+
+  &.flash-error {
+    border: 1px solid #C00;
+    background: #FCC;
+  }
+  &.flash-success {
+    border: 1px solid #0C0;
+    background: #CFC;
+  }
+}

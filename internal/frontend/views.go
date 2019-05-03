@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gorilla/sessions"
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
 )
@@ -44,84 +45,86 @@ var standardHeadTags = h.Join(
 	),
 )
 
-//WriteHTMLPage writes a complete HTML page into w.
-func WriteHTMLPage(w http.ResponseWriter, status int, title string, bodyContents h.RenderedHTML) {
-	titleText := "Portunus"
-	if title != "" {
-		titleText = title + " – Portunus"
-	}
+type flash struct {
+	Type    string
+	Message h.RenderedHTML
+}
 
+type page struct {
+	Status   int
+	Title    string
+	Contents h.RenderedHTML
+}
+
+func (p page) Render(w http.ResponseWriter, r *http.Request, currentUser *core.UserWithPerms, s *sessions.Session) {
+	//prepare <head>
+	titleText := "Portunus"
+	if p.Title != "" {
+		titleText = p.Title + " – Portunus"
+	}
 	headTag := h.Tag("head",
 		standardHeadTags,
 		h.Tag("title", h.Text(titleText)),
 	)
 
+	//prepare <nav>
+	navFields := []h.TagArgument{
+		h.Tag("li", h.Tag("h1", h.Text("Portunus"))),
+	}
+	addNavField := func(url string, title string) {
+		linkArgs := []h.TagArgument{
+			h.Text(title), h.Attr("href", url),
+		}
+		if strings.HasPrefix(r.URL.Path, url) {
+			linkArgs = append(linkArgs, h.Attr("class", "current"))
+		}
+		navFields = append(navFields, h.Tag("li", h.Tag("a", linkArgs...)))
+	}
+	if currentUser == nil {
+		addNavField("/login", "Login")
+	} else {
+		addNavField("/self", "My profile")
+		if currentUser.Perms.Portunus.IsAdmin {
+			addNavField("/users", "Users")
+			addNavField("/groups", "Groups")
+		}
+		navFields = append(navFields, h.Tag("li", h.Attr("class", "spacer")))
+		navFields = append(navFields, h.Tag("li",
+			h.Tag("a", h.Attr("class", "current"), h.Text(currentUser.FullName())),
+		))
+		addNavField("/logout", "Logout")
+	}
+
+	//prepare flashes, if any
+	var flashes []h.RenderedHTML
+	for _, value := range s.Flashes() {
+		if f, ok := value.(flash); ok {
+			flashes = append(flashes, h.Tag("div",
+				h.Attr("class", "flash flash-"+f.Type),
+				f.Message,
+			))
+		}
+	}
+	err := s.Save(r, w)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	//render final HTML
 	htmlTag := h.Tag("html",
 		headTag,
-		h.Tag("body", bodyContents),
+		h.Tag("body",
+			h.Tag("nav", h.Tag("ul", navFields...)),
+			h.Tag("main",
+				h.Join(flashes...),
+				p.Contents,
+			),
+		),
 	)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
+	w.WriteHeader(p.Status)
 	w.Write([]byte(htmlTag.String()))
-}
-
-//NavbarItem is an item that appears in the top navbar.
-type NavbarItem struct {
-	URL    string
-	Title  string
-	Active bool
-}
-
-//RenderNavbarForUser returns the top navbar for a logged-in user.
-func RenderNavbarForUser(user core.UserWithPerms, r *http.Request) h.RenderedHTML {
-	items := []NavbarItem{{
-		URL:    "/self",
-		Title:  "My profile",
-		Active: strings.HasPrefix(r.URL.Path, "/self"),
-	}}
-	if user.Perms.Portunus.IsAdmin {
-		items = append(items,
-			NavbarItem{
-				URL:    "/users",
-				Title:  "Users",
-				Active: strings.HasPrefix(r.URL.Path, "/users"),
-			},
-			NavbarItem{
-				URL:    "/groups",
-				Title:  "Groups",
-				Active: strings.HasPrefix(r.URL.Path, "/groups"),
-			},
-		)
-	}
-	return RenderNavbar(user.FullName(), items...)
-}
-
-//RenderNavbar renders the top navbar that appears in every view.
-func RenderNavbar(currentUserID string, items ...NavbarItem) h.RenderedHTML {
-	fields := []h.TagArgument{
-		h.Tag("li", h.Tag("h1", h.Text("Portunus"))),
-	}
-	for _, item := range items {
-		linkArgs := []h.TagArgument{
-			h.Text(item.Title), h.Attr("href", item.URL),
-		}
-		if item.Active {
-			linkArgs = append(linkArgs, h.Attr("class", "current"))
-		}
-		fields = append(fields, h.Tag("li", h.Tag("a", linkArgs...)))
-	}
-
-	if currentUserID != "" {
-		fields = append(fields, h.Tag("li", h.Attr("class", "spacer")))
-		fields = append(fields, h.Tag("li", h.Tag("a", h.Attr("class", "current"), h.Text(currentUserID))))
-		fields = append(fields, h.Tag("li", h.Tag("a",
-			h.Attr("href", "/logout"),
-			h.Text("Logout"),
-		)))
-	}
-
-	return h.Tag("nav", h.Tag("ul", fields...))
 }
 
 //RenderGroupMemberships renders a list of all groups the given user is part of.

@@ -70,16 +70,24 @@ func getSelfServiceForm(user core.UserWithPerms) h.FormSpec {
 				Value:      h.Join(memberships...),
 			},
 			h.FieldSpec{
-				InputType: "password1",
-				Name:      "password",
+				InputType: "password",
+				Name:      "old_password",
+				Label:     "Old password",
+				Rules: []h.ValidationRule{
+					h.MustNotBeEmpty,
+				},
+			},
+			h.FieldSpec{
+				InputType: "password",
+				Name:      "new_password",
 				Label:     "New password",
 				Rules: []h.ValidationRule{
 					h.MustNotBeEmpty,
 				},
 			},
 			h.FieldSpec{
-				InputType: "password2",
-				Name:      "password",
+				InputType: "password",
+				Name:      "repeat_password",
 				Label:     "Repeat password",
 				Rules: []h.ValidationRule{
 					h.MustNotBeEmpty,
@@ -91,22 +99,54 @@ func getSelfServiceForm(user core.UserWithPerms) h.FormSpec {
 
 func getSelfHandler(e core.Engine) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		currentUser := checkAuth(w, r, e, core.Permissions{})
+		currentUser, s := checkAuth(w, r, e, core.Permissions{})
 		if currentUser == nil {
 			return
 		}
 
-		WriteHTMLPage(w, http.StatusOK, "Users",
-			h.Join(
-				RenderNavbarForUser(*currentUser, r),
-				h.Tag("main", getSelfServiceForm(*currentUser).Render(r, h.FormState{})),
-			),
-		)
+		page{
+			Status:   http.StatusOK,
+			Title:    "My profile",
+			Contents: getSelfServiceForm(*currentUser).Render(r, h.FormState{}),
+		}.Render(w, r, currentUser, s)
 	})
 }
 
 func postSelfHandler(e core.Engine) http.HandlerFunc {
-	//TODO implement POST /self
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		currentUser, s := checkAuth(w, r, e, core.Permissions{})
+		if currentUser == nil {
+			return
+		}
+
+		f := getSelfServiceForm(*currentUser)
+		var fs h.FormState
+		f.ReadState(r, &fs)
+
+		if fs.IsValid() {
+			newPassword1 := fs.Fields["new_password"].Value
+			newPassword2 := fs.Fields["repeat_password"].Value
+			if newPassword1 != newPassword2 {
+				fs.Fields["repeat_password"].ErrorMessage = "did not match"
+			}
+		}
+
+		if fs.IsValid() {
+			oldPassword := fs.Fields["old_password"].Value
+			if !core.CheckPasswordHash(oldPassword, currentUser.PasswordHash) {
+				fs.Fields["old_password"].ErrorMessage = "is not correct"
+			}
+		}
+
+		if fs.IsValid() {
+			//TODO perform the change
+			s.AddFlash(flash{"success", h.Text("Password changed.")})
+		}
+
+		page{
+			Status:   http.StatusOK,
+			Title:    "My profile",
+			Contents: f.Render(r, fs),
+		}.Render(w, r, currentUser, s)
 	})
 }

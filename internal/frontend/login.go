@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gorilla/sessions"
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
 )
@@ -88,15 +89,16 @@ func getLoginHandler(e core.Engine) http.HandlerFunc {
 			}
 		}
 
-		writeLoginPage(w, r, h.FormState{})
+		writeLoginPage(w, r, h.FormState{}, s)
 	}
 }
 
-func writeLoginPage(w http.ResponseWriter, r *http.Request, s h.FormState) {
-	WriteHTMLPage(w, http.StatusOK, "Login", h.Join(
-		RenderNavbar("", NavbarItem{URL: "/login", Title: "Login", Active: true}),
-		h.Tag("main", loginForm.Render(r, s)),
-	))
+func writeLoginPage(w http.ResponseWriter, r *http.Request, fs h.FormState, s *sessions.Session) {
+	page{
+		Status:   http.StatusOK,
+		Title:    "Login",
+		Contents: loginForm.Render(r, fs),
+	}.Render(w, r, nil, s)
 }
 
 //Handles POST /login.
@@ -125,7 +127,7 @@ func postLoginHandler(e core.Engine) http.HandlerFunc {
 		}
 
 		if !fs.IsValid() {
-			writeLoginPage(w, r, fs)
+			writeLoginPage(w, r, fs, s)
 			return
 		}
 
