@@ -40,6 +40,14 @@ func (u User) connect(e Engine) User {
 	return u
 }
 
+//Cloned returns a copy of this user which can be altered and then given to
+//engine.SetUser().
+func (u User) Cloned() User {
+	cloned := u
+	cloned.Engine = nil
+	return cloned
+}
+
 //FullName returns the user's full name.
 func (u User) FullName() string {
 	return u.GivenName + " " + u.FamilyName //TODO: allow flipped order (family name first)

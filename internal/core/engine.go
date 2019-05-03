@@ -40,7 +40,6 @@ type Event struct {
 	Added    []Entity
 	Modified []Modification
 	Deleted  []Entity
-	//TODO .Modified, .Deleted
 }
 
 //Modification appears in type Event.
@@ -54,6 +53,7 @@ type Engine interface {
 	FindUser(loginName string) *UserWithPerms
 	ListGroups() []Group
 	ListUsers() []User
+	SetUser(user User)
 }
 
 //engine implements the Engine interface.
@@ -186,4 +186,38 @@ func (e *engine) ListUsers() []User {
 		result = append(result, user.connect(e))
 	}
 	return result
+}
+
+//SetUser implements the User interface.
+func (e *engine) SetUser(u User) {
+	e.Mutex.Lock()
+	defer e.Mutex.Unlock()
+
+	previousState := e.Users[u.LoginName]
+	e.Users[u.LoginName] = &u
+
+	if previousState == nil {
+		e.EventsChan <- Event{Added: []Entity{u.connect(e)}}
+	} else {
+		mod := Modification{
+			Old: previousState.connect(e),
+			New: u.connect(e),
+		}
+		e.EventsChan <- Event{Modified: []Modification{mod}}
+	}
+
+	e.persist()
+}
+
+func (e *engine) persist() {
+	//NOTE: This is always called from functions that have locked e.Mutex, so we
+	//don't need to do it ourselves.
+	var db Database
+	for _, user := range e.Users {
+		db.Users = append(db.Users, *user)
+	}
+	for _, group := range e.Groups {
+		db.Groups = append(db.Groups, *group)
+	}
+	e.FileStoreAPI.SaveRequests <- db
 }

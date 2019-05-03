@@ -139,7 +139,9 @@ func postSelfHandler(e core.Engine) http.HandlerFunc {
 		}
 
 		if fs.IsValid() {
-			//TODO perform the change
+			user := currentUser.User.Cloned()
+			user.PasswordHash = core.HashPasswordForLDAP(fs.Fields["new_password"].Value)
+			e.SetUser(user)
 			s.AddFlash(flash{"success", h.Text("Password changed.")})
 		}
 

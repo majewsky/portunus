@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -144,6 +145,14 @@ func (s *FileStore) saveDB(db Database) {
 		filepath.Dir(s.Path),
 		fmt.Sprintf(".%s.%d", filepath.Base(s.Path), os.Getpid()),
 	)
+
+	//serialize with predictable order to minimize diffs
+	sort.Slice(db.Groups, func(i, j int) bool {
+		return db.Groups[i].Name < db.Groups[j].Name
+	})
+	sort.Slice(db.Users, func(i, j int) bool {
+		return db.Users[i].LoginName < db.Users[j].LoginName
+	})
 
 	dbContents, err := json.Marshal(db)
 	if err == nil {
