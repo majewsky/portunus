@@ -20,12 +20,33 @@ package frontend
 
 import (
 	"net/http"
+	"sort"
 
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
 )
 
 func getSelfServiceForm(user core.UserWithPerms) h.FormSpec {
+	isAdmin := user.Perms.Portunus.IsAdmin
+	var memberships []h.RenderedHTML
+	sort.Slice(user.GroupMemberships, func(i, j int) bool {
+		return user.GroupMemberships[i].LongName < user.GroupMemberships[j].LongName
+	})
+	for _, group := range user.GroupMemberships {
+		if isAdmin {
+			memberships = append(memberships, h.Tag("a",
+				h.Attr("href", "/groups/"+group.Name),
+				h.Attr("class", "item item-checked"),
+				h.Text(group.LongName),
+			))
+		} else {
+			memberships = append(memberships, h.Tag("span",
+				h.Attr("class", "item item-checked"),
+				h.Text(group.LongName),
+			))
+		}
+	}
+
 	return h.FormSpec{
 		PostTarget:  "/self",
 		SubmitLabel: "Change password",
@@ -44,8 +65,9 @@ func getSelfServiceForm(user core.UserWithPerms) h.FormSpec {
 				),
 			},
 			h.StaticField{
-				Label: "Group memberships",
-				Value: RenderGroupMemberships(user.User, user.GroupMemberships, user),
+				Label:      "Group memberships",
+				CSSClasses: "item-list",
+				Value:      h.Join(memberships...),
 			},
 			h.FieldSpec{
 				InputType: "password1",

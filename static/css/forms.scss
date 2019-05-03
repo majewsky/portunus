@@ -16,12 +16,15 @@ form {
   div.form-row input, div.display-row div.row-value {
     display: block;
     width: 100%;
-    padding: 0 0.5rem;
-    border: 1px solid #CCC;
-    border-radius: 3px;
-    font-size: 0.8rem;
-    line-height: 1.6rem;
-    height: 1.6rem;
+
+    &:not(.item-list) {
+      padding: 0 0.5rem;
+      border: 1px solid #CCC;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      line-height: 1.6rem;
+      height: 1.6rem;
+    }
   }
 
   div.form-row input {
@@ -44,7 +47,46 @@ form {
     }
   }
 
-  div.display-row div.row-value {
+  div.display-row div.row-value:not(.item-list) {
     background: #EEE;
+  }
+
+  div.item-list {
+    .item {
+      display: inline-block;
+
+      margin-right: 0.5rem;
+      padding: 0 0.5rem;
+      border: 1px solid #CCC;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      line-height: 1.6rem;
+      height: 1.6rem;
+
+      &.item-checked {
+        background: #EEE;
+      }
+
+      &.item-unchecked:before {
+        display: inline;
+        content: "\2610";
+      }
+      &.item-checked:before {
+        display: inline;
+        content: "\2611";
+      }
+      &:before {
+        color: inherit;
+        padding-right: 0.3rem;
+      }
+    }
+
+    a.item {
+      color: inherit;
+      &:focus, &:active, &:hover {
+        color: blue;
+        border-color: #333;
+      }
+    }
   }
 }

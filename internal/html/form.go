@@ -169,8 +169,9 @@ func (f FieldSpec) RenderField(state FormState) RenderedHTML {
 
 //StaticField is a FormField with a static value.
 type StaticField struct {
-	Label string
-	Value RenderedHTML
+	Label      string
+	CSSClasses string
+	Value      RenderedHTML
 }
 
 //ReadState implements the FormField interface.
@@ -181,7 +182,7 @@ func (f StaticField) ReadState(*http.Request, *FormState) {
 func (f StaticField) RenderField(FormState) RenderedHTML {
 	return Tag("div", Attr("class", "display-row"),
 		Tag("div", Attr("class", "row-label"), Text(f.Label)),
-		Tag("div", Attr("class", "row-value"), f.Value),
+		Tag("div", Attr("class", "row-value "+f.CSSClasses), f.Value),
 	)
 }
 
