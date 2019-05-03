@@ -100,7 +100,11 @@ func postLoginHandler(e core.Engine) http.HandlerFunc {
 		var user *core.UserWithPerms
 		if !hasErrors {
 			user = e.FindUser(uid)
-			if !core.CheckPasswordHash(password, user.PasswordHash) {
+			passwordHash := ""
+			if user != nil {
+				passwordHash = user.PasswordHash
+			}
+			if !core.CheckPasswordHash(password, passwordHash) {
 				l.Password.ErrorMessage = "is not valid (or the user account does not exist)"
 				hasErrors = true
 			}
