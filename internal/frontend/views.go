@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/csrf"
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
 )
@@ -125,35 +124,51 @@ func RenderNavbar(currentUserID string, items ...NavbarItem) h.RenderedHTML {
 	return h.Tag("nav", h.Tag("ul", fields...))
 }
 
-//FormField represents the state of an <input> field.
-type FormField struct {
+//FieldSpec represents the behavior of an <input> field.
+type FieldSpec struct {
+	Name      string
+	InputType string
+	Label     string
+	AutoFocus bool
+}
+
+//FieldState represents the state of an <input> field.
+type FieldState struct {
 	Value        string
 	ErrorMessage string
 }
 
 //Render returns the HTML for this form field.
-func (f FormField) Render(inputType, name, label string) h.RenderedHTML {
-	labelArgs := []h.TagArgument{h.Attr("for", name), h.Text(label)}
-	inputCSSClass := ""
-	if f.ErrorMessage != "" {
+func (spec FieldSpec) Render(state FieldState) h.RenderedHTML {
+	labelArgs := []h.TagArgument{
+		h.Attr("for", spec.Name),
+		h.Text(spec.Label),
+	}
+	inputArgs := []h.TagArgument{
+		h.Attr("name", spec.Name),
+		h.Attr("type", spec.InputType),
+		h.Attr("value", state.Value),
+	}
+
+	if state.ErrorMessage != "" {
 		labelArgs = append(labelArgs, h.Tag("span",
 			h.Attr("class", "form-error"),
-			h.Text(f.ErrorMessage),
+			h.Text(state.ErrorMessage),
 		))
-		inputCSSClass = "form-error"
+		inputArgs = append(inputArgs, h.Attr("class", "form-error"))
 	}
+
+	if spec.AutoFocus {
+		inputArgs = append(inputArgs, h.EmptyAttr("autofocus"))
+	}
+
 	return h.Tag("div", h.Attr("class", "form-row"),
 		h.Tag("label", labelArgs...),
-		h.Tag("input",
-			h.Attr("class", inputCSSClass),
-			h.Attr("name", name),
-			h.Attr("type", inputType),
-			h.Attr("value", f.Value),
-		),
+		h.Tag("input", inputArgs...),
 	)
 }
 
-//RenderDisplayField renders something that looks like a FormField, but is readonly.
+//RenderDisplayField renders something that looks like an <input> field, but is readonly.
 func RenderDisplayField(label string, value ...h.RenderedHTML) h.RenderedHTML {
 	args := []h.TagArgument{h.Attr("class", "row-value")}
 	for _, v := range value {
@@ -166,54 +181,8 @@ func RenderDisplayField(label string, value ...h.RenderedHTML) h.RenderedHTML {
 	)
 }
 
-//LoginForm represents the state of the login form.
-type LoginForm struct {
-	UserName FormField
-	Password FormField
-}
-
-//Render returns the HTML for this form field.
-func (f LoginForm) Render(r *http.Request) h.RenderedHTML {
-	return h.Tag("form", h.Attr("method", "POST"), h.Attr("action", "/login"),
-		h.Embed(csrf.TemplateField(r)),
-		f.UserName.Render("text", "uid", "User ID"),
-		f.Password.Render("password", "password", "Password"),
-		h.Tag("div", h.Attr("class", "button-row"),
-			h.Tag("button", h.Attr("type", "submit"), h.Attr("class", "btn btn-primary"), h.Text("Login")),
-		),
-	)
-}
-
-//SelfServiceForm represents the state of the self-service form.
-type SelfServiceForm struct {
-	User      core.UserWithPerms
-	Password1 FormField
-	Password2 FormField
-}
-
-//Render returns the HTML for this form field.
-func (f SelfServiceForm) Render(r *http.Request) h.RenderedHTML {
-	return h.Tag("form", h.Attr("method", "POST"), h.Attr("action", "/self"),
-		h.Embed(csrf.TemplateField(r)),
-		RenderDisplayField("Login name", h.Tag("code", h.Text(f.User.LoginName))),
-		RenderDisplayField("Full name",
-			//TODO: allow flipped order (family name first)
-			h.Tag("span", h.Attr("class", "given-name"), h.Text(f.User.GivenName)),
-			h.Text(" "),
-			h.Tag("span", h.Attr("class", "family-name"), h.Text(f.User.FamilyName)),
-		),
-		RenderDisplayField("Group memberships", RenderGroupMemberships(f.User.User, f.User.GroupMemberships, f.User)),
-		f.Password1.Render("password", "password1", "New password"),
-		f.Password2.Render("password", "password1", "Repeat password"),
-		h.Tag("div", h.Attr("class", "button-row"),
-			h.Tag("button", h.Attr("type", "submit"), h.Attr("class", "btn btn-primary"), h.Text("Change password")),
-		),
-	)
-}
-
 //RenderGroupMemberships renders a list of all groups the given user is part of.
 func RenderGroupMemberships(user core.User, groups []core.Group, currentUser core.UserWithPerms) h.RenderedHTML {
-	//TODO use links only if user has perms.Portunus.IsAdmin
 	isAdmin := currentUser.Perms.Portunus.IsAdmin
 	var groupMemberships []h.RenderedHTML
 	for _, group := range groups {

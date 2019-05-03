@@ -49,11 +49,17 @@ type TagArgument interface {
 type Attribute struct {
 	Key   string
 	Value string
+	Empty bool
 }
 
-//Attr constructs an Attribute.
+//Attr constructs an Attribute with value.
 func Attr(key, value string) Attribute {
-	return Attribute{key, value}
+	return Attribute{key, value, false}
+}
+
+//EmptyAttr constructs an Attribute without value.
+func EmptyAttr(key string) Attribute {
+	return Attribute{key, "", true}
 }
 
 //IsHTMLTagArgument implements the TagArgument interface.
@@ -98,7 +104,10 @@ func Tag(name string, args ...TagArgument) RenderedHTML {
 	for _, arg := range args {
 		switch arg := arg.(type) {
 		case Attribute:
-			attrText += fmt.Sprintf(` %s="%s"`, arg.Key, html.EscapeString(arg.Value))
+			attrText += " " + arg.Key
+			if !arg.Empty {
+				attrText += `="` + html.EscapeString(arg.Value) + `"`
+			}
 		case RenderedHTML:
 			childText += arg.plain
 		default:

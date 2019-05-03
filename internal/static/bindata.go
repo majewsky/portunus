@@ -127,7 +127,7 @@ func bindataCssPortunuscss() (*asset, error) {
 		size: 2155,
 		md5checksum: "",
 		mode: os.FileMode(420),
-		modTime: time.Unix(1556824094, 0),
+		modTime: time.Unix(1556895451, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}

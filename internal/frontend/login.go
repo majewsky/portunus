@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gorilla/csrf"
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
 )
@@ -66,7 +67,7 @@ func getLoginHandler(e core.Engine) http.HandlerFunc {
 
 		WriteHTMLPage(w, http.StatusOK, "Login", h.Join(
 			RenderNavbar("", NavbarItem{URL: "/login", Title: "Login", Active: true}),
-			h.Tag("main", LoginForm{}.Render(r)),
+			h.Tag("main", loginForm{}.Render(r)),
 		))
 	}
 }
@@ -79,7 +80,7 @@ func postLoginHandler(e core.Engine) http.HandlerFunc {
 			return
 		}
 
-		var l LoginForm
+		var l loginForm
 		hasErrors := false
 
 		uid := r.PostForm.Get("uid")
@@ -140,4 +141,23 @@ func getLogoutHandler(e core.Engine) http.HandlerFunc {
 
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 	}
+}
+
+type loginForm struct {
+	UserName FieldState
+	Password FieldState
+}
+
+func (f loginForm) Render(r *http.Request) h.RenderedHTML {
+	fieldLoginName := FieldSpec{InputType: "text", Name: "uid", Label: "Login name", AutoFocus: true}
+	fieldPassword := FieldSpec{InputType: "password", Name: "password", Label: "Password"}
+
+	return h.Tag("form", h.Attr("method", "POST"), h.Attr("action", "/login"),
+		h.Embed(csrf.TemplateField(r)),
+		fieldLoginName.Render(f.UserName),
+		fieldPassword.Render(f.Password),
+		h.Tag("div", h.Attr("class", "button-row"),
+			h.Tag("button", h.Attr("type", "submit"), h.Attr("class", "btn btn-primary"), h.Text("Login")),
+		),
+	)
 }
