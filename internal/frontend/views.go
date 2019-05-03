@@ -124,63 +124,6 @@ func RenderNavbar(currentUserID string, items ...NavbarItem) h.RenderedHTML {
 	return h.Tag("nav", h.Tag("ul", fields...))
 }
 
-//FieldSpec represents the behavior of an <input> field.
-type FieldSpec struct {
-	Name      string
-	InputType string
-	Label     string
-	AutoFocus bool
-}
-
-//FieldState represents the state of an <input> field.
-type FieldState struct {
-	Value        string
-	ErrorMessage string
-}
-
-//Render returns the HTML for this form field.
-func (spec FieldSpec) Render(state FieldState) h.RenderedHTML {
-	labelArgs := []h.TagArgument{
-		h.Attr("for", spec.Name),
-		h.Text(spec.Label),
-	}
-	inputArgs := []h.TagArgument{
-		h.Attr("name", spec.Name),
-		h.Attr("type", spec.InputType),
-		h.Attr("value", state.Value),
-	}
-
-	if state.ErrorMessage != "" {
-		labelArgs = append(labelArgs, h.Tag("span",
-			h.Attr("class", "form-error"),
-			h.Text(state.ErrorMessage),
-		))
-		inputArgs = append(inputArgs, h.Attr("class", "form-error"))
-	}
-
-	if spec.AutoFocus {
-		inputArgs = append(inputArgs, h.EmptyAttr("autofocus"))
-	}
-
-	return h.Tag("div", h.Attr("class", "form-row"),
-		h.Tag("label", labelArgs...),
-		h.Tag("input", inputArgs...),
-	)
-}
-
-//RenderDisplayField renders something that looks like an <input> field, but is readonly.
-func RenderDisplayField(label string, value ...h.RenderedHTML) h.RenderedHTML {
-	args := []h.TagArgument{h.Attr("class", "row-value")}
-	for _, v := range value {
-		args = append(args, v)
-	}
-
-	return h.Tag("div", h.Attr("class", "display-row"),
-		h.Tag("div", h.Attr("class", "row-label"), h.Text(label)),
-		h.Tag("div", args...),
-	)
-}
-
 //RenderGroupMemberships renders a list of all groups the given user is part of.
 func RenderGroupMemberships(user core.User, groups []core.Group, currentUser core.UserWithPerms) h.RenderedHTML {
 	isAdmin := currentUser.Perms.Portunus.IsAdmin

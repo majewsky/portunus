@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/csrf"
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
 )
@@ -50,6 +49,30 @@ func redirectToLoginPageUnlessLoggedIn(h http.Handler) http.Handler {
 	})
 }
 
+var loginForm = h.FormSpec{
+	PostTarget:  "/login",
+	SubmitLabel: "Login",
+	Fields: []h.FormField{
+		h.FieldSpec{
+			InputType: "text",
+			Name:      "uid",
+			Label:     "Login name",
+			AutoFocus: true,
+			Rules: []h.ValidationRule{
+				h.MustNotBeEmpty,
+			},
+		},
+		h.FieldSpec{
+			InputType: "password",
+			Name:      "password",
+			Label:     "Password",
+			Rules: []h.ValidationRule{
+				h.MustNotBeEmpty,
+			},
+		},
+	},
+}
+
 //Handles GET /login.
 func getLoginHandler(e core.Engine) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -65,11 +88,15 @@ func getLoginHandler(e core.Engine) http.HandlerFunc {
 			}
 		}
 
-		WriteHTMLPage(w, http.StatusOK, "Login", h.Join(
-			RenderNavbar("", NavbarItem{URL: "/login", Title: "Login", Active: true}),
-			h.Tag("main", loginForm{}.Render(r)),
-		))
+		writeLoginPage(w, r, h.FormState{})
 	}
+}
+
+func writeLoginPage(w http.ResponseWriter, r *http.Request, s h.FormState) {
+	WriteHTMLPage(w, http.StatusOK, "Login", h.Join(
+		RenderNavbar("", NavbarItem{URL: "/login", Title: "Login", Active: true}),
+		h.Tag("main", loginForm.Render(r, s)),
+	))
 }
 
 //Handles POST /login.
@@ -80,41 +107,25 @@ func postLoginHandler(e core.Engine) http.HandlerFunc {
 			return
 		}
 
-		var l loginForm
-		hasErrors := false
-
-		uid := r.PostForm.Get("uid")
-		if uid == "" {
-			l.UserName.ErrorMessage = "is missing"
-			hasErrors = true
-		} else {
-			l.UserName.Value = uid
-		}
-
-		password := r.PostForm.Get("password")
-		if password == "" {
-			l.Password.ErrorMessage = "is missing"
-			hasErrors = true
-		}
+		var fs h.FormState
+		loginForm.ReadState(r, &fs)
+		uid := fs.Fields["uid"].Value
+		pwd := fs.Fields["password"].Value
 
 		var user *core.UserWithPerms
-		if !hasErrors {
+		if fs.IsValid() {
 			user = e.FindUser(uid)
 			passwordHash := ""
 			if user != nil {
 				passwordHash = user.PasswordHash
 			}
-			if !core.CheckPasswordHash(password, passwordHash) {
-				l.Password.ErrorMessage = "is not valid (or the user account does not exist)"
-				hasErrors = true
+			if !core.CheckPasswordHash(pwd, passwordHash) {
+				fs.Fields["password"].ErrorMessage = "is not valid (or the user account does not exist)"
 			}
 		}
 
-		if hasErrors {
-			WriteHTMLPage(w, http.StatusOK, "Login", h.Join(
-				RenderNavbar("", NavbarItem{URL: "/login", Title: "Login", Active: true}),
-				h.Tag("main", l.Render(r)),
-			))
+		if !fs.IsValid() {
+			writeLoginPage(w, r, fs)
 			return
 		}
 
@@ -145,23 +156,4 @@ func getLogoutHandler(e core.Engine) http.HandlerFunc {
 
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 	}
-}
-
-type loginForm struct {
-	UserName FieldState
-	Password FieldState
-}
-
-func (f loginForm) Render(r *http.Request) h.RenderedHTML {
-	fieldLoginName := FieldSpec{InputType: "text", Name: "uid", Label: "Login name", AutoFocus: true}
-	fieldPassword := FieldSpec{InputType: "password", Name: "password", Label: "Password"}
-
-	return h.Tag("form", h.Attr("method", "POST"), h.Attr("action", "/login"),
-		h.Embed(csrf.TemplateField(r)),
-		fieldLoginName.Render(f.UserName),
-		fieldPassword.Render(f.Password),
-		h.Tag("div", h.Attr("class", "button-row"),
-			h.Tag("button", h.Attr("type", "submit"), h.Attr("class", "btn btn-primary"), h.Text("Login")),
-		),
-	)
 }

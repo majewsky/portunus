@@ -21,10 +21,51 @@ package frontend
 import (
 	"net/http"
 
-	"github.com/gorilla/csrf"
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
 )
+
+func getSelfServiceForm(user core.UserWithPerms) h.FormSpec {
+	return h.FormSpec{
+		PostTarget:  "/self",
+		SubmitLabel: "Change password",
+		Fields: []h.FormField{
+			h.StaticField{
+				Label: "Login name",
+				Value: h.Tag("code", h.Text(user.LoginName)),
+			},
+			h.StaticField{
+				Label: "Full name",
+				Value: h.Join(
+					//TODO: allow flipped order (family name first)
+					h.Tag("span", h.Attr("class", "given-name"), h.Text(user.GivenName)),
+					h.Text(" "),
+					h.Tag("span", h.Attr("class", "family-name"), h.Text(user.FamilyName)),
+				),
+			},
+			h.StaticField{
+				Label: "Group memberships",
+				Value: RenderGroupMemberships(user.User, user.GroupMemberships, user),
+			},
+			h.FieldSpec{
+				InputType: "password1",
+				Name:      "password",
+				Label:     "New password",
+				Rules: []h.ValidationRule{
+					h.MustNotBeEmpty,
+				},
+			},
+			h.FieldSpec{
+				InputType: "password2",
+				Name:      "password",
+				Label:     "Repeat password",
+				Rules: []h.ValidationRule{
+					h.MustNotBeEmpty,
+				},
+			},
+		},
+	}
+}
 
 func getSelfHandler(e core.Engine) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +77,7 @@ func getSelfHandler(e core.Engine) http.HandlerFunc {
 		WriteHTMLPage(w, http.StatusOK, "Users",
 			h.Join(
 				RenderNavbarForUser(*currentUser, r),
-				h.Tag("main", selfServiceForm{User: *currentUser}.Render(r)),
+				h.Tag("main", getSelfServiceForm(*currentUser).Render(r, h.FormState{})),
 			),
 		)
 	})
@@ -46,32 +87,4 @@ func postSelfHandler(e core.Engine) http.HandlerFunc {
 	//TODO implement POST /self
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	})
-}
-
-type selfServiceForm struct {
-	User      core.UserWithPerms
-	Password1 FieldState
-	Password2 FieldState
-}
-
-func (f selfServiceForm) Render(r *http.Request) h.RenderedHTML {
-	fieldPassword1 := FieldSpec{InputType: "password", Name: "password1", Label: "New password"}
-	fieldPassword2 := FieldSpec{InputType: "password", Name: "password2", Label: "Repeat password"}
-
-	return h.Tag("form", h.Attr("method", "POST"), h.Attr("action", "/self"),
-		h.Embed(csrf.TemplateField(r)),
-		RenderDisplayField("Login name", h.Tag("code", h.Text(f.User.LoginName))),
-		RenderDisplayField("Full name",
-			//TODO: allow flipped order (family name first)
-			h.Tag("span", h.Attr("class", "given-name"), h.Text(f.User.GivenName)),
-			h.Text(" "),
-			h.Tag("span", h.Attr("class", "family-name"), h.Text(f.User.FamilyName)),
-		),
-		RenderDisplayField("Group memberships", RenderGroupMemberships(f.User.User, f.User.GroupMemberships, f.User)),
-		fieldPassword1.Render(f.Password1),
-		fieldPassword2.Render(f.Password2),
-		h.Tag("div", h.Attr("class", "button-row"),
-			h.Tag("button", h.Attr("type", "submit"), h.Attr("class", "btn btn-primary"), h.Text("Change password")),
-		),
-	)
 }
