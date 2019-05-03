@@ -16,7 +16,7 @@
 	"groups": [
 		{
 			"name": "admins",
-			"description": "system administrators",
+			"long_name": "LDAP administrators",
 			"members": [
 				"jane"
 			],
@@ -31,7 +31,7 @@
 		},
 		{
 			"name": "users",
-			"description": "contains everyone",
+			"long_name": "Users",
 			"members": [
 				"jane",
 				"john"

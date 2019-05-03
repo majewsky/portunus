@@ -29,7 +29,7 @@ import (
 //grants its Permissions to all users in that group.
 type Group struct {
 	Name             string      `json:"name"`
-	Description      string      `json:"description"`
+	LongName         string      `json:"long_name"`
 	MemberLoginNames []string    `json:"members"`
 	Permissions      Permissions `json:"permissions"`
 
