@@ -49,6 +49,11 @@ type FieldState struct {
 	ErrorMessage string
 }
 
+//InitialFieldState constructs a FieldState without error.
+func InitialFieldState(value string) *FieldState {
+	return &FieldState{Value: value}
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // type FormSpec
 

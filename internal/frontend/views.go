@@ -50,6 +50,18 @@ type flash struct {
 	Message h.RenderedHTML
 }
 
+//RedirectWithFlash is a shortcut for redirecting from a POST action to a GET
+//view with a flash message.
+func RedirectWithFlash(w http.ResponseWriter, r *http.Request, s *sessions.Session, target string, f flash) {
+	s.AddFlash(f)
+	err := s.Save(r, w)
+	if err == nil {
+		http.Redirect(w, r, target, http.StatusSeeOther)
+	} else {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 type page struct {
 	Status   int
 	Title    string

@@ -45,12 +45,13 @@ func HTTPHandler(engine core.Engine, isBehindTLSProxy bool) http.Handler {
 	r.Methods("POST").Path(`/self`).HandlerFunc(postSelfHandler(engine))
 
 	r.Methods("GET").Path(`/users`).HandlerFunc(getUsersHandler(engine))
-	//TODO CRUD users
+	r.Methods("GET").Path(`/users/new`).HandlerFunc(getUsersNewHandler(engine))
+	r.Methods("POST").Path(`/users/new`).HandlerFunc(postUsersNewHandler(engine))
+	r.Methods("GET").Path(`/users/{uid}/edit`).HandlerFunc(getUserEditHandler(engine))
+	r.Methods("POST").Path(`/users/{uid}/edit`).HandlerFunc(postUserEditHandler(engine))
+	//TODO delete users
 	//TODO CRUD groups
-	//TODO self-service UI (view own user, change password)
 	//TODO first-time setup hint
-
-	//TODO FIXME CSRF validation error should redirect to the same form with a flash message (and we should not logg.Error() that anymore then)
 
 	//setup CSRF with maxAge = 30 minutes
 	csrfKey := securecookie.GenerateRandomKey(32)

@@ -19,9 +19,12 @@
 package frontend
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"sort"
 
+	"github.com/gorilla/mux"
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
 )
@@ -52,7 +55,7 @@ func getUsersHandler(e core.Engine) http.HandlerFunc {
 				h.Tag("td", h.Text(user.FullName())),
 				h.Tag("td", RenderGroupMemberships(user, groups, *currentUser)),
 				h.Tag("td", h.Attr("class", "actions"),
-					h.Tag("a", h.Attr("href", userURL), h.Text("Edit")),
+					h.Tag("a", h.Attr("href", userURL+"/edit"), h.Text("Edit")),
 					h.Text(" · "),
 					h.Tag("a", h.Attr("href", userURL+"/delete"), h.Text("Delete")),
 				),
@@ -67,7 +70,7 @@ func getUsersHandler(e core.Engine) http.HandlerFunc {
 					h.Tag("th", h.Text("Groups")),
 					h.Tag("th", h.Attr("class", "actions"),
 						h.Tag("a",
-							h.Attr("href", "#"),
+							h.Attr("href", "/users/new"),
 							h.Attr("class", "btn btn-primary"),
 							h.Text("New user"),
 						),
@@ -82,5 +85,144 @@ func getUsersHandler(e core.Engine) http.HandlerFunc {
 			Title:    "Users",
 			Contents: usersTable,
 		}.Render(w, r, currentUser, s)
+	}
+}
+
+func getUserForm(user *core.User, e core.Engine) h.FormSpec {
+	var memberships []h.RenderedHTML
+	allGroups := e.ListGroups()
+	sort.Slice(allGroups, func(i, j int) bool {
+		return allGroups[i].LongName < allGroups[j].LongName
+	})
+	for _, group := range allGroups {
+		classNames := "item item-unchecked"
+		if user != nil && group.ContainsUser(*user) {
+			classNames = "item item-checked"
+		}
+		memberships = append(memberships, h.Tag("span",
+			h.Attr("class", classNames),
+			h.Text(group.LongName),
+		))
+		//TODO: make memberships editable
+	}
+
+	var spec h.FormSpec
+	if user == nil {
+		spec.PostTarget = "/users/new"
+		spec.SubmitLabel = "Create user"
+	} else {
+		spec.PostTarget = "/users/" + user.LoginName + "/edit"
+		spec.SubmitLabel = "Save"
+	}
+
+	if user == nil {
+		mustNotBeInUse := func(loginName string) error {
+			if e.FindUser(loginName) != nil {
+				return errors.New("is already in use")
+			}
+			return nil
+		}
+		spec.Fields = append(spec.Fields, h.FieldSpec{
+			InputType: "text",
+			Name:      "uid",
+			Label:     "Login name",
+			Rules: []h.ValidationRule{
+				h.MustNotBeEmpty,
+				//TODO: validate against regex
+				mustNotBeInUse,
+			},
+		})
+	} else {
+		spec.Fields = append(spec.Fields, h.StaticField{
+			Label: "Login name",
+			Value: h.Tag("code", h.Text(user.LoginName)),
+		})
+	}
+
+	spec.Fields = append(spec.Fields,
+		h.FieldSpec{
+			InputType: "text",
+			Name:      "given_name",
+			Label:     "Given name",
+			Rules: []h.ValidationRule{
+				h.MustNotBeEmpty,
+				//TODO validate against regex
+			},
+		},
+		h.FieldSpec{
+			InputType: "text",
+			Name:      "family_name",
+			Label:     "Family name",
+			Rules: []h.ValidationRule{
+				h.MustNotBeEmpty,
+				//TODO validate against regex
+			},
+		},
+		h.StaticField{
+			Label:      "Group memberships",
+			CSSClasses: "item-list",
+			Value:      h.Join(memberships...),
+		},
+	)
+
+	if user == nil {
+		spec.Fields = append(spec.Fields, h.FieldSpec{
+			InputType: "password",
+			Name:      "password",
+			Label:     "Initial password",
+			Rules: []h.ValidationRule{
+				h.MustNotBeEmpty,
+			},
+		})
+	}
+
+	return spec
+}
+
+func getUserEditHandler(e core.Engine) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		currentUser, s := checkAuth(w, r, e, adminPerms)
+		if currentUser == nil {
+			return
+		}
+
+		userLoginName := mux.Vars(r)["uid"]
+		user := e.FindUser(userLoginName)
+		if user == nil {
+			msg := fmt.Sprintf("User %q does not exist.", userLoginName)
+			RedirectWithFlash(w, r, s, "/users", flash{"error", h.Text(msg)})
+			return
+		}
+
+		f := getUserForm(&user.User, e)
+		fs := h.FormState{
+			Fields: map[string]*h.FieldState{
+				"given_name":  h.InitialFieldState(user.GivenName),
+				"family_name": h.InitialFieldState(user.FamilyName),
+			},
+		}
+		page{
+			Status:   http.StatusOK,
+			Title:    "Edit user",
+			Contents: f.Render(r, fs),
+		}.Render(w, r, currentUser, s)
+	}
+}
+
+func postUserEditHandler(e core.Engine) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		//TODO implement
+	}
+}
+
+func getUsersNewHandler(e core.Engine) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		//TODO implement
+	}
+}
+
+func postUsersNewHandler(e core.Engine) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		//TODO implement
 	}
 }
