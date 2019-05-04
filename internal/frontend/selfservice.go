@@ -77,7 +77,7 @@ func getSelfServiceForm(user core.UserWithPerms) (h.FormSpec, h.FormState) {
 				Options:  memberships,
 				ReadOnly: true,
 			},
-			h.FieldSpec{
+			h.InputFieldSpec{
 				InputType: "password",
 				Name:      "old_password",
 				Label:     "Old password",
@@ -85,7 +85,7 @@ func getSelfServiceForm(user core.UserWithPerms) (h.FormSpec, h.FormState) {
 					h.MustNotBeEmpty,
 				},
 			},
-			h.FieldSpec{
+			h.InputFieldSpec{
 				InputType: "password",
 				Name:      "new_password",
 				Label:     "New password",
@@ -93,7 +93,7 @@ func getSelfServiceForm(user core.UserWithPerms) (h.FormSpec, h.FormState) {
 					h.MustNotBeEmpty,
 				},
 			},
-			h.FieldSpec{
+			h.InputFieldSpec{
 				InputType: "password",
 				Name:      "repeat_password",
 				Label:     "Repeat password",

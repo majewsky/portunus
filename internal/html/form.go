@@ -45,7 +45,7 @@ func (s FormState) IsValid() bool {
 
 //FieldState describes the state of an <input> field within type FormState.
 type FieldState struct {
-	Value        string          //only used by FieldSpec
+	Value        string          //only used by InputFieldSpec
 	Selected     map[string]bool //only used by SelectFieldSpec
 	ErrorMessage string
 }
@@ -107,10 +107,10 @@ func (f FormSpec) Render(r *http.Request, s FormState) RenderedHTML {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// type FieldSpec (TODO rename to InputFieldSpec)
+// type InputFieldSpec
 
-//FieldSpec describes a single <input> field within type FormSpec.
-type FieldSpec struct {
+//InputFieldSpec describes a single <input> field within type FormSpec.
+type InputFieldSpec struct {
 	Name      string
 	Label     string
 	InputType string
@@ -120,7 +120,7 @@ type FieldSpec struct {
 
 //ReadState reads and validates the field value from r.PostForm, and stores it
 //in the given FormState.
-func (f FieldSpec) ReadState(r *http.Request, formState *FormState) {
+func (f InputFieldSpec) ReadState(r *http.Request, formState *FormState) {
 	s := FieldState{Value: r.PostForm.Get(f.Name)}
 	for _, rule := range f.Rules {
 		err := rule(s.Value)
@@ -133,7 +133,7 @@ func (f FieldSpec) ReadState(r *http.Request, formState *FormState) {
 }
 
 //RenderField produces the HTML for this field.
-func (f FieldSpec) RenderField(state FormState) RenderedHTML {
+func (f InputFieldSpec) RenderField(state FormState) RenderedHTML {
 	s := state.Fields[f.Name]
 	if s == nil {
 		s = &FieldState{}

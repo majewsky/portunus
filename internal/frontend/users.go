@@ -109,7 +109,7 @@ func getUserForm(user *core.User, e core.Engine) (h.FormSpec, h.FormState) {
 			}
 			return nil
 		}
-		spec.Fields = append(spec.Fields, h.FieldSpec{
+		spec.Fields = append(spec.Fields, h.InputFieldSpec{
 			InputType: "text",
 			Name:      "uid",
 			Label:     "Login name",
@@ -127,7 +127,7 @@ func getUserForm(user *core.User, e core.Engine) (h.FormSpec, h.FormState) {
 	}
 
 	spec.Fields = append(spec.Fields,
-		h.FieldSpec{
+		h.InputFieldSpec{
 			InputType: "text",
 			Name:      "given_name",
 			Label:     "Given name",
@@ -136,7 +136,7 @@ func getUserForm(user *core.User, e core.Engine) (h.FormSpec, h.FormState) {
 				//TODO validate against regex
 			},
 		},
-		h.FieldSpec{
+		h.InputFieldSpec{
 			InputType: "text",
 			Name:      "family_name",
 			Label:     "Family name",
@@ -172,7 +172,7 @@ func getUserForm(user *core.User, e core.Engine) (h.FormSpec, h.FormState) {
 	state.Fields["memberships"] = &h.FieldState{Selected: isGroupSelected}
 
 	if user == nil {
-		spec.Fields = append(spec.Fields, h.FieldSpec{
+		spec.Fields = append(spec.Fields, h.InputFieldSpec{
 			InputType: "password",
 			Name:      "password",
 			Label:     "Initial password",
@@ -258,8 +258,6 @@ func postUserEditHandler(e core.Engine) http.HandlerFunc {
 				return &g, nil
 			})
 		}
-
-		//TODO persist selected group memberships
 
 		msg := fmt.Sprintf("Updated user %q.", user.LoginName)
 		RedirectWithFlash(w, r, s, "/users", flash{"success", msg})

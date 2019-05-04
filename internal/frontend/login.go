@@ -54,7 +54,7 @@ var loginForm = h.FormSpec{
 	PostTarget:  "/login",
 	SubmitLabel: "Login",
 	Fields: []h.FormField{
-		h.FieldSpec{
+		h.InputFieldSpec{
 			InputType: "text",
 			Name:      "uid",
 			Label:     "Login name",
@@ -63,7 +63,7 @@ var loginForm = h.FormSpec{
 				h.MustNotBeEmpty,
 			},
 		},
-		h.FieldSpec{
+		h.InputFieldSpec{
 			InputType: "password",
 			Name:      "password",
 			Label:     "Password",
