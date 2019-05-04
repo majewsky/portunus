@@ -50,11 +50,6 @@ type FieldState struct {
 	ErrorMessage string
 }
 
-//InitialFieldState constructs a FieldState without error.
-func InitialFieldState(value string) *FieldState {
-	return &FieldState{Value: value}
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // type FormSpec
 
@@ -188,6 +183,9 @@ func (f StaticField) ReadState(*http.Request, *FormState) {
 
 //RenderField implements the FormField interface.
 func (f StaticField) RenderField(FormState) RenderedHTML {
+	if f.Label == "" {
+		return f.Value
+	}
 	return Tag("div", Attr("class", "display-row"),
 		Tag("div", Attr("class", "row-label"), Text(f.Label)),
 		Tag("div", Attr("class", "row-value"), f.Value),

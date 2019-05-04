@@ -49,6 +49,9 @@ func HTTPHandler(engine core.Engine, isBehindTLSProxy bool) http.Handler {
 	r.Methods("POST").Path(`/users/new`).HandlerFunc(postUsersNewHandler(engine))
 	r.Methods("GET").Path(`/users/{uid}/edit`).HandlerFunc(getUserEditHandler(engine))
 	r.Methods("POST").Path(`/users/{uid}/edit`).HandlerFunc(postUserEditHandler(engine))
+	r.Methods("GET").Path(`/users/{uid}/delete`).HandlerFunc(getUserDeleteHandler(engine))
+	r.Methods("POST").Path(`/users/{uid}/delete`).HandlerFunc(postUserDeleteHandler(engine))
+
 	//TODO delete users
 	//TODO CRUD groups
 	//TODO first-time setup hint

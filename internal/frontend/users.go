@@ -348,3 +348,66 @@ func postUsersNewHandler(e core.Engine) http.HandlerFunc {
 		RedirectWithFlash(w, r, s, "/users", flash{"success", msg})
 	}
 }
+
+func getUserDeleteHandler(e core.Engine) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		currentUser, s := checkAuth(w, r, e, adminPerms)
+		if currentUser == nil {
+			return
+		}
+
+		userLoginName := mux.Vars(r)["uid"]
+		user := e.FindUser(userLoginName)
+		if user == nil {
+			msg := fmt.Sprintf("User %q does not exist.", userLoginName)
+			RedirectWithFlash(w, r, s, "/users", flash{"error", msg})
+			return
+		}
+
+		form := h.FormSpec{
+			PostTarget:  "/users/" + userLoginName + "/delete",
+			SubmitLabel: "Delete user",
+			Fields: []h.FormField{
+				h.StaticField{
+					Value: h.Tag("p",
+						h.Text("Really delete user "),
+						h.Tag("code", h.Text(userLoginName)),
+						h.Text("? This cannot be undone."),
+					),
+				},
+			},
+		}
+
+		page{
+			Status:   http.StatusOK,
+			Title:    "Confirm user deletion",
+			Contents: form.Render(r, h.FormState{}),
+		}.Render(w, r, currentUser, s)
+	}
+}
+
+func postUserDeleteHandler(e core.Engine) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		currentUser, s := checkAuth(w, r, e, adminPerms)
+		if currentUser == nil {
+			return
+		}
+
+		userLoginName := mux.Vars(r)["uid"]
+		e.ChangeUser(userLoginName, func(core.User) (*core.User, error) {
+			return nil, nil
+		})
+		for _, group := range e.ListGroups() {
+			e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
+				if g.Name == "" {
+					return nil, nil //if the group was deleted in parallel, no need to complain
+				}
+				g.MemberLoginNames[userLoginName] = false
+				return &g, nil
+			})
+		}
+
+		msg := fmt.Sprintf("Deleted user %q.", userLoginName)
+		RedirectWithFlash(w, r, s, "/users", flash{"success", msg})
+	}
+}
