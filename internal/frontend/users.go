@@ -88,25 +88,12 @@ func getUsersHandler(e core.Engine) http.HandlerFunc {
 	}
 }
 
-func getUserForm(user *core.User, e core.Engine) h.FormSpec {
-	var memberships []h.RenderedHTML
-	allGroups := e.ListGroups()
-	sort.Slice(allGroups, func(i, j int) bool {
-		return allGroups[i].LongName < allGroups[j].LongName
-	})
-	for _, group := range allGroups {
-		classNames := "item item-unchecked"
-		if user != nil && group.ContainsUser(*user) {
-			classNames = "item item-checked"
-		}
-		memberships = append(memberships, h.Tag("span",
-			h.Attr("class", classNames),
-			h.Text(group.LongName),
-		))
-		//TODO: make memberships editable
+func getUserForm(user *core.User, e core.Engine) (h.FormSpec, h.FormState) {
+	var spec h.FormSpec
+	state := h.FormState{
+		Fields: map[string]*h.FieldState{},
 	}
 
-	var spec h.FormSpec
 	if user == nil {
 		spec.PostTarget = "/users/new"
 		spec.SubmitLabel = "Create user"
@@ -158,12 +145,31 @@ func getUserForm(user *core.User, e core.Engine) h.FormSpec {
 				//TODO validate against regex
 			},
 		},
-		h.StaticField{
-			Label:      "Group memberships",
-			CSSClasses: "item-list",
-			Value:      h.Join(memberships...),
-		},
 	)
+	if user != nil {
+		state.Fields["given_name"] = &h.FieldState{Value: user.GivenName}
+		state.Fields["family_name"] = &h.FieldState{Value: user.FamilyName}
+	}
+
+	allGroups := e.ListGroups()
+	sort.Slice(allGroups, func(i, j int) bool {
+		return allGroups[i].LongName < allGroups[j].LongName
+	})
+	var groupOpts []h.SelectOptionSpec
+	isGroupSelected := make(map[string]bool)
+	for _, group := range allGroups {
+		groupOpts = append(groupOpts, h.SelectOptionSpec{
+			Value: group.Name,
+			Label: group.LongName,
+		})
+		isGroupSelected[group.Name] = group.ContainsUser(*user)
+	}
+	spec.Fields = append(spec.Fields, h.SelectFieldSpec{
+		Name:    "memberships",
+		Label:   "Group memberships",
+		Options: groupOpts,
+	})
+	state.Fields["memberships"] = &h.FieldState{Selected: isGroupSelected}
 
 	if user == nil {
 		spec.Fields = append(spec.Fields, h.FieldSpec{
@@ -176,7 +182,7 @@ func getUserForm(user *core.User, e core.Engine) h.FormSpec {
 		})
 	}
 
-	return spec
+	return spec, state
 }
 
 func getUserEditHandler(e core.Engine) http.HandlerFunc {
@@ -190,17 +196,11 @@ func getUserEditHandler(e core.Engine) http.HandlerFunc {
 		user := e.FindUser(userLoginName)
 		if user == nil {
 			msg := fmt.Sprintf("User %q does not exist.", userLoginName)
-			RedirectWithFlash(w, r, s, "/users", flash{"error", h.Text(msg)})
+			RedirectWithFlash(w, r, s, "/users", flash{"error", msg})
 			return
 		}
 
-		f := getUserForm(&user.User, e)
-		fs := h.FormState{
-			Fields: map[string]*h.FieldState{
-				"given_name":  h.InitialFieldState(user.GivenName),
-				"family_name": h.InitialFieldState(user.FamilyName),
-			},
-		}
+		f, fs := getUserForm(&user.User, e)
 		page{
 			Status:   http.StatusOK,
 			Title:    "Edit user",
@@ -211,13 +211,62 @@ func getUserEditHandler(e core.Engine) http.HandlerFunc {
 
 func postUserEditHandler(e core.Engine) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//TODO implement
+		currentUser, s := checkAuth(w, r, e, adminPerms)
+		if currentUser == nil {
+			return
+		}
+
+		userLoginName := mux.Vars(r)["uid"]
+		user := e.FindUser(userLoginName)
+		if user == nil {
+			msg := fmt.Sprintf("User %q does not exist.", userLoginName)
+			RedirectWithFlash(w, r, s, "/users", flash{"error", msg})
+			return
+		}
+
+		f, fs := getUserForm(&user.User, e)
+		f.ReadState(r, &fs)
+		if !fs.IsValid() {
+			page{
+				Status:   http.StatusOK,
+				Title:    "Edit user",
+				Contents: f.Render(r, fs),
+			}.Render(w, r, currentUser, s)
+			return
+		}
+
+		err := e.ChangeUser(user.LoginName, func(u core.User) (*core.User, error) {
+			if u.LoginName == "" {
+				return nil, fmt.Errorf("no such user")
+			}
+			u.GivenName = fs.Fields["given_name"].Value
+			u.FamilyName = fs.Fields["family_name"].Value
+			return &u, nil
+		})
+		if err != nil {
+			RedirectWithFlash(w, r, s, "/users", flash{"error", err.Error()})
+			return
+		}
+		//TODO persist selected group memberships
+
+		msg := fmt.Sprintf("Updated user %q.", user.LoginName)
+		RedirectWithFlash(w, r, s, "/users", flash{"success", msg})
 	}
 }
 
 func getUsersNewHandler(e core.Engine) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//TODO implement
+		currentUser, s := checkAuth(w, r, e, adminPerms)
+		if currentUser == nil {
+			return
+		}
+
+		f, fs := getUserForm(nil, e)
+		page{
+			Status:   http.StatusOK,
+			Title:    "Create user",
+			Contents: f.Render(r, fs),
+		}.Render(w, r, currentUser, s)
 	}
 }
 

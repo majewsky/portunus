@@ -3,7 +3,7 @@ form {
     margin: 1rem 0;
   }
 
-  div.form-row label, div.display-row div.row-label {
+  .row-label {
     display: block;
     font-size: 0.8rem;
 
@@ -13,7 +13,7 @@ form {
     }
   }
 
-  div.form-row input, div.display-row div.row-value {
+  .row-input, div.row-value {
     display: block;
     width: 100%;
 
@@ -27,7 +27,7 @@ form {
     }
   }
 
-  div.form-row input {
+  input.row-input {
     &:hover {
       border-color: #999;
     }
@@ -63,22 +63,29 @@ form {
       line-height: 1.6rem;
       height: 1.6rem;
 
-      &.item-checked {
-        background: #EEE;
-      }
-
-      &.item-unchecked:before {
-        display: inline;
-        content: "\2610";
-      }
-      &.item-checked:before {
-        display: inline;
-        content: "\2611";
-      }
       &:before {
         color: inherit;
         padding-right: 0.3rem;
       }
+    }
+
+    .item.item-checked, input:checked + label.item {
+      background: #EEE;
+      &:before {
+        display: inline;
+        content: "\2611";
+      }
+    }
+
+    .item.item-unchecked, input:not(:checked) + label.item {
+      &:before {
+        display: inline;
+        content: "\2610";
+      }
+    }
+
+    input[type=checkbox] {
+      display: none;
     }
 
     a.item {

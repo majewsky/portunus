@@ -45,7 +45,8 @@ func (s FormState) IsValid() bool {
 
 //FieldState describes the state of an <input> field within type FormState.
 type FieldState struct {
-	Value        string
+	Value        string          //only used by FieldSpec
+	Selected     map[string]bool //only used by SelectFieldSpec
 	ErrorMessage string
 }
 
@@ -106,7 +107,7 @@ func (f FormSpec) Render(r *http.Request, s FormState) RenderedHTML {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// type FieldSpec
+// type FieldSpec (TODO rename to InputFieldSpec)
 
 //FieldSpec describes a single <input> field within type FormSpec.
 type FieldSpec struct {
@@ -140,11 +141,13 @@ func (f FieldSpec) RenderField(state FormState) RenderedHTML {
 
 	labelArgs := []TagArgument{
 		Attr("for", f.Name),
+		Attr("class", "row-label"),
 		Text(f.Label),
 	}
 	inputArgs := []TagArgument{
 		Attr("name", f.Name),
 		Attr("type", f.InputType),
+		Attr("class", "row-input"),
 	}
 
 	if s.Value != "" && f.InputType != "password" {
@@ -174,9 +177,8 @@ func (f FieldSpec) RenderField(state FormState) RenderedHTML {
 
 //StaticField is a FormField with a static value.
 type StaticField struct {
-	Label      string
-	CSSClasses string
-	Value      RenderedHTML
+	Label string
+	Value RenderedHTML
 }
 
 //ReadState implements the FormField interface.
@@ -187,7 +189,7 @@ func (f StaticField) ReadState(*http.Request, *FormState) {
 func (f StaticField) RenderField(FormState) RenderedHTML {
 	return Tag("div", Attr("class", "display-row"),
 		Tag("div", Attr("class", "row-label"), Text(f.Label)),
-		Tag("div", Attr("class", "row-value "+f.CSSClasses), f.Value),
+		Tag("div", Attr("class", "row-value"), f.Value),
 	)
 }
 

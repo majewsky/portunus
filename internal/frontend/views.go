@@ -19,6 +19,7 @@
 package frontend
 
 import (
+	"encoding/gob"
 	"net/http"
 	"strings"
 
@@ -47,7 +48,11 @@ var standardHeadTags = h.Join(
 
 type flash struct {
 	Type    string
-	Message h.RenderedHTML
+	Message string
+}
+
+func init() {
+	gob.Register(flash{})
 }
 
 //RedirectWithFlash is a shortcut for redirecting from a POST action to a GET
@@ -113,7 +118,7 @@ func (p page) Render(w http.ResponseWriter, r *http.Request, currentUser *core.U
 		if f, ok := value.(flash); ok {
 			flashes = append(flashes, h.Tag("div",
 				h.Attr("class", "flash flash-"+f.Type),
-				f.Message,
+				h.Text(f.Message),
 			))
 		}
 	}
@@ -152,8 +157,8 @@ func RenderGroupMemberships(user core.User, groups []core.Group, currentUser cor
 		}
 		if isAdmin {
 			groupMemberships = append(groupMemberships, h.Tag("a",
-				h.Attr("href", "/groups/"+group.Name),
-				h.Text(group.Name),
+				h.Attr("href", "/groups/"+group.Name+"/edit"),
+				h.Text(group.LongName),
 			))
 		} else {
 			groupMemberships = append(groupMemberships, h.Text(group.Name))

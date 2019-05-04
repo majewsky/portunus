@@ -53,7 +53,13 @@ type Engine interface {
 	FindUser(loginName string) *UserWithPerms
 	ListGroups() []Group
 	ListUsers() []User
-	SetUser(user User)
+	//The ChangeX() methods are used to create, modify and delete entities.
+	//When creating a new entity, the action is invoked with a
+	//default-constructed argument. To delete an entity, return nil from the
+	//action. If a non-nil error is returned, it's the one returned by the
+	//action.
+	ChangeUser(loginName string, action func(User) (*User, error)) error
+	ChangeGroup(name string, action func(Group) (*Group, error)) error
 }
 
 //engine implements the Engine interface.
@@ -188,25 +194,96 @@ func (e *engine) ListUsers() []User {
 	return result
 }
 
-//SetUser implements the User interface.
-func (e *engine) SetUser(u User) {
+//ChangeUser implements the Engine interface.
+func (e *engine) ChangeUser(loginName string, action func(User) (*User, error)) error {
 	e.Mutex.Lock()
 	defer e.Mutex.Unlock()
 
-	previousState := e.Users[u.LoginName]
-	e.Users[u.LoginName] = &u
-
-	if previousState == nil {
-		e.EventsChan <- Event{Added: []Entity{u.connect(e)}}
+	//compute the new state
+	oldState := e.Users[loginName]
+	var (
+		newState *User
+		err      error
+	)
+	if oldState == nil {
+		newState, err = action(User{})
 	} else {
-		mod := Modification{
-			Old: previousState.connect(e),
-			New: u.connect(e),
-		}
-		e.EventsChan <- Event{Modified: []Modification{mod}}
+		newState, err = action(*oldState)
+	}
+	if err != nil {
+		return err
 	}
 
+	//perform the modification if necessary
+	var event Event
+	if newState == nil {
+		if oldState == nil {
+			return nil
+		}
+		event.Deleted = append(event.Deleted, oldState.connect(e))
+		delete(e.Users, loginName)
+	} else { //newState != nil
+		if oldState == nil {
+			event.Added = append(event.Added, newState.connect(e))
+		} else {
+			if newState.IsEqualTo(*oldState) {
+				return nil
+			}
+			mod := Modification{Old: oldState.connect(e), New: newState.connect(e)}
+			event.Modified = append(event.Modified, mod)
+		}
+		e.Users[loginName] = newState
+	}
+
+	e.EventsChan <- event
 	e.persist()
+	return nil
+}
+
+//ChangeGroup implements the Engine interface.
+func (e *engine) ChangeGroup(name string, action func(Group) (*Group, error)) error {
+	e.Mutex.Lock()
+	defer e.Mutex.Unlock()
+
+	//compute the new state
+	oldState := e.Groups[name]
+	var (
+		newState *Group
+		err      error
+	)
+	if oldState == nil {
+		newState, err = action(Group{})
+	} else {
+		newState, err = action(*oldState)
+	}
+	if err != nil {
+		return err
+	}
+
+	//perform the modification if necessary
+	var event Event
+	if newState == nil {
+		if oldState == nil {
+			return nil
+		}
+		event.Deleted = append(event.Deleted, oldState.connect(e))
+		delete(e.Groups, name)
+	} else { //newState != nil
+		if oldState == nil {
+			event.Added = append(event.Added, newState.connect(e))
+		} else {
+			if newState.IsEqualTo(*oldState) {
+				return nil
+			}
+			mod := Modification{Old: oldState.connect(e), New: newState.connect(e)}
+			event.Modified = append(event.Modified, mod)
+		}
+		e.Groups[name] = newState
+	}
+
+	e.EventsChan <- event
+	e.persist()
+	return nil
 }
 
 func (e *engine) persist() {

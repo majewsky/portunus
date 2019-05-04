@@ -19,6 +19,7 @@
 package frontend
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
 
@@ -26,28 +27,34 @@ import (
 	h "github.com/majewsky/portunus/internal/html"
 )
 
-func getSelfServiceForm(user core.UserWithPerms) h.FormSpec {
+func getSelfServiceForm(user core.UserWithPerms) (h.FormSpec, h.FormState) {
 	isAdmin := user.Perms.Portunus.IsAdmin
-	var memberships []h.RenderedHTML
 	sort.Slice(user.GroupMemberships, func(i, j int) bool {
 		return user.GroupMemberships[i].LongName < user.GroupMemberships[j].LongName
 	})
+	var memberships []h.SelectOptionSpec
+	isSelected := make(map[string]bool)
 	for _, group := range user.GroupMemberships {
-		if isAdmin {
-			memberships = append(memberships, h.Tag("a",
-				h.Attr("href", "/groups/"+group.Name),
-				h.Attr("class", "item item-checked"),
-				h.Text(group.LongName),
-			))
-		} else {
-			memberships = append(memberships, h.Tag("span",
-				h.Attr("class", "item item-checked"),
-				h.Text(group.LongName),
-			))
+		membership := h.SelectOptionSpec{
+			Value: group.Name,
+			Label: group.LongName,
 		}
+		if isAdmin {
+			membership.Href = "/groups/" + group.Name + "/edit"
+		}
+		memberships = append(memberships, membership)
+		isSelected[group.Name] = true
 	}
 
-	return h.FormSpec{
+	state := h.FormState{
+		Fields: map[string]*h.FieldState{
+			"memberships": &h.FieldState{
+				Selected: isSelected,
+			},
+		},
+	}
+
+	spec := h.FormSpec{
 		PostTarget:  "/self",
 		SubmitLabel: "Change password",
 		Fields: []h.FormField{
@@ -64,10 +71,11 @@ func getSelfServiceForm(user core.UserWithPerms) h.FormSpec {
 					h.Tag("span", h.Attr("class", "family-name"), h.Text(user.FamilyName)),
 				),
 			},
-			h.StaticField{
-				Label:      "Group memberships",
-				CSSClasses: "item-list",
-				Value:      h.Join(memberships...),
+			h.SelectFieldSpec{
+				Name:     "memberships",
+				Label:    "Group memberships",
+				Options:  memberships,
+				ReadOnly: true,
 			},
 			h.FieldSpec{
 				InputType: "password",
@@ -95,6 +103,8 @@ func getSelfServiceForm(user core.UserWithPerms) h.FormSpec {
 			},
 		},
 	}
+
+	return spec, state
 }
 
 func getSelfHandler(e core.Engine) http.HandlerFunc {
@@ -104,10 +114,12 @@ func getSelfHandler(e core.Engine) http.HandlerFunc {
 			return
 		}
 
+		f, fs := getSelfServiceForm(*currentUser)
+
 		page{
 			Status:   http.StatusOK,
 			Title:    "My profile",
-			Contents: getSelfServiceForm(*currentUser).Render(r, h.FormState{}),
+			Contents: f.Render(r, fs),
 		}.Render(w, r, currentUser, s)
 	})
 }
@@ -119,8 +131,7 @@ func postSelfHandler(e core.Engine) http.HandlerFunc {
 			return
 		}
 
-		f := getSelfServiceForm(*currentUser)
-		var fs h.FormState
+		f, fs := getSelfServiceForm(*currentUser)
 		f.ReadState(r, &fs)
 
 		if fs.IsValid() {
@@ -139,10 +150,19 @@ func postSelfHandler(e core.Engine) http.HandlerFunc {
 		}
 
 		if fs.IsValid() {
-			user := currentUser.User.Cloned()
-			user.PasswordHash = core.HashPasswordForLDAP(fs.Fields["new_password"].Value)
-			e.SetUser(user)
-			s.AddFlash(flash{"success", h.Text("Password changed.")})
+			newPasswordHash := core.HashPasswordForLDAP(fs.Fields["new_password"].Value)
+			err := e.ChangeUser(currentUser.LoginName, func(u core.User) (*core.User, error) {
+				if u.LoginName == "" {
+					return nil, fmt.Errorf("no such user")
+				}
+				u.PasswordHash = newPasswordHash
+				return &u, nil
+			})
+			if err == nil {
+				s.AddFlash(flash{"success", "Password changed."})
+			} else {
+				s.AddFlash(flash{"error", err.Error()})
+			}
 		}
 
 		page{

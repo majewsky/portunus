@@ -21,6 +21,7 @@ package core
 import (
 	"fmt"
 	"reflect"
+	"sort"
 
 	goldap "gopkg.in/ldap.v3"
 )
@@ -30,7 +31,7 @@ import (
 type Group struct {
 	Name             string      `json:"name"`
 	LongName         string      `json:"long_name"`
-	MemberLoginNames []string    `json:"members"`
+	MemberLoginNames []string    `json:"members"` //TODO store as map[string]bool (but marshal into list like now)
 	Permissions      Permissions `json:"permissions"`
 
 	Engine Engine `json:"-"`
@@ -62,6 +63,8 @@ func (g Group) IsEqualTo(other Entity) bool {
 	lhs.Engine = nil
 	rhs.Engine = nil
 	//cannot use `lhs == rhs` because of []string member
+	sort.Strings(lhs.MemberLoginNames)
+	sort.Strings(rhs.MemberLoginNames)
 	return reflect.DeepEqual(lhs, rhs)
 }
 
