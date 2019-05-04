@@ -147,7 +147,6 @@ func (f InputFieldSpec) RenderField(state FormState) RenderedHTML {
 	inputArgs := []TagArgument{
 		Attr("name", f.Name),
 		Attr("type", f.InputType),
-		Attr("class", "row-input"),
 	}
 
 	if s.Value != "" && f.InputType != "password" {
@@ -158,13 +157,15 @@ func (f InputFieldSpec) RenderField(state FormState) RenderedHTML {
 		inputArgs = append(inputArgs, EmptyAttr("autofocus"))
 	}
 
+	inputClasses := "row-input"
 	if s.ErrorMessage != "" {
 		labelArgs = append(labelArgs, Tag("span",
 			Attr("class", "form-error"),
 			Text(s.ErrorMessage),
 		))
-		inputArgs = append(inputArgs, Attr("class", "form-error"))
+		inputClasses += " form-error"
 	}
+	inputArgs = append(inputArgs, Attr("class", inputClasses))
 
 	return Tag("div", Attr("class", "form-row"),
 		Tag("label", labelArgs...),

@@ -162,7 +162,9 @@ func getUserForm(user *core.User, e core.Engine) (h.FormSpec, h.FormState) {
 			Value: group.Name,
 			Label: group.LongName,
 		})
-		isGroupSelected[group.Name] = group.ContainsUser(*user)
+		if user != nil {
+			isGroupSelected[group.Name] = group.ContainsUser(*user)
+		}
 	}
 	spec.Fields = append(spec.Fields, h.SelectFieldSpec{
 		Name:    "memberships",
@@ -172,14 +174,24 @@ func getUserForm(user *core.User, e core.Engine) (h.FormSpec, h.FormState) {
 	state.Fields["memberships"] = &h.FieldState{Selected: isGroupSelected}
 
 	if user == nil {
-		spec.Fields = append(spec.Fields, h.InputFieldSpec{
-			InputType: "password",
-			Name:      "password",
-			Label:     "Initial password",
-			Rules: []h.ValidationRule{
-				h.MustNotBeEmpty,
+		spec.Fields = append(spec.Fields,
+			h.InputFieldSpec{
+				InputType: "password",
+				Name:      "password",
+				Label:     "Initial password",
+				Rules: []h.ValidationRule{
+					h.MustNotBeEmpty,
+				},
 			},
-		})
+			h.InputFieldSpec{
+				InputType: "password",
+				Name:      "repeat_password",
+				Label:     "Repeat password",
+				Rules: []h.ValidationRule{
+					h.MustNotBeEmpty,
+				},
+			},
+		)
 	}
 
 	return spec, state
@@ -282,6 +294,57 @@ func getUsersNewHandler(e core.Engine) http.HandlerFunc {
 
 func postUsersNewHandler(e core.Engine) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//TODO implement
+		currentUser, s := checkAuth(w, r, e, adminPerms)
+		if currentUser == nil {
+			return
+		}
+
+		f, fs := getUserForm(nil, e)
+		f.ReadState(r, &fs)
+
+		if fs.IsValid() {
+			password1 := fs.Fields["password"].Value
+			password2 := fs.Fields["repeat_password"].Value
+			if password1 != password2 {
+				fs.Fields["repeat_password"].ErrorMessage = "did not match"
+			}
+		}
+
+		if !fs.IsValid() {
+			page{
+				Status:   http.StatusOK,
+				Title:    "Create user",
+				Contents: f.Render(r, fs),
+			}.Render(w, r, currentUser, s)
+			return
+		}
+
+		loginName := fs.Fields["uid"].Value
+		passwordHash := core.HashPasswordForLDAP(fs.Fields["password"].Value)
+		e.ChangeUser(loginName, func(u core.User) (*core.User, error) {
+			return &core.User{
+				LoginName:    loginName,
+				GivenName:    fs.Fields["given_name"].Value,
+				FamilyName:   fs.Fields["family_name"].Value,
+				PasswordHash: passwordHash,
+			}, nil
+		})
+
+		isMemberOf := fs.Fields["memberships"].Selected
+		for _, group := range e.ListGroups() {
+			if !isMemberOf[group.Name] {
+				continue
+			}
+			e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
+				if g.Name == "" {
+					return nil, nil //if the group was deleted in parallel, no need to complain
+				}
+				g.MemberLoginNames[loginName] = true
+				return &g, nil
+			})
+		}
+
+		msg := fmt.Sprintf("Created user %q.", loginName)
+		RedirectWithFlash(w, r, s, "/users", flash{"success", msg})
 	}
 }
