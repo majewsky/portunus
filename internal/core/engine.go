@@ -200,16 +200,16 @@ func (e *engine) ChangeUser(loginName string, action func(User) (*User, error)) 
 	defer e.Mutex.Unlock()
 
 	//compute the new state
-	oldState := e.Users[loginName]
+	oldStatePtr := e.Users[loginName]
 	var (
-		newState *User
-		err      error
+		oldState       User
+		oldStateCloned User
 	)
-	if oldState == nil {
-		newState, err = action(User{})
-	} else {
-		newState, err = action(*oldState)
+	if oldStatePtr != nil {
+		oldState = *oldStatePtr
+		oldStateCloned = oldState.connect(nil)
 	}
+	newState, err := action(oldStateCloned)
 	if err != nil {
 		return err
 	}
@@ -217,16 +217,16 @@ func (e *engine) ChangeUser(loginName string, action func(User) (*User, error)) 
 	//perform the modification if necessary
 	var event Event
 	if newState == nil {
-		if oldState == nil {
+		if oldStatePtr == nil {
 			return nil
 		}
 		event.Deleted = append(event.Deleted, oldState.connect(e))
 		delete(e.Users, loginName)
 	} else { //newState != nil
-		if oldState == nil {
+		if oldStatePtr == nil {
 			event.Added = append(event.Added, newState.connect(e))
 		} else {
-			if newState.IsEqualTo(*oldState) {
+			if newState.IsEqualTo(oldState) {
 				return nil
 			}
 			mod := Modification{Old: oldState.connect(e), New: newState.connect(e)}
@@ -246,16 +246,16 @@ func (e *engine) ChangeGroup(name string, action func(Group) (*Group, error)) er
 	defer e.Mutex.Unlock()
 
 	//compute the new state
-	oldState := e.Groups[name]
+	oldStatePtr := e.Groups[name]
 	var (
-		newState *Group
-		err      error
+		oldState       Group
+		oldStateCloned Group
 	)
-	if oldState == nil {
-		newState, err = action(Group{})
-	} else {
-		newState, err = action(*oldState)
+	if oldStatePtr != nil {
+		oldState = *oldStatePtr
+		oldStateCloned = oldState.connect(nil)
 	}
+	newState, err := action(oldStateCloned)
 	if err != nil {
 		return err
 	}
@@ -263,16 +263,16 @@ func (e *engine) ChangeGroup(name string, action func(Group) (*Group, error)) er
 	//perform the modification if necessary
 	var event Event
 	if newState == nil {
-		if oldState == nil {
+		if oldStatePtr == nil {
 			return nil
 		}
 		event.Deleted = append(event.Deleted, oldState.connect(e))
 		delete(e.Groups, name)
 	} else { //newState != nil
-		if oldState == nil {
+		if oldStatePtr == nil {
 			event.Added = append(event.Added, newState.connect(e))
 		} else {
-			if newState.IsEqualTo(*oldState) {
+			if newState.IsEqualTo(oldState) {
 				return nil
 			}
 			mod := Modification{Old: oldState.connect(e), New: newState.connect(e)}

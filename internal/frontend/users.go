@@ -247,6 +247,18 @@ func postUserEditHandler(e core.Engine) http.HandlerFunc {
 			RedirectWithFlash(w, r, s, "/users", flash{"error", err.Error()})
 			return
 		}
+
+		isMemberOf := fs.Fields["memberships"].Selected
+		for _, group := range e.ListGroups() {
+			e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
+				if g.Name == "" {
+					return nil, nil //if the group was deleted in parallel, no need to complain
+				}
+				g.MemberLoginNames[user.LoginName] = isMemberOf[group.Name]
+				return &g, nil
+			})
+		}
+
 		//TODO persist selected group memberships
 
 		msg := fmt.Sprintf("Updated user %q.", user.LoginName)

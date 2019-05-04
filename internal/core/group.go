@@ -19,6 +19,7 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"sort"
@@ -29,27 +30,31 @@ import (
 //Group represents a single group of users. Membership in a group implicitly
 //grants its Permissions to all users in that group.
 type Group struct {
-	Name             string      `json:"name"`
-	LongName         string      `json:"long_name"`
-	MemberLoginNames []string    `json:"members"` //TODO store as map[string]bool (but marshal into list like now)
-	Permissions      Permissions `json:"permissions"`
+	Name             string           `json:"name"`
+	LongName         string           `json:"long_name"`
+	MemberLoginNames GroupMemberNames `json:"members"`
+	Permissions      Permissions      `json:"permissions"`
 
 	Engine Engine `json:"-"`
 }
 
 func (g Group) connect(e Engine) Group {
+	//deep clone
+	logins := g.MemberLoginNames
+	g.MemberLoginNames = make(GroupMemberNames)
+	for name, isMember := range logins {
+		if isMember {
+			g.MemberLoginNames[name] = true
+		}
+	}
+
 	g.Engine = e
 	return g
 }
 
 //ContainsUser checks whether this group contains the given user.
 func (g Group) ContainsUser(u User) bool {
-	for _, name := range g.MemberLoginNames {
-		if name == u.LoginName {
-			return true
-		}
-	}
-	return false
+	return g.MemberLoginNames[u.LoginName]
 }
 
 //IsEqualTo implements the Entity interface.
@@ -63,8 +68,6 @@ func (g Group) IsEqualTo(other Entity) bool {
 	lhs.Engine = nil
 	rhs.Engine = nil
 	//cannot use `lhs == rhs` because of []string member
-	sort.Strings(lhs.MemberLoginNames)
-	sort.Strings(rhs.MemberLoginNames)
 	return reflect.DeepEqual(lhs, rhs)
 }
 
@@ -73,9 +76,11 @@ func (g Group) RenderToLDAP(suffix string) goldap.AddRequest {
 	//TODO: allow making this a posixGroup instead of a groupOfNames (requires gidNumber attribute)
 	//NOTE: maybe duplicate posixGroups under a different ou so that we can have both a groupOfNames and a posixGroup for the same Group
 
-	memberDNames := make([]string, len(g.MemberLoginNames))
-	for idx, name := range g.MemberLoginNames {
-		memberDNames[idx] = fmt.Sprintf("uid=%s,ou=users,%s", name, suffix)
+	memberDNames := make([]string, 0, len(g.MemberLoginNames))
+	for name, isMember := range g.MemberLoginNames {
+		if isMember {
+			memberDNames = append(memberDNames, fmt.Sprintf("uid=%s,ou=users,%s", name, suffix))
+		}
 	}
 
 	return goldap.AddRequest{
@@ -86,4 +91,33 @@ func (g Group) RenderToLDAP(suffix string) goldap.AddRequest {
 			mkAttr("objectClass", "groupOfNames", "top"),
 		},
 	}
+}
+
+//GroupMemberNames is the type of Group.MemberLoginNames.
+type GroupMemberNames map[string]bool
+
+//MarshalJSON implements the json.Marshaler interface.
+func (g GroupMemberNames) MarshalJSON() ([]byte, error) {
+	names := make([]string, 0, len(g))
+	for name, isMember := range g {
+		if isMember {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return json.Marshal(names)
+}
+
+//UnmarshalJSON implements the json.Unmarshaler interface.
+func (g *GroupMemberNames) UnmarshalJSON(data []byte) error {
+	var names []string
+	err := json.Unmarshal(data, &names)
+	if err != nil {
+		return err
+	}
+	*g = make(map[string]bool)
+	for _, name := range names {
+		(*g)[name] = true
+	}
+	return nil
 }
