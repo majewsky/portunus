@@ -46,34 +46,25 @@ var standardHeadTags = h.Join(
 	),
 )
 
-type flash struct {
-	Type    string
+//Flash is a flash message.
+type Flash struct {
+	Type    string //either "error" or "success"
 	Message string
 }
 
 func init() {
-	gob.Register(flash{})
+	gob.Register(Flash{})
 }
 
-//RedirectWithFlash is a shortcut for redirecting from a POST action to a GET
-//view with a flash message.
-func RedirectWithFlash(w http.ResponseWriter, r *http.Request, s *sessions.Session, target string, f flash) {
-	s.AddFlash(f)
-	err := s.Save(r, w)
-	if err == nil {
-		http.Redirect(w, r, target, http.StatusSeeOther)
-	} else {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-type page struct {
+//Page describes a HTML page produced by Portunus.
+type Page struct {
 	Status   int
 	Title    string
 	Contents h.RenderedHTML
 }
 
-func (p page) Render(w http.ResponseWriter, r *http.Request, currentUser *core.UserWithPerms, s *sessions.Session) {
+//Render renders the given page.
+func (p Page) Render(w http.ResponseWriter, r *http.Request, currentUser *core.UserWithPerms, s *sessions.Session) {
 	//prepare <head>
 	titleText := "Portunus"
 	if p.Title != "" {
@@ -115,7 +106,7 @@ func (p page) Render(w http.ResponseWriter, r *http.Request, currentUser *core.U
 	//prepare flashes, if any
 	var flashes []h.RenderedHTML
 	for _, value := range s.Flashes() {
-		if f, ok := value.(flash); ok {
+		if f, ok := value.(Flash); ok {
 			flashes = append(flashes, h.Tag("div",
 				h.Attr("class", "flash flash-"+f.Type),
 				h.Text(f.Message),
@@ -142,27 +133,4 @@ func (p page) Render(w http.ResponseWriter, r *http.Request, currentUser *core.U
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(p.Status)
 	w.Write([]byte(htmlTag.String()))
-}
-
-//RenderGroupMemberships renders a list of all groups the given user is part of.
-func RenderGroupMemberships(user core.User, groups []core.Group, currentUser core.UserWithPerms) h.RenderedHTML {
-	isAdmin := currentUser.Perms.Portunus.IsAdmin
-	var groupMemberships []h.RenderedHTML
-	for _, group := range groups {
-		if !group.ContainsUser(user) {
-			continue
-		}
-		if len(groupMemberships) > 0 {
-			groupMemberships = append(groupMemberships, h.Text(", "))
-		}
-		if isAdmin {
-			groupMemberships = append(groupMemberships, h.Tag("a",
-				h.Attr("href", "/groups/"+group.Name+"/edit"),
-				h.Text(group.LongName),
-			))
-		} else {
-			groupMemberships = append(groupMemberships, h.Text(group.Name))
-		}
-	}
-	return h.Join(groupMemberships...)
 }

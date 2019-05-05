@@ -27,7 +27,9 @@ import (
 	h "github.com/majewsky/portunus/internal/html"
 )
 
-func getSelfServiceForm(user core.UserWithPerms) (h.FormSpec, h.FormState) {
+func useSelfServiceForm(i *Interaction) {
+	user := i.CurrentUser
+
 	isAdmin := user.Perms.Portunus.IsAdmin
 	sort.Slice(user.GroupMemberships, func(i, j int) bool {
 		return user.GroupMemberships[i].LongName < user.GroupMemberships[j].LongName
@@ -46,7 +48,7 @@ func getSelfServiceForm(user core.UserWithPerms) (h.FormSpec, h.FormState) {
 		isSelected[group.Name] = true
 	}
 
-	state := h.FormState{
+	i.FormState = &h.FormState{
 		Fields: map[string]*h.FieldState{
 			"memberships": &h.FieldState{
 				Selected: isSelected,
@@ -54,7 +56,7 @@ func getSelfServiceForm(user core.UserWithPerms) (h.FormSpec, h.FormState) {
 		},
 	}
 
-	spec := h.FormSpec{
+	i.FormSpec = &h.FormSpec{
 		PostTarget:  "/self",
 		SubmitLabel: "Change password",
 		Fields: []h.FormField{
@@ -103,72 +105,63 @@ func getSelfServiceForm(user core.UserWithPerms) (h.FormSpec, h.FormState) {
 			},
 		},
 	}
-
-	return spec, state
 }
 
-func getSelfHandler(e core.Engine) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		currentUser, s := checkAuth(w, r, e, core.Permissions{})
-		if currentUser == nil {
-			return
-		}
-
-		f, fs := getSelfServiceForm(*currentUser)
-
-		page{
-			Status:   http.StatusOK,
-			Title:    "My profile",
-			Contents: f.Render(r, fs),
-		}.Render(w, r, currentUser, s)
-	})
+func getSelfHandler(e core.Engine) http.Handler {
+	return Do(
+		LoadSession,
+		VerifyLogin(e),
+		useSelfServiceForm,
+		ShowForm("My profile"),
+	)
 }
 
-func postSelfHandler(e core.Engine) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		currentUser, s := checkAuth(w, r, e, core.Permissions{})
-		if currentUser == nil {
-			return
+func postSelfHandler(e core.Engine) http.Handler {
+	return Do(
+		LoadSession,
+		VerifyLogin(e),
+		useSelfServiceForm,
+		ReadFormStateFromRequest,
+		validateSelfServiceForm,
+		ShowFormIfErrors("My profile"),
+		executeSelfServiceForm(e),
+		ShowForm("My profile"),
+	)
+}
+
+func validateSelfServiceForm(i *Interaction) {
+	fs := i.FormState
+
+	if fs.IsValid() {
+		newPassword1 := fs.Fields["new_password"].Value
+		newPassword2 := fs.Fields["repeat_password"].Value
+		if newPassword1 != newPassword2 {
+			fs.Fields["repeat_password"].ErrorMessage = "did not match"
 		}
+	}
 
-		f, fs := getSelfServiceForm(*currentUser)
-		f.ReadState(r, &fs)
+	if fs.IsValid() {
+		oldPassword := fs.Fields["old_password"].Value
+		if !core.CheckPasswordHash(oldPassword, i.CurrentUser.PasswordHash) {
+			fs.Fields["old_password"].ErrorMessage = "is not correct"
+		}
+	}
+}
 
-		if fs.IsValid() {
-			newPassword1 := fs.Fields["new_password"].Value
-			newPassword2 := fs.Fields["repeat_password"].Value
-			if newPassword1 != newPassword2 {
-				fs.Fields["repeat_password"].ErrorMessage = "did not match"
+func executeSelfServiceForm(e core.Engine) HandlerStep {
+	return func(i *Interaction) {
+		newPasswordHash := core.HashPasswordForLDAP(i.FormState.Fields["new_password"].Value)
+		err := e.ChangeUser(i.CurrentUser.LoginName, func(u core.User) (*core.User, error) {
+			if u.LoginName == "" {
+				return nil, fmt.Errorf("no such user")
 			}
+			u.PasswordHash = newPasswordHash
+			return &u, nil
+		})
+		if err == nil {
+			i.Session.AddFlash(Flash{"success", "Password changed."})
+		} else {
+			i.Session.AddFlash(Flash{"error", err.Error()})
 		}
-
-		if fs.IsValid() {
-			oldPassword := fs.Fields["old_password"].Value
-			if !core.CheckPasswordHash(oldPassword, currentUser.PasswordHash) {
-				fs.Fields["old_password"].ErrorMessage = "is not correct"
-			}
-		}
-
-		if fs.IsValid() {
-			newPasswordHash := core.HashPasswordForLDAP(fs.Fields["new_password"].Value)
-			err := e.ChangeUser(currentUser.LoginName, func(u core.User) (*core.User, error) {
-				if u.LoginName == "" {
-					return nil, fmt.Errorf("no such user")
-				}
-				u.PasswordHash = newPasswordHash
-				return &u, nil
-			})
-			if err == nil {
-				s.AddFlash(flash{"success", "Password changed."})
-			} else {
-				s.AddFlash(flash{"error", err.Error()})
-			}
-		}
-
-		page{
-			Status:   http.StatusOK,
-			Title:    "My profile",
-			Contents: f.Render(r, fs),
-		}.Render(w, r, currentUser, s)
-	})
+	}
 }
