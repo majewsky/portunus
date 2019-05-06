@@ -55,12 +55,19 @@ func HTTPHandler(engine core.Engine, isBehindTLSProxy bool) http.Handler {
 	r.Methods("POST").Path(`/users/{uid}/delete`).Handler(postUserDeleteHandler(engine))
 
 	r.Methods("GET").Path(`/groups`).Handler(getGroupsHandler(engine))
-	//TODO CRUD groups
+	r.Methods("GET").Path(`/groups/new`).Handler(getGroupsNewHandler(engine))
+	r.Methods("POST").Path(`/groups/new`).Handler(postGroupsNewHandler(engine))
+	r.Methods("GET").Path(`/groups/{name}/edit`).Handler(getGroupEditHandler(engine))
+	r.Methods("POST").Path(`/groups/{name}/edit`).Handler(postGroupEditHandler(engine))
+	r.Methods("GET").Path(`/groups/{name}/delete`).Handler(getGroupDeleteHandler(engine))
+	r.Methods("POST").Path(`/groups/{name}/delete`).Handler(postGroupDeleteHandler(engine))
 
 	//setup CSRF with maxAge = 30 minutes
 	csrfKey := securecookie.GenerateRandomKey(32)
 	csrfMiddleware := csrf.Protect(csrfKey, csrf.MaxAge(1800), csrf.Secure(isBehindTLSProxy))
 	handler := csrfMiddleware(r)
+
+	//TODO: add middleware for security headers
 
 	return handler
 }
@@ -132,7 +139,8 @@ type Interaction struct {
 	CurrentUser *core.UserWithPerms
 	FormSpec    *h.FormSpec
 	FormState   *h.FormState
-	TargetUser  *core.User //only used by CRUD views editing a single user
+	TargetUser  *core.User  //only used by CRUD views editing a single user
+	TargetGroup *core.Group //only used by CRUD views editing a single group
 }
 
 //WriteError wraps http.Error().
