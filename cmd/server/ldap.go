@@ -112,9 +112,11 @@ func (w *LDAPWorker) processEvents(ldapUpdates <-chan []core.LDAPObject) {
 			isExistingDN[newObj.DN] = true
 			oldObj, exists := w.objects[newObj.DN]
 			if exists {
-				err := w.modifyObject(newObj.DN, oldObj.Attributes, newObj.Attributes)
+				updated, err := w.modifyObject(newObj.DN, oldObj.Attributes, newObj.Attributes)
 				if err == nil {
-					logg.Info("LDAP object %s updated", newObj.DN)
+					if updated {
+						logg.Info("LDAP object %s updated", newObj.DN)
+					}
 				} else {
 					logg.Error("cannot update LDAP object %s: %s", newObj.DN, err.Error())
 				}
@@ -181,7 +183,7 @@ func (w LDAPWorker) deleteObject(dn string) error {
 	return w.conn.Del(&goldap.DelRequest{DN: dn})
 }
 
-func (w LDAPWorker) modifyObject(dn string, oldAttrs, newAttrs map[string][]string) error {
+func (w LDAPWorker) modifyObject(dn string, oldAttrs, newAttrs map[string][]string) (updated bool, err error) {
 	req := goldap.ModifyRequest{DN: dn}
 	keepAttribute := make(map[string]bool, len(newAttrs))
 
@@ -199,7 +201,10 @@ func (w LDAPWorker) modifyObject(dn string, oldAttrs, newAttrs map[string][]stri
 		}
 	}
 
-	return w.conn.Modify(&req)
+	if len(req.Changes) == 0 {
+		return false, nil
+	}
+	return true, w.conn.Modify(&req)
 }
 
 func stringListsAreEqual(lhs, rhs []string) bool {
