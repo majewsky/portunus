@@ -95,6 +95,7 @@ func groupsList(e core.Engine) func(*Interaction) Page {
 			Status:   http.StatusOK,
 			Title:    "Groups",
 			Contents: groupsTable,
+			Wide:     true,
 		}
 	}
 }

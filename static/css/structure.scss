@@ -40,10 +40,11 @@ nav {
 
 				&.current {
 					background: #FFF;
+				}
 
-					&:active, &:hover, &:focus {
-						color: inherit;
-					}
+				&:active, &:hover, &:focus {
+					background: #EEE;
+					color: inherit;
 				}
 			}
 		}
@@ -54,4 +55,8 @@ main {
 	max-width: 800px;
 	margin: 1rem auto 2rem auto;
 	padding: 0 0.5rem;
+
+	&.wide {
+		max-width: 1200px;
+	}
 }

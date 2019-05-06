@@ -102,6 +102,7 @@ func usersList(e core.Engine) func(*Interaction) Page {
 			Status:   http.StatusOK,
 			Title:    "Users",
 			Contents: usersTable,
+			Wide:     true,
 		}
 	}
 }

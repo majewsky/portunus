@@ -61,6 +61,7 @@ type Page struct {
 	Status   int
 	Title    string
 	Contents h.RenderedHTML
+	Wide     bool
 }
 
 //Render renders the given page.
@@ -119,11 +120,16 @@ func (p Page) Render(w http.ResponseWriter, r *http.Request, currentUser *core.U
 	}
 
 	//render final HTML
+	mainCSSClass := ""
+	if p.Wide {
+		mainCSSClass = "wide"
+	}
 	htmlTag := h.Tag("html",
 		headTag,
 		h.Tag("body",
 			h.Tag("nav", h.Tag("ul", navFields...)),
 			h.Tag("main",
+				h.Attr("class", mainCSSClass),
 				h.Join(flashes...),
 				p.Contents,
 			),
