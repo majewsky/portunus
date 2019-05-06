@@ -31,7 +31,7 @@ import (
 )
 
 func main() {
-	logg.ShowDebug = true //TODO make configurable
+	logg.ShowDebug = os.Getenv("PORTUNUS_DEBUG") == "true"
 	dropPrivileges()
 
 	fs := core.FileStore{

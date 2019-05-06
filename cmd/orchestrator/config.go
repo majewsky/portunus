@@ -29,6 +29,7 @@ import (
 var (
 	envDefaults = map[string]string{
 		//empty value = not optional
+		"PORTUNUS_DEBUG":              "false",
 		"PORTUNUS_LDAP_SUFFIX":        "",
 		"PORTUNUS_SERVER_BINARY":      "portunus-server",
 		"PORTUNUS_SERVER_GROUP":       "portunus",
@@ -43,13 +44,15 @@ var (
 		"PORTUNUS_SLAPD_USER":         "ldap",
 	}
 
+	boolRx        = regexp.MustCompile(`^(?:true|false)$`)
 	ldapSuffixRx  = regexp.MustCompile(`^dc=[a-z0-9_-]+(?:,dc=[a-z0-9_-]+)*$`)
 	userOrGroupRx = regexp.MustCompile(`^[a-z_][a-z0-9_-]*\$?$`)
 	envFormats    = map[string]*regexp.Regexp{
+		"PORTUNUS_DEBUG":              boolRx,
 		"PORTUNUS_LDAP_SUFFIX":        ldapSuffixRx,
 		"PORTUNUS_SERVER_GROUP":       userOrGroupRx,
 		"PORTUNUS_SERVER_HTTP_LISTEN": regexp.MustCompile(`^(?:[0-9.]+|\[[0-9a-f:]+\]):[0-9]+$`),
-		"PORTUNUS_SERVER_HTTP_SECURE": regexp.MustCompile(`^(?:true|false)$`),
+		"PORTUNUS_SERVER_HTTP_SECURE": boolRx,
 		"PORTUNUS_SERVER_USER":        userOrGroupRx,
 		"PORTUNUS_SLAPD_GROUP":        userOrGroupRx,
 		"PORTUNUS_SLAPD_USER":         userOrGroupRx,

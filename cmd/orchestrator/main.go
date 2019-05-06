@@ -29,8 +29,8 @@ import (
 )
 
 func main() {
-	logg.ShowDebug = true //TODO make configurable
 	environment, ids := readConfig()
+	logg.ShowDebug = environment["PORTUNUS_DEBUG"] == "true"
 
 	//delete leftovers from previous runs
 	slapdStatePath := environment["PORTUNUS_SLAPD_STATE_DIR"]
@@ -62,6 +62,7 @@ func main() {
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("PORTUNUS_SERVER_UID=%d", ids["PORTUNUS_SERVER_UID"]),
 		fmt.Sprintf("PORTUNUS_SERVER_GID=%d", ids["PORTUNUS_SERVER_GID"]),
+		"PORTUNUS_DEBUG="+environment["PORTUNUS_DEBUG"],
 		"PORTUNUS_LDAP_SUFFIX="+environment["PORTUNUS_LDAP_SUFFIX"],
 		"PORTUNUS_LDAP_PASSWORD="+environment["PORTUNUS_LDAP_PASSWORD"],
 		"PORTUNUS_SERVER_HTTP_LISTEN="+environment["PORTUNUS_SERVER_HTTP_LISTEN"],
