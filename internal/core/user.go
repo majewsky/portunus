@@ -44,6 +44,7 @@ func (u User) FullName() string {
 //RenderToLDAP produces the LDAPObject representing this group.
 func (u User) RenderToLDAP(suffix string) LDAPObject {
 	//TODO: make this a posixAccount (requires attributes uidNumber, gidNumber, homeDirectory; optional attributes loginShell, gecos, description)
+	//TODO: generate memberOf attributes (this requires a custom schema)
 	return LDAPObject{
 		DN: fmt.Sprintf("uid=%s,ou=users,%s", u.LoginName, suffix),
 		Attributes: map[string][]string{

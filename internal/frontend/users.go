@@ -192,6 +192,7 @@ func useUserForm(e core.Engine) HandlerStep {
 		})
 		i.FormState.Fields["memberships"] = &h.FieldState{Selected: isGroupSelected}
 
+		//TODO: allow to reset password for existing user (in case they forgot it)
 		if i.TargetUser == nil {
 			i.FormSpec.Fields = append(i.FormSpec.Fields,
 				h.InputFieldSpec{
