@@ -35,6 +35,7 @@ type LDAPWorker struct {
 	UserDN   string //e.g. "cn=portunus,dc=example,dc=org"
 	Password string //for Portunus' service user
 	conn     *goldap.Conn
+	objects  map[string]core.LDAPObject //persisted objects, key = object DN
 }
 
 func newLDAPWorker() *LDAPWorker {
@@ -44,6 +45,7 @@ func newLDAPWorker() *LDAPWorker {
 	w := &LDAPWorker{
 		DNSuffix: os.Getenv("PORTUNUS_LDAP_SUFFIX"),
 		Password: os.Getenv("PORTUNUS_LDAP_PASSWORD"),
+		objects:  make(map[string]core.LDAPObject),
 	}
 	w.UserDN = "cn=portunus," + w.DNSuffix
 
@@ -57,32 +59,41 @@ func newLDAPWorker() *LDAPWorker {
 	//create main structure: domain-component objects
 	suffixRDNs := strings.Split(w.DNSuffix, ",")
 	dcName := strings.TrimPrefix(suffixRDNs[0], "dc=")
-	err := w.add(w.DNSuffix,
-		mkAttr("dc", dcName),
-		mkAttr("o", dcName),
-		mkAttr("objectClass", "dcObject", "organization", "top"),
-	)
+	err := w.addObject(core.LDAPObject{
+		DN: w.DNSuffix,
+		Attributes: map[string][]string{
+			"dc":          {dcName},
+			"o":           {dcName},
+			"objectClass": {"dcObject", "organization", "top"},
+		},
+	})
 	if err != nil {
 		logg.Fatal(err.Error())
 	}
 
 	//create main structure: organizational units
 	for _, ouName := range []string{"users", "groups"} {
-		err := w.add(fmt.Sprintf("ou=%s,%s", ouName, w.DNSuffix),
-			mkAttr("ou", ouName),
-			mkAttr("objectClass", "organizationalUnit", "top"),
-		)
+		err := w.addObject(core.LDAPObject{
+			DN: fmt.Sprintf("ou=%s,%s", ouName, w.DNSuffix),
+			Attributes: map[string][]string{
+				"ou":          {ouName},
+				"objectClass": {"organizationalUnit", "top"},
+			},
+		})
 		if err != nil {
 			logg.Fatal(err.Error())
 		}
 	}
 
 	//create main structure: service user account
-	err = w.add(w.UserDN,
-		mkAttr("cn", "portunus"),
-		mkAttr("description", "Internal service user for Portunus"),
-		mkAttr("objectClass", "organizationalRole", "top"),
-	)
+	err = w.addObject(core.LDAPObject{
+		DN: w.UserDN,
+		Attributes: map[string][]string{
+			"cn":          {"portunus"},
+			"description": {"Internal service user for Portunus"},
+			"objectClass": {"organizationalRole", "top"},
+		},
+	})
 	if err != nil {
 		logg.Fatal(err.Error())
 	}
@@ -91,23 +102,45 @@ func newLDAPWorker() *LDAPWorker {
 }
 
 //Does not return. Call with `go`.
-func (w *LDAPWorker) processEvents(events <-chan core.Event) {
+func (w *LDAPWorker) processEvents(ldapUpdates <-chan []core.LDAPObject) {
 	//process events (errors here are not fatal anymore; defects in single
 	//entries should not compromise the availability of the overall service)
-	for event := range events {
-		if len(event.Added) > 0 {
-			logg.Info("adding %d entities to the LDAP database", len(event.Added))
-			for _, entity := range event.Added {
-				addReq := entity.RenderToLDAP(w.DNSuffix)
-				err := w.add(addReq.DN, addReq.Attributes...)
-				if err != nil {
-					logg.Error(err.Error())
+	for ldapDB := range ldapUpdates {
+		isExistingDN := make(map[string]bool)
+
+		for _, newObj := range ldapDB {
+			isExistingDN[newObj.DN] = true
+			oldObj, exists := w.objects[newObj.DN]
+			if exists {
+				err := w.modifyObject(newObj.DN, oldObj.Attributes, newObj.Attributes)
+				if err == nil {
+					logg.Info("LDAP object %s updated", newObj.DN)
+				} else {
+					logg.Error("cannot update LDAP object %s: %s", newObj.DN, err.Error())
+				}
+			} else {
+				err := w.addObject(newObj)
+				if err == nil {
+					logg.Info("LDAP object %s created", newObj.DN)
+				} else {
+					logg.Error("cannot create LDAP object %s: %s", newObj.DN, err.Error())
 				}
 			}
+			w.objects[newObj.DN] = newObj
 		}
 
-		//TODO event.Modified
-		//TODO event.Deleted
+		for dn := range w.objects {
+			if isExistingDN[dn] {
+				continue
+			}
+			err := w.deleteObject(dn)
+			if err == nil {
+				logg.Info("LDAP object %s deleted", dn)
+			} else {
+				logg.Error("cannot delete LDAP object %s: %s", dn, err.Error())
+			}
+			delete(w.objects, dn)
+		}
 	}
 }
 
@@ -132,10 +165,52 @@ func mkAttr(typeName string, values ...string) goldap.Attribute {
 	return goldap.Attribute{Type: typeName, Vals: values}
 }
 
-func (w LDAPWorker) add(dn string, attrs ...goldap.Attribute) error {
-	err := w.conn.Add(&goldap.AddRequest{DN: dn, Attributes: attrs})
-	if err == nil {
-		return nil
+func (w LDAPWorker) addObject(obj core.LDAPObject) error {
+	req := goldap.AddRequest{
+		DN:         obj.DN,
+		Attributes: make([]goldap.Attribute, 0, len(obj.Attributes)),
 	}
-	return fmt.Errorf("could not add object %s to the LDAP database: %s", dn, err.Error())
+	for key, values := range obj.Attributes {
+		attr := goldap.Attribute{Type: key, Vals: values}
+		req.Attributes = append(req.Attributes, attr)
+	}
+	return w.conn.Add(&req)
+}
+
+func (w LDAPWorker) deleteObject(dn string) error {
+	return w.conn.Del(&goldap.DelRequest{DN: dn})
+}
+
+func (w LDAPWorker) modifyObject(dn string, oldAttrs, newAttrs map[string][]string) error {
+	req := goldap.ModifyRequest{DN: dn}
+	keepAttribute := make(map[string]bool, len(newAttrs))
+
+	for key, newValues := range newAttrs {
+		keepAttribute[key] = true
+		oldValues := oldAttrs[key]
+		if !stringListsAreEqual(oldValues, newValues) {
+			req.Replace(key, newValues)
+		}
+	}
+
+	for key := range oldAttrs {
+		if !keepAttribute[key] {
+			req.Delete(key, nil)
+		}
+	}
+
+	return w.conn.Modify(&req)
+}
+
+func stringListsAreEqual(lhs, rhs []string) bool {
+	if len(lhs) != len(rhs) {
+		return false
+	}
+	for idx, left := range lhs {
+		right := rhs[idx]
+		if left != right {
+			return false
+		}
+	}
+	return true
 }

@@ -23,8 +23,6 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
-
-	goldap "gopkg.in/ldap.v3"
 )
 
 //Group represents a single group of users. Membership in a group implicitly
@@ -34,12 +32,10 @@ type Group struct {
 	LongName         string           `json:"long_name"`
 	MemberLoginNames GroupMemberNames `json:"members"`
 	Permissions      Permissions      `json:"permissions"`
-
-	Engine Engine `json:"-"`
 }
 
-func (g Group) connect(e Engine) Group {
-	//deep clone
+//Cloned returns a deep copy of this user.
+func (g Group) Cloned() Group {
 	logins := g.MemberLoginNames
 	g.MemberLoginNames = make(GroupMemberNames)
 	for name, isMember := range logins {
@@ -47,8 +43,6 @@ func (g Group) connect(e Engine) Group {
 			g.MemberLoginNames[name] = true
 		}
 	}
-
-	g.Engine = e
 	return g
 }
 
@@ -57,22 +51,13 @@ func (g Group) ContainsUser(u User) bool {
 	return g.MemberLoginNames[u.LoginName]
 }
 
-//IsEqualTo implements the Entity interface.
-func (g Group) IsEqualTo(other Entity) bool {
-	lhs := g
-	rhs, ok := other.(Group)
-	if !ok {
-		return false
-	}
-
-	lhs.Engine = nil
-	rhs.Engine = nil
-	//cannot use `lhs == rhs` because of []string member
-	return reflect.DeepEqual(lhs, rhs)
+//IsEqualTo is a type-safe wrapper around reflect.DeepEqual().
+func (g Group) IsEqualTo(other Group) bool {
+	return reflect.DeepEqual(g, other)
 }
 
-//RenderToLDAP implements the Entity interface.
-func (g Group) RenderToLDAP(suffix string) goldap.AddRequest {
+//RenderToLDAP produces the LDAPObject representing this group.
+func (g Group) RenderToLDAP(suffix string) LDAPObject {
 	//TODO: allow making this a posixGroup instead of a groupOfNames (requires gidNumber attribute)
 	//NOTE: maybe duplicate posixGroups under a different ou so that we can have both a groupOfNames and a posixGroup for the same Group
 
@@ -83,12 +68,12 @@ func (g Group) RenderToLDAP(suffix string) goldap.AddRequest {
 		}
 	}
 
-	return goldap.AddRequest{
+	return LDAPObject{
 		DN: fmt.Sprintf("cn=%s,ou=groups,%s", g.Name, suffix),
-		Attributes: []goldap.Attribute{
-			mkAttr("cn", g.Name),
-			mkAttr("member", memberDNames...),
-			mkAttr("objectClass", "groupOfNames", "top"),
+		Attributes: map[string][]string{
+			"cn":          {g.Name},
+			"member":      memberDNames,
+			"objectClass": {"groupOfNames", "top"},
 		},
 	}
 }

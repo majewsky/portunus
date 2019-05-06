@@ -39,10 +39,9 @@ func main() {
 	}
 	fsAPI := fs.RunAsync()
 
-	engine, eventsChan := core.RunEngineAsync(fsAPI)
-
 	ldapWorker := newLDAPWorker()
-	go ldapWorker.processEvents(eventsChan)
+	engine, ldapUpdatesChan := core.RunEngineAsync(fsAPI, ldapWorker.DNSuffix)
+	go ldapWorker.processEvents(ldapUpdatesChan)
 
 	handler := frontend.HTTPHandler(engine, os.Getenv("PORTUNUS_SERVER_HTTP_SECURE") == "true")
 	logg.Fatal(http.ListenAndServe(os.Getenv("PORTUNUS_SERVER_HTTP_LISTEN"), handler).Error())
