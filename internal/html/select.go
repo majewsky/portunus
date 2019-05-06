@@ -62,22 +62,19 @@ func (f SelectFieldSpec) RenderField(state FormState) RenderedHTML {
 		s = &FieldState{}
 	}
 
-	items := []TagArgument{Attr("class", "item-list")}
+	listCSSClasses := "item-list"
+	if f.ReadOnly {
+		listCSSClasses += " item-list-readonly"
+	}
+
+	items := []TagArgument{Attr("class", listCSSClasses)}
 	for _, o := range f.Options {
 		if f.ReadOnly {
 			cssClasses := "item item-unchecked"
 			if s.Selected[o.Value] {
 				cssClasses = "item item-checked"
 			}
-			if o.Href == "" {
-				items = append(items, Tag("span", Attr("class", cssClasses), Text(o.Label)))
-			} else {
-				items = append(items, Tag("a",
-					Attr("href", o.Href),
-					Attr("class", cssClasses),
-					Text(o.Label),
-				))
-			}
+			items = append(items, Tag("span", Attr("class", cssClasses), Text(o.Label)))
 		} else {
 			id := getRandomID()
 			inputArgs := []TagArgument{
@@ -114,7 +111,6 @@ func (f SelectFieldSpec) RenderField(state FormState) RenderedHTML {
 type SelectOptionSpec struct {
 	Value string
 	Label string
-	Href  string //only used for read-only fields
 }
 
 func getRandomID() string {

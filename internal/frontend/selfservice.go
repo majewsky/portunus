@@ -27,83 +27,87 @@ import (
 	h "github.com/majewsky/portunus/internal/html"
 )
 
-func useSelfServiceForm(i *Interaction) {
-	user := i.CurrentUser
+func useSelfServiceForm(e core.Engine) HandlerStep {
+	return func(i *Interaction) {
+		user := i.CurrentUser
 
-	isAdmin := user.Perms.Portunus.IsAdmin
-	sort.Slice(user.GroupMemberships, func(i, j int) bool {
-		return user.GroupMemberships[i].LongName < user.GroupMemberships[j].LongName
-	})
-	var memberships []h.SelectOptionSpec
-	isSelected := make(map[string]bool)
-	for _, group := range user.GroupMemberships {
-		membership := h.SelectOptionSpec{
-			Value: group.Name,
-			Label: group.LongName,
-		}
+		isAdmin := user.Perms.Portunus.IsAdmin
+		visibleGroups := user.GroupMemberships
 		if isAdmin {
-			membership.Href = "/groups/" + group.Name + "/edit"
+			visibleGroups = e.ListGroups()
 		}
-		memberships = append(memberships, membership)
-		isSelected[group.Name] = true
-	}
+		sort.Slice(visibleGroups, func(i, j int) bool {
+			return visibleGroups[i].LongName < visibleGroups[j].LongName
+		})
 
-	i.FormState = &h.FormState{
-		Fields: map[string]*h.FieldState{
-			"memberships": &h.FieldState{
-				Selected: isSelected,
-			},
-		},
-	}
+		var memberships []h.SelectOptionSpec
+		isSelected := make(map[string]bool)
+		for _, group := range visibleGroups {
+			membership := h.SelectOptionSpec{
+				Value: group.Name,
+				Label: group.LongName,
+			}
+			memberships = append(memberships, membership)
+			isSelected[group.Name] = group.ContainsUser(user.User)
+		}
 
-	i.FormSpec = &h.FormSpec{
-		PostTarget:  "/self",
-		SubmitLabel: "Change password",
-		Fields: []h.FormField{
-			h.StaticField{
-				Label: "Login name",
-				Value: h.Tag("code", h.Text(user.LoginName)),
-			},
-			h.StaticField{
-				Label: "Full name",
-				Value: h.Join(
-					//TODO: allow flipped order (family name first)
-					h.Tag("span", h.Attr("class", "given-name"), h.Text(user.GivenName)),
-					h.Text(" "),
-					h.Tag("span", h.Attr("class", "family-name"), h.Text(user.FamilyName)),
-				),
-			},
-			h.SelectFieldSpec{
-				Name:     "memberships",
-				Label:    "Group memberships",
-				Options:  memberships,
-				ReadOnly: true,
-			},
-			h.InputFieldSpec{
-				InputType: "password",
-				Name:      "old_password",
-				Label:     "Old password",
-				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
+		i.FormState = &h.FormState{
+			Fields: map[string]*h.FieldState{
+				"memberships": &h.FieldState{
+					Selected: isSelected,
 				},
 			},
-			h.InputFieldSpec{
-				InputType: "password",
-				Name:      "new_password",
-				Label:     "New password",
-				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
+		}
+
+		i.FormSpec = &h.FormSpec{
+			PostTarget:  "/self",
+			SubmitLabel: "Change password",
+			Fields: []h.FormField{
+				h.StaticField{
+					Label: "Login name",
+					Value: h.Tag("code", h.Text(user.LoginName)),
+				},
+				h.StaticField{
+					Label: "Full name",
+					Value: h.Join(
+						//TODO: allow flipped order (family name first)
+						h.Tag("span", h.Attr("class", "given-name"), h.Text(user.GivenName)),
+						h.Text(" "),
+						h.Tag("span", h.Attr("class", "family-name"), h.Text(user.FamilyName)),
+					),
+				},
+				h.SelectFieldSpec{
+					Name:     "memberships",
+					Label:    "Group memberships",
+					Options:  memberships,
+					ReadOnly: true,
+				},
+				h.InputFieldSpec{
+					InputType: "password",
+					Name:      "old_password",
+					Label:     "Old password",
+					Rules: []h.ValidationRule{
+						h.MustNotBeEmpty,
+					},
+				},
+				h.InputFieldSpec{
+					InputType: "password",
+					Name:      "new_password",
+					Label:     "New password",
+					Rules: []h.ValidationRule{
+						h.MustNotBeEmpty,
+					},
+				},
+				h.InputFieldSpec{
+					InputType: "password",
+					Name:      "repeat_password",
+					Label:     "Repeat password",
+					Rules: []h.ValidationRule{
+						h.MustNotBeEmpty,
+					},
 				},
 			},
-			h.InputFieldSpec{
-				InputType: "password",
-				Name:      "repeat_password",
-				Label:     "Repeat password",
-				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
-				},
-			},
-		},
+		}
 	}
 }
 
@@ -111,7 +115,7 @@ func getSelfHandler(e core.Engine) http.Handler {
 	return Do(
 		LoadSession,
 		VerifyLogin(e),
-		useSelfServiceForm,
+		useSelfServiceForm(e),
 		ShowForm("My profile"),
 	)
 }
@@ -120,7 +124,7 @@ func postSelfHandler(e core.Engine) http.Handler {
 	return Do(
 		LoadSession,
 		VerifyLogin(e),
-		useSelfServiceForm,
+		useSelfServiceForm(e),
 		ReadFormStateFromRequest,
 		validateSelfServiceForm,
 		ShowFormIfErrors("My profile"),
