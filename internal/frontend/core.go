@@ -54,9 +54,8 @@ func HTTPHandler(engine core.Engine, isBehindTLSProxy bool) http.Handler {
 	r.Methods("GET").Path(`/users/{uid}/delete`).Handler(getUserDeleteHandler(engine))
 	r.Methods("POST").Path(`/users/{uid}/delete`).Handler(postUserDeleteHandler(engine))
 
-	//TODO delete users
+	r.Methods("GET").Path(`/groups`).Handler(getGroupsHandler(engine))
 	//TODO CRUD groups
-	//TODO first-time setup hint
 
 	//setup CSRF with maxAge = 30 minutes
 	csrfKey := securecookie.GenerateRandomKey(32)
@@ -188,6 +187,7 @@ func RedirectTo(url string) HandlerStep {
 	}
 }
 
+//TODO persist session key
 var sessionStore = sessions.NewCookieStore(securecookie.GenerateRandomKey(32))
 
 //LoadSession is a handler step that loads the session or starts a new one if

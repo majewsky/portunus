@@ -95,7 +95,6 @@ func (s *FileStore) run(loadChan chan<- Database, saveChan <-chan Database) {
 			s.cleanupWatcher(watcher)
 			s.saveDB(db)
 			watcher = s.makeWatcher()
-			//TODO
 		}
 	}
 }

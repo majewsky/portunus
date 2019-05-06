@@ -5,6 +5,7 @@ contain the god. It contains Portunus, a small and self-contained user/group
 management and authentication service.
 
 TODO explain more
+TODO `portunus-init`
 
 ## Running
 

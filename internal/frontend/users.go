@@ -44,7 +44,7 @@ func getUsersHandler(e core.Engine) http.Handler {
 	)
 }
 
-func usersList(e core.Engine) func(i *Interaction) Page {
+func usersList(e core.Engine) func(*Interaction) Page {
 	return func(i *Interaction) Page {
 		groups := e.ListGroups()
 		sort.Slice(groups, func(i, j int) bool { return groups[i].Name < groups[j].Name })
@@ -69,7 +69,7 @@ func usersList(e core.Engine) func(i *Interaction) Page {
 
 			userURL := "/users/" + user.LoginName
 			userRows = append(userRows, h.Tag("tr",
-				h.Tag("td", h.Text(user.LoginName)),
+				h.Tag("td", h.Tag("code", h.Text(user.LoginName))),
 				h.Tag("td", h.Text(user.FullName())),
 				h.Tag("td", h.Join(groupMemberships...)),
 				h.Tag("td", h.Attr("class", "actions"),
