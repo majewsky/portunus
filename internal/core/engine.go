@@ -233,7 +233,7 @@ func (e *engine) persistLDAP() {
 		ldapDB = append(ldapDB, user.RenderToLDAP(e.LDAPSuffix))
 	}
 	for _, group := range e.Groups {
-		ldapDB = append(ldapDB, group.RenderToLDAP(e.LDAPSuffix))
+		ldapDB = append(ldapDB, group.RenderToLDAP(e.LDAPSuffix)...)
 	}
 	e.LDAPUpdates <- ldapDB
 }

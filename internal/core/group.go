@@ -57,7 +57,7 @@ func (g Group) IsEqualTo(other Group) bool {
 }
 
 //RenderToLDAP produces the LDAPObject representing this group.
-func (g Group) RenderToLDAP(suffix string) LDAPObject {
+func (g Group) RenderToLDAP(suffix string) []LDAPObject {
 	//TODO: allow making this a posixGroup instead of a groupOfNames (requires gidNumber attribute)
 	//NOTE: maybe duplicate posixGroups under a different ou so that we can have both a groupOfNames and a posixGroup for the same Group
 
@@ -67,15 +67,20 @@ func (g Group) RenderToLDAP(suffix string) LDAPObject {
 			memberDNames = append(memberDNames, fmt.Sprintf("uid=%s,ou=users,%s", name, suffix))
 		}
 	}
+	if len(memberDNames) == 0 {
+		//if we don't have any members, we cannot create the group in LDAP because
+		//the "member" attribute is mandatory
+		return nil
+	}
 
-	return LDAPObject{
+	return []LDAPObject{{
 		DN: fmt.Sprintf("cn=%s,ou=groups,%s", g.Name, suffix),
 		Attributes: map[string][]string{
 			"cn":          {g.Name},
 			"member":      memberDNames,
 			"objectClass": {"groupOfNames", "top"},
 		},
-	}
+	}}
 }
 
 //GroupMemberNames is the type of Group.MemberLoginNames.

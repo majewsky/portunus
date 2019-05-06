@@ -173,8 +173,10 @@ func (w LDAPWorker) addObject(obj core.LDAPObject) error {
 		Attributes: make([]goldap.Attribute, 0, len(obj.Attributes)),
 	}
 	for key, values := range obj.Attributes {
-		attr := goldap.Attribute{Type: key, Vals: values}
-		req.Attributes = append(req.Attributes, attr)
+		if len(values) > 0 {
+			attr := goldap.Attribute{Type: key, Vals: values}
+			req.Attributes = append(req.Attributes, attr)
+		}
 	}
 	return w.conn.Add(&req)
 }
