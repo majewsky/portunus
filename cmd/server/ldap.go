@@ -98,6 +98,19 @@ func newLDAPWorker() *LDAPWorker {
 		logg.Fatal(err.Error())
 	}
 
+	//create main structure: dummy user account for empty groups
+	err = w.addObject(core.LDAPObject{
+		DN: "cn=nobody," + w.DNSuffix,
+		Attributes: map[string][]string{
+			"cn":          {"nobody"},
+			"description": {"Dummy user for empty groups (all groups need to have at least one member)"},
+			"objectClass": {"organizationalRole", "top"},
+		},
+	})
+	if err != nil {
+		logg.Fatal(err.Error())
+	}
+
 	return w
 }
 

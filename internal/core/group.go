@@ -68,9 +68,10 @@ func (g Group) RenderToLDAP(suffix string) []LDAPObject {
 		}
 	}
 	if len(memberDNames) == 0 {
-		//if we don't have any members, we cannot create the group in LDAP because
-		//the "member" attribute is mandatory
-		return nil
+		//The OpenLDAP core.schema requires that `groupOfNames` contain at least
+		//one `member` attribute. If the group does not have any proper members,
+		//add the dummy user account "nobody" to it.
+		memberDNames = append(memberDNames, "cn=nobody,"+suffix)
 	}
 
 	return []LDAPObject{{
