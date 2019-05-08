@@ -67,9 +67,22 @@ func HTTPHandler(engine core.Engine, isBehindTLSProxy bool) http.Handler {
 	csrfMiddleware := csrf.Protect(csrfKey, csrf.MaxAge(1800), csrf.Secure(isBehindTLSProxy))
 	handler := csrfMiddleware(r)
 
-	//TODO: add middleware for security headers
+	//add various security headers via middleware
+	handler = securityHeadersMiddleware(handler)
 
 	return handler
+}
+
+func securityHeadersMiddleware(inner http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hdr := w.Header()
+		hdr.Set("X-Frame-Options", "SAMEORIGIN")
+		hdr.Set("X-XSS-Protection", "1; mode=block")
+		hdr.Set("X-Content-Type-Options", "nosniff")
+		hdr.Set("Referrer-Policy", "no-referrer")
+		hdr.Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data:;")
+		inner.ServeHTTP(w, r)
+	})
 }
 
 func staticHandler(w http.ResponseWriter, r *http.Request) {
