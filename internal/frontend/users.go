@@ -135,7 +135,8 @@ func useUserForm(e core.Engine) HandlerStep {
 				Label:     "Login name",
 				Rules: []h.ValidationRule{
 					h.MustNotBeEmpty,
-					//TODO: validate against regex
+					h.MustNotHaveSurroundingSpaces,
+					h.MustBePosixAccountName,
 					mustNotBeInUse,
 				},
 			})
@@ -153,7 +154,7 @@ func useUserForm(e core.Engine) HandlerStep {
 				Label:     "Given name",
 				Rules: []h.ValidationRule{
 					h.MustNotBeEmpty,
-					//TODO validate against regex
+					h.MustNotHaveSurroundingSpaces,
 				},
 			},
 			h.InputFieldSpec{
@@ -162,7 +163,7 @@ func useUserForm(e core.Engine) HandlerStep {
 				Label:     "Family name",
 				Rules: []h.ValidationRule{
 					h.MustNotBeEmpty,
-					//TODO validate against regex
+					h.MustNotHaveSurroundingSpaces,
 				},
 			},
 		)

@@ -128,7 +128,8 @@ func useGroupForm(e core.Engine) HandlerStep {
 				Label:     "Name",
 				Rules: []h.ValidationRule{
 					h.MustNotBeEmpty,
-					//TODO: validate against regex
+					h.MustNotHaveSurroundingSpaces,
+					h.MustBePosixAccountName,
 					mustNotBeInUse,
 				},
 			})
@@ -146,7 +147,7 @@ func useGroupForm(e core.Engine) HandlerStep {
 				Label:     "Long name",
 				Rules: []h.ValidationRule{
 					h.MustNotBeEmpty,
-					//TODO validate against regex
+					h.MustNotHaveSurroundingSpaces,
 				},
 			},
 			h.SelectFieldSpec{

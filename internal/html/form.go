@@ -21,6 +21,9 @@ package h
 import (
 	"errors"
 	"net/http"
+	"regexp"
+	"strings"
+	"unicode"
 
 	"github.com/gorilla/csrf"
 )
@@ -198,12 +201,41 @@ func (f StaticField) RenderField(FormState) RenderedHTML {
 //ValidationRule returns an error message if the given field value is invalid.
 type ValidationRule func(string) error
 
-var errIsMissing = errors.New("is missing")
+//this regexp copied from useradd(8) manpage
+const posixAccountNamePattern = `[a-z_][a-z0-9_-]*\$?`
+
+var (
+	errIsMissing      = errors.New("is missing")
+	errLeadingSpaces  = errors.New("may not start with a space character")
+	errTrailingSpaces = errors.New("may not end with a space character")
+
+	errNotPosixAccountName = errors.New("is not an acceptable user/group name matching the pattern /" + posixAccountNamePattern + "/")
+	posixAccountNameRx     = regexp.MustCompile(`^` + posixAccountNamePattern + `$`)
+)
 
 //MustNotBeEmpty is a ValidationRule.
 func MustNotBeEmpty(val string) error {
-	if val == "" {
+	if strings.TrimSpace(val) == "" {
 		return errIsMissing
 	}
 	return nil
+}
+
+//MustNotHaveSurroundingSpaces is a ValidationRule.
+func MustNotHaveSurroundingSpaces(val string) error {
+	if strings.TrimLeftFunc(val, unicode.IsSpace) != val {
+		return errLeadingSpaces
+	}
+	if strings.TrimRightFunc(val, unicode.IsSpace) != val {
+		return errTrailingSpaces
+	}
+	return nil
+}
+
+//MustBePosixAccountName is a ValidationRule.
+func MustBePosixAccountName(val string) error {
+	if posixAccountNameRx.MatchString(val) {
+		return nil
+	}
+	return errNotPosixAccountName
 }

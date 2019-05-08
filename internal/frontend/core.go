@@ -185,6 +185,7 @@ func ShowView(view func(i *Interaction) Page) HandlerStep {
 			panic("ShowView must come after LoadSession")
 		}
 		view(i).Render(i.writer, i.Req, i.CurrentUser, i.Session)
+		i.writer = nil
 	}
 }
 
@@ -291,6 +292,7 @@ func ShowForm(title string) HandlerStep {
 			Title:    title,
 			Contents: i.FormSpec.Render(i.Req, *i.FormState),
 		}.Render(i.writer, i.Req, i.CurrentUser, i.Session)
+		i.writer = nil
 	}
 }
 
