@@ -250,7 +250,7 @@ func VerifyLogin(e core.Engine) HandlerStep {
 			return
 		}
 		i.CurrentUser = e.FindUser(uid)
-		if !ok {
+		if i.CurrentUser == nil {
 			i.RedirectTo("/login")
 			return
 		}
