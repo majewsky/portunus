@@ -363,6 +363,11 @@ func getUserDeleteHandler(e core.Engine) http.Handler {
 }
 
 func useDeleteUserForm(i *Interaction) {
+	if i.TargetUser.LoginName == i.CurrentUser.LoginName {
+		i.RedirectWithFlashTo("/users", Flash{"error", "You cannot delete yourself."})
+		return
+	}
+
 	i.FormSpec = &h.FormSpec{
 		PostTarget:  "/users/" + i.TargetUser.LoginName + "/delete",
 		SubmitLabel: "Delete user",
