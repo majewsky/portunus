@@ -20,6 +20,7 @@ package core
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -29,14 +30,16 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/gorilla/securecookie"
 	"github.com/sapcc/go-bits/logg"
 )
 
 //Database contains the contents of Portunus' database. This is what gets
 //persisted into the database file.
 type Database struct {
-	Users  []User  `json:"users,keepempty"`
-	Groups []Group `json:"groups,keepempty"`
+	Users         []User  `json:"users,keepempty"`
+	Groups        []Group `json:"groups,keepempty"`
+	SchemaVersion uint    `json:"schema_version,keepempty"`
 }
 
 //FileStore is responsible for loading Portunus' database from
@@ -123,11 +126,10 @@ func (s *FileStore) loadDB(allowEmpty bool) (db Database) {
 	if err != nil {
 		//initialize empty DB on first run
 		if os.IsNotExist(err) && allowEmpty {
-			dbContents = []byte(`{}`)
-			s.saveDB(Database{Users: []User{}, Groups: []Group{}})
-		} else {
-			logg.Fatal(err.Error())
+			s.saveDB(createInitialDB())
+			return s.loadDB(false)
 		}
+		logg.Fatal(err.Error())
 	}
 
 	err = json.Unmarshal(dbContents, &db)
@@ -135,8 +137,33 @@ func (s *FileStore) loadDB(allowEmpty bool) (db Database) {
 		logg.Fatal("cannot load main database: " + err.Error())
 	}
 
+	if db.SchemaVersion != 1 {
+		logg.Fatal("found DB with schema version %d, but this Portunus only understands schema version 1", db.SchemaVersion)
+	}
+
 	//TODO validate DB (e.g. groups should only contain users that actually exist)
 	return
+}
+
+func createInitialDB() Database {
+	password := hex.EncodeToString(securecookie.GenerateRandomKey(16))
+	logg.Info("first-time initialization: adding user %q with password %q",
+		"admin", password)
+
+	return Database{
+		Groups: []Group{{
+			Name:             "admins",
+			LongName:         "Portunus Administrators",
+			MemberLoginNames: GroupMemberNames{"admin": true},
+			Permissions:      Permissions{Portunus: PortunusPermissions{IsAdmin: true}},
+		}},
+		Users: []User{{
+			LoginName:    "admin",
+			GivenName:    "Initial",
+			FamilyName:   "Administrator",
+			PasswordHash: HashPasswordForLDAP(password),
+		}},
+	}
 }
 
 func (s *FileStore) saveDB(db Database) {
@@ -152,6 +179,8 @@ func (s *FileStore) saveDB(db Database) {
 	sort.Slice(db.Users, func(i, j int) bool {
 		return db.Users[i].LoginName < db.Users[j].LoginName
 	})
+
+	db.SchemaVersion = 1
 
 	dbContents, err := json.Marshal(db)
 	if err == nil {

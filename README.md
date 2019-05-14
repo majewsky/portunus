@@ -33,6 +33,10 @@ Portunus will offer a network service while running as root:
 - LDAP and LDAPS are offered by slapd which is running as `ldap:ldap` by default.
 - HTTP is offered by `portunus-server` which is running as `portunus:portunus` by default.
 
+When Portunus first starts up, it will create an empty database with the initial user account
+`admin`, and show that user's initial password on stdout **once**. It is highly recommended to
+change this initial password after the first login.
+
 ### HTTP access
 
 In a productive environment, the HTTP frontend offered by `portunus-server`
