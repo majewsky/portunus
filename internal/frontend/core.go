@@ -20,8 +20,11 @@ package frontend
 
 import (
 	"bytes"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
@@ -209,8 +212,29 @@ func RedirectTo(url string) HandlerStep {
 	}
 }
 
-//TODO persist session key
-var sessionStore = sessions.NewCookieStore(securecookie.GenerateRandomKey(32))
+var sessionStore *sessions.CookieStore
+
+func init() {
+	keyPath := filepath.Join(os.Getenv("PORTUNUS_SERVER_STATE_DIR"), "session-key.dat")
+	keyBytes, err := ioutil.ReadFile(keyPath)
+	if err != nil {
+		keyBytes = nil
+		if !os.IsNotExist(err) {
+			logg.Error(err.Error())
+		}
+	}
+
+	if len(keyBytes) != 32 {
+		logg.Info("generating new session key")
+		keyBytes = securecookie.GenerateRandomKey(32)
+		err := ioutil.WriteFile(keyPath, keyBytes, 0600)
+		if err != nil {
+			logg.Error(err.Error())
+		}
+	}
+
+	sessionStore = sessions.NewCookieStore(keyBytes)
+}
 
 //LoadSession is a handler step that loads the session or starts a new one if
 //there is no valid session.
