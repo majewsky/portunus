@@ -214,6 +214,19 @@ func useUserForm(e core.Engine) HandlerStep {
 					},
 				},
 			)
+		} else {
+			i.FormSpec.Fields = append(i.FormSpec.Fields,
+				h.InputFieldSpec{
+					InputType: "password",
+					Name:      "password",
+					Label:     "Reset password",
+				},
+				h.InputFieldSpec{
+					InputType: "password",
+					Name:      "repeat_password",
+					Label:     "Repeat password",
+				},
+			)
 		}
 	}
 }
@@ -237,6 +250,7 @@ func postUserEditHandler(e core.Engine) http.Handler {
 		loadTargetUser(e),
 		useUserForm(e),
 		ReadFormStateFromRequest,
+		validateEditUserForm,
 		ShowFormIfErrors("Edit user"),
 		executeEditUserForm(e),
 	)
@@ -255,14 +269,30 @@ func loadTargetUser(e core.Engine) HandlerStep {
 	}
 }
 
+func validateEditUserForm(i *Interaction) {
+	fs := i.FormState
+	password1 := fs.Fields["password"].Value
+	password2 := fs.Fields["repeat_password"].Value
+	if password1 != "" && password1 != password2 {
+		fs.Fields["repeat_password"].ErrorMessage = "did not match"
+	}
+}
+
 func executeEditUserForm(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
+		passwordHash := ""
+		if pw := i.FormState.Fields["password"].Value; pw != "" {
+			passwordHash = core.HashPasswordForLDAP(pw)
+		}
 		err := e.ChangeUser(i.TargetUser.LoginName, func(u core.User) (*core.User, error) {
 			if u.LoginName == "" {
 				return nil, fmt.Errorf("no such user")
 			}
 			u.GivenName = i.FormState.Fields["given_name"].Value
 			u.FamilyName = i.FormState.Fields["family_name"].Value
+			if passwordHash != "" {
+				u.PasswordHash = passwordHash
+			}
 			return &u, nil
 		})
 		if err != nil {
