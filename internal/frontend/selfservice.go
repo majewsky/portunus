@@ -27,6 +27,11 @@ import (
 	h "github.com/majewsky/portunus/internal/html"
 )
 
+//TODO: allow flipped order (family name first)
+var userFullNameSnippet = h.NewSnippet(`
+	<span class="given-name">{{.GivenName}}</span> <span class="family-name">{{.FamilyName}}</span>
+`)
+
 func useSelfServiceForm(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
 		user := i.CurrentUser
@@ -65,16 +70,11 @@ func useSelfServiceForm(e core.Engine) HandlerStep {
 			Fields: []h.FormField{
 				h.StaticField{
 					Label: "Login name",
-					Value: h.Tag("code", h.Text(user.LoginName)),
+					Value: codeTagSnippet.Render(user.LoginName),
 				},
 				h.StaticField{
 					Label: "Full name",
-					Value: h.Join(
-						//TODO: allow flipped order (family name first)
-						h.Tag("span", h.Attr("class", "given-name"), h.Text(user.GivenName)),
-						h.Text(" "),
-						h.Tag("span", h.Attr("class", "family-name"), h.Text(user.FamilyName)),
-					),
+					Value: userFullNameSnippet.Render(user),
 				},
 				h.SelectFieldSpec{
 					Name:     "memberships",

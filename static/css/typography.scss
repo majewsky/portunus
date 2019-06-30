@@ -12,3 +12,7 @@ a, a:focus, a:hover, a:active {
 	color: blue;
 	text-decoration: none;
 }
+
+.comma-separated-list > .comma:last-child {
+	display: none;
+}

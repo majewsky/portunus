@@ -44,6 +44,39 @@ func getUsersHandler(e core.Engine) http.Handler {
 	)
 }
 
+var usersListSnippet = h.NewSnippet(`
+	<table>
+		<thead>
+			<tr>
+				<th>User ID</th>
+				<th>Name</th>
+				<th>Groups</th>
+				<th class="actions">
+					<a href="/users/new" class="btn btn-primary">New user</a>
+				</th>
+			</tr>
+		</thead>
+		<tbody>
+			{{range .}}
+				<tr>
+					<td><code>{{.User.LoginName}}</code></td>
+					<td>{{.UserFullName}}</td>
+					<td class="comma-separated-list">
+						{{- range .Groups -}}
+						<a href="/groups/{{.Name}}/edit">{{.LongName}}</a><span class="comma">,&nbsp;</span>
+						{{- end -}}
+					</td>
+					<td class="actions">
+						<a href="/users/{{.User.LoginName}}/edit">Edit</a>
+						·
+						<a href="/users/{{.User.LoginName}}/delete">Delete</a>
+					</td>
+				<tr>
+			{{end}}
+		</tbody>
+	</table>
+`)
+
 func usersList(e core.Engine) func(*Interaction) Page {
 	return func(i *Interaction) Page {
 		groups := e.ListGroups()
@@ -51,61 +84,35 @@ func usersList(e core.Engine) func(*Interaction) Page {
 		users := e.ListUsers()
 		sort.Slice(users, func(i, j int) bool { return users[i].LoginName < users[j].LoginName })
 
-		var userRows []h.TagArgument
-		for _, user := range users {
-			var groupMemberships []h.RenderedHTML
-			for _, group := range groups {
-				if !group.ContainsUser(user) {
-					continue
-				}
-				if len(groupMemberships) > 0 {
-					groupMemberships = append(groupMemberships, h.Text(", "))
-				}
-				groupMemberships = append(groupMemberships, h.Tag("a",
-					h.Attr("href", "/groups/"+group.Name+"/edit"),
-					h.Text(group.LongName),
-				))
-			}
-
-			userURL := "/users/" + user.LoginName
-			userRows = append(userRows, h.Tag("tr",
-				h.Tag("td", h.Tag("code", h.Text(user.LoginName))),
-				h.Tag("td", h.Text(user.FullName())),
-				h.Tag("td", h.Join(groupMemberships...)),
-				h.Tag("td", h.Attr("class", "actions"),
-					h.Tag("a", h.Attr("href", userURL+"/edit"), h.Text("Edit")),
-					h.Text(" · "),
-					h.Tag("a", h.Attr("href", userURL+"/delete"), h.Text("Delete")),
-				),
-			))
+		type userItem struct {
+			User         core.User
+			UserFullName string
+			Groups       []core.Group
 		}
-
-		usersTable := h.Tag("table",
-			h.Tag("thead",
-				h.Tag("tr",
-					h.Tag("th", h.Text("User ID")),
-					h.Tag("th", h.Text("Name")),
-					h.Tag("th", h.Text("Groups")),
-					h.Tag("th", h.Attr("class", "actions"),
-						h.Tag("a",
-							h.Attr("href", "/users/new"),
-							h.Attr("class", "btn btn-primary"),
-							h.Text("New user"),
-						),
-					),
-				),
-			),
-			h.Tag("tbody", userRows...),
-		)
+		data := make([]userItem, len(users))
+		for idx, user := range users {
+			item := userItem{
+				User:         user,
+				UserFullName: user.FullName(),
+			}
+			for _, group := range groups {
+				if group.ContainsUser(user) {
+					item.Groups = append(item.Groups, group)
+				}
+			}
+			data[idx] = item
+		}
 
 		return Page{
 			Status:   http.StatusOK,
 			Title:    "Users",
-			Contents: usersTable,
+			Contents: usersListSnippet.Render(data),
 			Wide:     true,
 		}
 	}
 }
+
+var codeTagSnippet = h.NewSnippet(`<code>{{.}}</code>`)
 
 func useUserForm(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
@@ -143,7 +150,7 @@ func useUserForm(e core.Engine) HandlerStep {
 		} else {
 			i.FormSpec.Fields = append(i.FormSpec.Fields, h.StaticField{
 				Label: "Login name",
-				Value: h.Tag("code", h.Text(i.TargetUser.LoginName)),
+				Value: codeTagSnippet.Render(i.TargetUser.LoginName),
 			})
 		}
 
@@ -194,7 +201,6 @@ func useUserForm(e core.Engine) HandlerStep {
 		})
 		i.FormState.Fields["memberships"] = &h.FieldState{Selected: isGroupSelected}
 
-		//TODO: allow to reset password for existing user (in case they forgot it)
 		if i.TargetUser == nil {
 			i.FormSpec.Fields = append(i.FormSpec.Fields,
 				h.InputFieldSpec{
@@ -392,6 +398,10 @@ func getUserDeleteHandler(e core.Engine) http.Handler {
 	)
 }
 
+var deleteUserConfirmSnippet = h.NewSnippet(`
+	<p>Really delete user <code>{{.}}</code>? This cannot be undone.</p>
+`)
+
 func useDeleteUserForm(i *Interaction) {
 	if i.TargetUser.LoginName == i.CurrentUser.LoginName {
 		i.RedirectWithFlashTo("/users", Flash{"error", "You cannot delete yourself."})
@@ -403,11 +413,7 @@ func useDeleteUserForm(i *Interaction) {
 		SubmitLabel: "Delete user",
 		Fields: []h.FormField{
 			h.StaticField{
-				Value: h.Tag("p",
-					h.Text("Really delete user "),
-					h.Tag("code", h.Text(i.TargetUser.LoginName)),
-					h.Text("? This cannot be undone."),
-				),
+				Value: deleteUserConfirmSnippet.Render(i.TargetUser.LoginName),
 			},
 		},
 	}

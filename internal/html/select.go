@@ -21,6 +21,7 @@ package h
 import (
 	"encoding/hex"
 	"fmt"
+	"html/template"
 	math_rand "math/rand"
 	"net/http"
 )
@@ -55,56 +56,58 @@ func (f SelectFieldSpec) ReadState(r *http.Request, formState *FormState) {
 	formState.Fields[f.Name] = &s
 }
 
+var selectFieldSnippetReadonly = NewSnippet(`
+	<div class="form-row">
+		<div class="row-label">{{.Spec.Label}}</div>
+		<div class="item-list item-list-readonly">
+			{{range .Spec.Options}}
+				{{ $unchecked := not (index $.State.Selected .Value) }}
+				<span class="item item-{{if $unchecked}}un{{end}}checked">{{.Label}}</span>
+			{{end}}
+		</div>
+	</div>
+`)
+
+var selectFieldSnippet = NewSnippet(`
+	<div class="form-row">
+		<div class="row-label">
+			{{.Spec.Label}}
+			{{if .State.ErrorMessage}}
+				<span class="form-error">{{.State.ErrorMessage}}</span>
+			{{end}}
+		</div>
+		<div class="item-list">
+			{{- range $idx, $opt := .Spec.Options -}}
+				{{- $id := printf "%s-%d" $.Spec.Name $idx -}}
+				<input
+					type="checkbox"
+					name="{{$.Spec.Name}}"
+					id="{{$id}}"
+					value="{{$opt.Value}}"
+					{{if index $.State.Selected $opt.Value}}checked{{end}}
+				/><label for="{{$id}}" class="item">{{$opt.Label}}</label>
+			{{- end -}}
+		</div>
+	</div>
+`)
+
 //RenderField implements the FormField interface.
-func (f SelectFieldSpec) RenderField(state FormState) RenderedHTML {
-	s := state.Fields[f.Name]
-	if s == nil {
-		s = &FieldState{}
+func (f SelectFieldSpec) RenderField(state FormState) template.HTML {
+	data := struct {
+		Spec  SelectFieldSpec
+		State *FieldState
+	}{
+		Spec:  f,
+		State: state.Fields[f.Name],
+	}
+	if data.State == nil {
+		data.State = &FieldState{}
 	}
 
-	listCSSClasses := "item-list"
 	if f.ReadOnly {
-		listCSSClasses += " item-list-readonly"
+		return selectFieldSnippetReadonly.Render(data)
 	}
-
-	items := []TagArgument{Attr("class", listCSSClasses)}
-	for _, o := range f.Options {
-		if f.ReadOnly {
-			cssClasses := "item item-unchecked"
-			if s.Selected[o.Value] {
-				cssClasses = "item item-checked"
-			}
-			items = append(items, Tag("span", Attr("class", cssClasses), Text(o.Label)))
-		} else {
-			id := getRandomID()
-			inputArgs := []TagArgument{
-				Attr("type", "checkbox"),
-				Attr("name", f.Name),
-				Attr("id", id),
-				Attr("value", o.Value),
-			}
-			if s.Selected[o.Value] {
-				inputArgs = append(inputArgs, EmptyAttr("checked"))
-			}
-			items = append(items,
-				Tag("input", inputArgs...),
-				Tag("label", Attr("for", id), Attr("class", "item"), Text(o.Label)),
-			)
-		}
-	}
-
-	labelArgs := []TagArgument{Text(f.Label)}
-	if s.ErrorMessage != "" {
-		labelArgs = append(labelArgs, Tag("span",
-			Attr("class", "form-error"),
-			Text(s.ErrorMessage),
-		))
-	}
-
-	return Tag("div", Attr("class", "form-row"),
-		Tag("div", labelArgs...),
-		Tag("div", items...),
-	)
+	return selectFieldSnippet.Render(data)
 }
 
 //SelectOptionSpec describes an option that can be selected in a SelectFieldSpec.

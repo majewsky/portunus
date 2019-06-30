@@ -39,13 +39,54 @@ func getGroupsHandler(e core.Engine) http.Handler {
 	)
 }
 
+var groupsListSnippet = h.NewSnippet(`
+	<table>
+		<thead>
+			<tr>
+				<th>Name</th>
+				<th>Long name</th>
+				<th>Members</th>
+				<th>Permissions granted</th>
+				<th class="actions">
+					<a href="/groups/new" class="btn btn-primary">New group</a>
+				</th>
+			</tr>
+		</thead>
+		<tbody>
+			{{range .}}
+				<tr>
+					<td><code>{{.Group.Name}}</code></td>
+					<td>{{.Group.LongName}}</td>
+					<td>{{.MemberCount}}</td>
+					<td>{{.PermissionsText}}</td>
+					<td class="actions">
+						<a href="/groups/{{.Group.Name}}/edit">Edit</a>
+						·
+						<a href="/groups/{{.Group.Name}}/delete">Delete</a>
+					</td>
+				<tr>
+			{{end}}
+		</tbody>
+	</table>
+`)
+
 func groupsList(e core.Engine) func(*Interaction) Page {
 	return func(i *Interaction) Page {
 		groups := e.ListGroups()
 		sort.Slice(groups, func(i, j int) bool { return groups[i].Name < groups[j].Name })
 
-		var rows []h.TagArgument
-		for _, group := range groups {
+		type groupItem struct {
+			Group           core.Group
+			MemberCount     int
+			PermissionsText string
+		}
+		data := make([]groupItem, len(groups))
+		for idx, group := range groups {
+			item := groupItem{
+				Group:       group,
+				MemberCount: len(group.MemberLoginNames),
+			}
+
 			var permTexts []string
 			if group.Permissions.Portunus.IsAdmin {
 				permTexts = append(permTexts, "Portunus admin")
@@ -57,44 +98,15 @@ func groupsList(e core.Engine) func(*Interaction) Page {
 			if len(permTexts) == 0 {
 				permTexts = []string{"None"}
 			}
+			item.PermissionsText = strings.Join(permTexts, ", ")
 
-			groupURL := "/groups/" + group.Name
-			rows = append(rows, h.Tag("tr",
-				h.Tag("td", h.Tag("code", h.Text(group.Name))),
-				h.Tag("td", h.Text(group.LongName)),
-				h.Tag("td", h.Text(fmt.Sprintf("%d", len(group.MemberLoginNames)))),
-				h.Tag("td", h.Text(strings.Join(permTexts, ", "))),
-				h.Tag("td", h.Attr("class", "actions"),
-					h.Tag("a", h.Attr("href", groupURL+"/edit"), h.Text("Edit")),
-					h.Text(" · "),
-					h.Tag("a", h.Attr("href", groupURL+"/delete"), h.Text("Delete")),
-				),
-			))
+			data[idx] = item
 		}
-
-		groupsTable := h.Tag("table",
-			h.Tag("thead",
-				h.Tag("tr",
-					h.Tag("th", h.Text("Name")),
-					h.Tag("th", h.Text("Long name")),
-					h.Tag("th", h.Text("Members")),
-					h.Tag("th", h.Text("Permissions granted")),
-					h.Tag("th", h.Attr("class", "actions"),
-						h.Tag("a",
-							h.Attr("href", "/groups/new"),
-							h.Attr("class", "btn btn-primary"),
-							h.Text("New group"),
-						),
-					),
-				),
-			),
-			h.Tag("tbody", rows...),
-		)
 
 		return Page{
 			Status:   http.StatusOK,
 			Title:    "Groups",
-			Contents: groupsTable,
+			Contents: groupsListSnippet.Render(data),
 			Wide:     true,
 		}
 	}
@@ -136,7 +148,7 @@ func useGroupForm(e core.Engine) HandlerStep {
 		} else {
 			i.FormSpec.Fields = append(i.FormSpec.Fields, h.StaticField{
 				Label: "Name",
-				Value: h.Tag("code", h.Text(i.TargetGroup.Name)),
+				Value: codeTagSnippet.Render(i.TargetGroup.Name),
 			})
 		}
 
@@ -302,17 +314,17 @@ func getGroupDeleteHandler(e core.Engine) http.Handler {
 	)
 }
 
+var deleteGroupConfirmSnippet = h.NewSnippet(`
+	<p>Really delete group <code>{{.}}</code>? This cannot be undone.</p>
+`)
+
 func useDeleteGroupForm(i *Interaction) {
 	i.FormSpec = &h.FormSpec{
 		PostTarget:  "/groups/" + i.TargetGroup.Name + "/delete",
 		SubmitLabel: "Delete group",
 		Fields: []h.FormField{
 			h.StaticField{
-				Value: h.Tag("p",
-					h.Text("Really delete group "),
-					h.Tag("code", h.Text(i.TargetGroup.Name)),
-					h.Text("? This cannot be undone."),
-				),
+				Value: deleteGroupConfirmSnippet.Render(i.TargetGroup.Name),
 			},
 		},
 	}

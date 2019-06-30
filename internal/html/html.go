@@ -16,117 +16,32 @@
 *
 *******************************************************************************/
 
-//Package h provides a terse syntax for inline HTML rendering. For instance:
-//
-//	headerRow := h.Tag("tr",
-//		h.Tag("th", h.Text("User ID")),
-//		h.Tag("th", h.Text("Name")),
-//		h.Tag("th", h.Text("Groups")),
-//		h.Tag("th", h.Attr("class", "actions"),
-//			h.Tag("a",
-//				h.Attr("href", "#"),
-//				h.Attr("class", "btn btn-primary"),
-//				h.Text("New user"),
-//			),
-//		),
-//	)
-//
+//Package h provides utilties for rendering HTML forms.
 package h
 
 import (
-	"fmt"
+	"bytes"
 	"html"
 	"html/template"
+	"strings"
 )
 
-//TagArgument is implemented by Attribute and RenderedHTML. Therefore, these two
-//types can be given as arguments to Tag().
-type TagArgument interface {
-	IsHTMLTagArgument()
+//Snippet provides a convenience API around html/template.Template.
+type Snippet struct {
+	T *template.Template
 }
 
-//Attribute represents an attribute of an HTML tag.
-type Attribute struct {
-	Key   string
-	Value string
-	Empty bool
+//NewSnippet parses html/template code into a Snippet.
+func NewSnippet(input string) Snippet {
+	return Snippet{template.Must(template.New("").Parse(strings.TrimSpace(input)))}
 }
 
-//Attr constructs an Attribute with value.
-func Attr(key, value string) Attribute {
-	return Attribute{key, value, false}
-}
-
-//EmptyAttr constructs an Attribute without value.
-func EmptyAttr(key string) Attribute {
-	return Attribute{key, "", true}
-}
-
-//IsHTMLTagArgument implements the TagArgument interface.
-func (Attribute) IsHTMLTagArgument() {}
-
-//RenderedHTML contains HTML code.
-type RenderedHTML struct {
-	//This could be implemented as `type RenderedHTML string`, but then it would
-	//be possible to cast unescaped text into this type without going through
-	//UnsafeText().
-	plain string
-}
-
-//IsHTMLTagArgument implements the TagArgument interface.
-func (RenderedHTML) IsHTMLTagArgument() {}
-
-//Text escapes the given text for usage in HTML.
-func Text(str string) RenderedHTML {
-	return RenderedHTML{html.EscapeString(str)}
-}
-
-//UnsafeText allows to include the given text in rendered HTML without extra escaping.
-//
-//WARNING: When using this function, the caller is responsible for ensuring
-//that no XSS vulnerabilities are introduced.
-func UnsafeText(str string) RenderedHTML {
-	return RenderedHTML{str}
-}
-
-//Embed converts template.HTML into RenderedHTML, thus allowing HTML generated
-//by other libraries to be used by this library.
-func Embed(str template.HTML) RenderedHTML {
-	return RenderedHTML{string(str)}
-}
-
-//Tag renders an HTML tag. Attributes and child nodes can be given in the
-//`args` list.
-func Tag(name string, args ...TagArgument) RenderedHTML {
-	var (
-		attrText, childText string
-	)
-	for _, arg := range args {
-		switch arg := arg.(type) {
-		case Attribute:
-			attrText += " " + arg.Key
-			if !arg.Empty {
-				attrText += `="` + html.EscapeString(arg.Value) + `"`
-			}
-		case RenderedHTML:
-			childText += arg.plain
-		default:
-			panic(fmt.Sprintf("unexpected argument of type %T in tag()", arg))
-		}
+//Render renders the snippet with the given data.
+func (s Snippet) Render(data interface{}) template.HTML {
+	var buf bytes.Buffer
+	err := s.T.Execute(&buf, data)
+	if err != nil {
+		return template.HTML(`<div class="flash flash-error">` + html.EscapeString(err.Error()) + `</div>`)
 	}
-	return RenderedHTML{fmt.Sprintf("<%s%s>%s</%s>", name, attrText, childText, name)}
-}
-
-//Join concatenates multiple pieces of RenderedHTML into one.
-func Join(args ...RenderedHTML) RenderedHTML {
-	var result string
-	for _, arg := range args {
-		result += arg.plain
-	}
-	return RenderedHTML{result}
-}
-
-//String returns the rendered HTML as a string.
-func (h RenderedHTML) String() string {
-	return h.plain
+	return template.HTML(buf.String())
 }

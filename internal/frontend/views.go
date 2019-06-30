@@ -20,6 +20,7 @@ package frontend
 
 import (
 	"encoding/gob"
+	"html/template"
 	"net/http"
 	"strings"
 
@@ -28,23 +29,45 @@ import (
 	h "github.com/majewsky/portunus/internal/html"
 )
 
-var standardHeadTags = h.Join(
-	h.Tag("meta",
-		h.Attr("charset", "utf-8"),
-	),
-	h.Tag("meta",
-		h.Attr("http-equiv", "X-UA-Compatible"),
-		h.Attr("content", "IE=edge"),
-	),
-	h.Tag("meta",
-		h.Attr("name", "viewport"),
-		h.Attr("content", "width=device-width, initial-scale=1"),
-	),
-	h.Tag("link",
-		h.Attr("rel", "stylesheet"),
-		h.Attr("href", "/static/css/portunus.css"),
-	),
-)
+var mainSnippet = h.NewSnippet(`
+	<!DOCTYPE html>
+	<html>
+		<head>
+			<meta charset="utf-8">
+			<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+			<meta name="viewport" content="width=device-width, initial-scale=1">
+			<title>
+				{{- if .Page.Title -}}
+					{{ .Page.Title }} - Portunus
+				{{- else -}}
+					Portunus
+				{{- end -}}
+			</title>
+			<link rel="stylesheet" type="text/css" href="/static/css/portunus.css" />
+		</head>
+		<body>
+			<nav><ul>
+				<li><h1>Portunus</h1></li>
+				{{if .CurrentUser}}
+					<li><a href="/self" {{if eq .CurrentSection "self"}}class="current"{{end}}>My profile</a></li>
+					{{if .CurrentUser.Perms.Portunus.IsAdmin}}
+						<li><a href="/users" {{if eq .CurrentSection "users"}}class="current"{{end}}>Users</a></li>
+						<li><a href="/groups" {{if eq .CurrentSection "groups"}}class="current"{{end}}>Groups</a></li>
+					{{end}}
+					<li class="spacer"></li>
+					<li><a class="current">{{.CurrentUserFullName}}</a></li>
+					<li><a href="/logout">Logout</a></li>
+				{{else}}
+					<li><a href="/login" {{if eq .CurrentSection "login"}}class="current"{{end}}>Login</a></li>
+				{{end}}
+			</ul></nav>
+			<main {{if .Page.Wide}}class="wide"{{end}}>
+				{{range .Flashes}}<div class="flash flash-{{.Type}}">{{.Message}}</div>{{end}}
+				{{.Page.Contents}}
+			</main>
+		</body>
+	</html>
+`)
 
 //Flash is a flash message.
 type Flash struct {
@@ -60,58 +83,28 @@ func init() {
 type Page struct {
 	Status   int
 	Title    string
-	Contents h.RenderedHTML
+	Contents template.HTML
 	Wide     bool
 }
 
 //Render renders the given page.
 func (p Page) Render(w http.ResponseWriter, r *http.Request, currentUser *core.UserWithPerms, s *sessions.Session) {
-	//prepare <head>
-	titleText := "Portunus"
-	if p.Title != "" {
-		titleText = p.Title + " – Portunus"
-	}
-	headTag := h.Tag("head",
-		standardHeadTags,
-		h.Tag("title", h.Text(titleText)),
-	)
-
-	//prepare <nav>
-	navFields := []h.TagArgument{
-		h.Tag("li", h.Tag("h1", h.Text("Portunus"))),
-	}
-	addNavField := func(url string, title string) {
-		linkArgs := []h.TagArgument{
-			h.Text(title), h.Attr("href", url),
-		}
-		if strings.HasPrefix(r.URL.Path, url) {
-			linkArgs = append(linkArgs, h.Attr("class", "current"))
-		}
-		navFields = append(navFields, h.Tag("li", h.Tag("a", linkArgs...)))
-	}
-	if currentUser == nil {
-		addNavField("/login", "Login")
-	} else {
-		addNavField("/self", "My profile")
-		if currentUser.Perms.Portunus.IsAdmin {
-			addNavField("/users", "Users")
-			addNavField("/groups", "Groups")
-		}
-		navFields = append(navFields, h.Tag("li", h.Attr("class", "spacer")))
-		navFields = append(navFields, h.Tag("li",
-			h.Tag("a", h.Attr("class", "current"), h.Text(currentUser.FullName())),
-		))
-		addNavField("/logout", "Logout")
+	data := struct {
+		Page                Page
+		CurrentUser         *core.UserWithPerms
+		CurrentUserFullName string
+		CurrentSection      string
+		Flashes             []Flash
+	}{
+		Page:                p,
+		CurrentUser:         currentUser,
+		CurrentUserFullName: currentUser.FullName(),
+		CurrentSection:      strings.SplitN(strings.TrimPrefix(r.URL.Path, "/"), "/", 2)[0],
 	}
 
-	//prepare flashes, if any
-	var flashes []h.RenderedHTML
 	for _, value := range s.Flashes() {
 		if f, ok := value.(Flash); ok {
-			flashes = append(flashes, h.Tag("div",
-				h.Attr("class", "flash flash-"+f.Type),
-				h.Text(f.Message),
-			))
+			data.Flashes = append(data.Flashes, f)
 		}
 	}
 	err := s.Save(r, w)
@@ -119,24 +112,7 @@ func (p Page) Render(w http.ResponseWriter, r *http.Request, currentUser *core.U
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	//render final HTML
-	mainCSSClass := ""
-	if p.Wide {
-		mainCSSClass = "wide"
-	}
-	htmlTag := h.Tag("html",
-		headTag,
-		h.Tag("body",
-			h.Tag("nav", h.Tag("ul", navFields...)),
-			h.Tag("main",
-				h.Attr("class", mainCSSClass),
-				h.Join(flashes...),
-				p.Contents,
-			),
-		),
-	)
-
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(p.Status)
-	w.Write([]byte(htmlTag.String()))
+	w.Write([]byte(mainSnippet.Render(data)))
 }

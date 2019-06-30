@@ -20,6 +20,7 @@ package h
 
 import (
 	"errors"
+	"html/template"
 	"net/http"
 	"regexp"
 	"strings"
@@ -59,7 +60,7 @@ type FieldState struct {
 //FormField is something that can appear in an HTML form.
 type FormField interface {
 	ReadState(*http.Request, *FormState)
-	RenderField(FormState) RenderedHTML
+	RenderField(FormState) template.HTML
 }
 
 //FormSpec describes an HTML form that is submitted to a POST endpoint.
@@ -80,28 +81,28 @@ func (f FormSpec) ReadState(r *http.Request, s *FormState) {
 	}
 }
 
+var formSpecSnippet = NewSnippet(`
+	<form method="POST" action={{.Spec.PostTarget}}>
+		{{.Fields}}
+		<div class="button-row">
+			<button type="submit" class="btn btn-primary">{{.Spec.SubmitLabel}}</button>
+		</div>
+	</form>
+`)
+
 //Render produces the HTML for this form.
-func (f FormSpec) Render(r *http.Request, s FormState) RenderedHTML {
-	formArgs := []TagArgument{
-		Attr("method", "POST"),
-		Attr("action", f.PostTarget),
-		Embed(csrf.TemplateField(r)),
+func (f FormSpec) Render(r *http.Request, s FormState) template.HTML {
+	data := struct {
+		Spec   FormSpec
+		Fields template.HTML
+	}{
+		Spec:   f,
+		Fields: csrf.TemplateField(r),
 	}
-
 	for _, field := range f.Fields {
-		formArgs = append(formArgs, field.RenderField(s))
+		data.Fields = data.Fields + field.RenderField(s)
 	}
-
-	formArgs = append(formArgs,
-		Tag("div", Attr("class", "button-row"),
-			Tag("button",
-				Attr("type", "submit"),
-				Attr("class", "btn btn-primary"),
-				Text(f.SubmitLabel),
-			),
-		),
-	)
-	return Tag("form", formArgs...)
+	return formSpecSnippet.Render(data)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,45 +131,36 @@ func (f InputFieldSpec) ReadState(r *http.Request, formState *FormState) {
 	formState.Fields[f.Name] = &s
 }
 
+var inputFieldSnippet = NewSnippet(`
+	<div class="form-row">
+		<label for="{{.Spec.Name}}" class="row-label">
+			{{.Spec.Label}}
+			{{if .State.ErrorMessage}}
+				<span class="form-error">{{.State.ErrorMessage}}</span>
+			{{end}}
+		</label>
+		<input
+			name="{{.Spec.Name}}" type="{{.Spec.InputType}}"
+			{{ if and (ne .State.Value "") (ne .Spec.InputType "password") }}value="{{.State.Value}}"{{ end }}
+			{{ if .Spec.AutoFocus }}autofocus{{ end }}
+			class="row-input {{if .State.ErrorMessage}}form-error{{end}}"
+		/>
+	</div>
+`)
+
 //RenderField produces the HTML for this field.
-func (f InputFieldSpec) RenderField(state FormState) RenderedHTML {
-	s := state.Fields[f.Name]
-	if s == nil {
-		s = &FieldState{}
+func (f InputFieldSpec) RenderField(state FormState) template.HTML {
+	data := struct {
+		Spec  InputFieldSpec
+		State *FieldState
+	}{
+		Spec:  f,
+		State: state.Fields[f.Name],
 	}
-
-	labelArgs := []TagArgument{
-		Attr("for", f.Name),
-		Attr("class", "row-label"),
-		Text(f.Label),
+	if data.State == nil {
+		data.State = &FieldState{}
 	}
-	inputArgs := []TagArgument{
-		Attr("name", f.Name),
-		Attr("type", f.InputType),
-	}
-
-	if s.Value != "" && f.InputType != "password" {
-		inputArgs = append(inputArgs, Attr("value", s.Value))
-	}
-
-	if f.AutoFocus {
-		inputArgs = append(inputArgs, EmptyAttr("autofocus"))
-	}
-
-	inputClasses := "row-input"
-	if s.ErrorMessage != "" {
-		labelArgs = append(labelArgs, Tag("span",
-			Attr("class", "form-error"),
-			Text(s.ErrorMessage),
-		))
-		inputClasses += " form-error"
-	}
-	inputArgs = append(inputArgs, Attr("class", inputClasses))
-
-	return Tag("div", Attr("class", "form-row"),
-		Tag("label", labelArgs...),
-		Tag("input", inputArgs...),
-	)
+	return inputFieldSnippet.Render(data)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,22 +169,26 @@ func (f InputFieldSpec) RenderField(state FormState) RenderedHTML {
 //StaticField is a FormField with a static value.
 type StaticField struct {
 	Label string
-	Value RenderedHTML
+	Value template.HTML
 }
 
 //ReadState implements the FormField interface.
 func (f StaticField) ReadState(*http.Request, *FormState) {
 }
 
+var staticFieldSnippet = NewSnippet(`
+	<div class="display-row">
+		<div class="row-label">{{.Label}}</div>
+		<div class="row-value">{{.Value}}</div>
+	</div>
+`)
+
 //RenderField implements the FormField interface.
-func (f StaticField) RenderField(FormState) RenderedHTML {
+func (f StaticField) RenderField(FormState) template.HTML {
 	if f.Label == "" {
 		return f.Value
 	}
-	return Tag("div", Attr("class", "display-row"),
-		Tag("div", Attr("class", "row-label"), Text(f.Label)),
-		Tag("div", Attr("class", "row-value"), f.Value),
-	)
+	return staticFieldSnippet.Render(f)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
