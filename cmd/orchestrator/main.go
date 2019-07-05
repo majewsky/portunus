@@ -44,6 +44,9 @@ func main() {
 	must(os.Mkdir(slapdDataPath, 0770))
 	must(os.Chown(slapdDataPath, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
 
+	customSchemaPath := filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "portunus.schema")
+	must(ioutil.WriteFile(customSchemaPath, []byte(customSchema), 0444))
+
 	slapdConfigPath := filepath.Join(slapdStatePath, "slapd.conf")
 	must(ioutil.WriteFile(slapdConfigPath, renderSlapdConfig(environment, ids), 0444))
 

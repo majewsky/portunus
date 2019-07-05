@@ -42,9 +42,16 @@ func (u User) FullName() string {
 }
 
 //RenderToLDAP produces the LDAPObject representing this group.
-func (u User) RenderToLDAP(suffix string) LDAPObject {
+func (u User) RenderToLDAP(suffix string, allGroups map[string]Group) LDAPObject {
+	var memberOfGroupDNames []string
+	for _, group := range allGroups {
+		if group.ContainsUser(u) {
+			dn := fmt.Sprintf("cn=%s,ou=groups,%s", group.Name, suffix)
+			memberOfGroupDNames = append(memberOfGroupDNames, dn)
+		}
+	}
+
 	//TODO: make this a posixAccount (requires attributes uidNumber, gidNumber, homeDirectory; optional attributes loginShell, gecos, description)
-	//TODO: generate memberOf attributes (this requires a custom schema)
 	return LDAPObject{
 		DN: fmt.Sprintf("uid=%s,ou=users,%s", u.LoginName, suffix),
 		Attributes: map[string][]string{
@@ -53,7 +60,8 @@ func (u User) RenderToLDAP(suffix string) LDAPObject {
 			"sn":           {u.FamilyName},
 			"givenName":    {u.GivenName},
 			"userPassword": {u.PasswordHash},
-			"objectClass":  {"inetOrgPerson", "organizationalPerson", "person", "top"},
+			"memberOf":     memberOfGroupDNames,
+			"objectClass":  {"hasMemberOf", "inetOrgPerson", "organizationalPerson", "person", "top"},
 		},
 	}
 }

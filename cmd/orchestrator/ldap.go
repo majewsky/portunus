@@ -32,7 +32,6 @@ import (
 )
 
 //TODO: TLS (bind to ldap://127.0.0.1 and ldaps:///)
-//TODO: restrict read access to users in groups with respective permissions
 
 //Notes on this configuration template:
 //- Only Portunus' own technical user has any sort of write access.
@@ -41,6 +40,8 @@ include %PORTUNUS_SLAPD_SCHEMA_DIR%/core.schema
 include %PORTUNUS_SLAPD_SCHEMA_DIR%/cosine.schema
 include %PORTUNUS_SLAPD_SCHEMA_DIR%/inetorgperson.schema
 include %PORTUNUS_SLAPD_SCHEMA_DIR%/nis.schema
+
+include %PORTUNUS_SLAPD_STATE_DIR%/portunus.schema
 
 access to dn.base="" by * read
 access to dn.base="cn=Subschema" by * read
@@ -58,6 +59,21 @@ rootpw     "%PORTUNUS_LDAP_PASSWORD_HASH%"
 directory  "%PORTUNUS_SLAPD_STATE_DIR%/data"
 
 index objectClass eq
+`
+
+//We do not use the OLC machinery for the memberOf attribute because
+//portunus-server itself can do it much more easily. But that means we have to
+//define the memberOf attribute on the schema level.
+var customSchema = `
+	attributetype ( 9999.1.1 NAME 'memberOf'
+		DESC 'back-reference to groups this user is a member of'
+		SUP distinguishedName )
+
+	objectclass ( 9999.2.1 NAME 'hasMemberOf'
+		DESC 'addon to objectClass person that permits memberOf attribute'
+		SUP top AUXILIARY
+		MAY memberOf )
+
 `
 
 func renderSlapdConfig(environment map[string]string, ids map[string]int) []byte {

@@ -231,7 +231,7 @@ func (e *engine) persistLDAP() {
 	//don't need to do it ourselves.
 	ldapDB := make([]LDAPObject, 0, len(e.Users)+len(e.Groups)+1)
 	for _, user := range e.Users {
-		ldapDB = append(ldapDB, user.RenderToLDAP(e.LDAPSuffix))
+		ldapDB = append(ldapDB, user.RenderToLDAP(e.LDAPSuffix, e.Groups))
 	}
 	for _, group := range e.Groups {
 		ldapDB = append(ldapDB, group.RenderToLDAP(e.LDAPSuffix)...)
