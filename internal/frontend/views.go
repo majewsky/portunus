@@ -96,10 +96,12 @@ func (p Page) Render(w http.ResponseWriter, r *http.Request, currentUser *core.U
 		CurrentSection      string
 		Flashes             []Flash
 	}{
-		Page:                p,
-		CurrentUser:         currentUser,
-		CurrentUserFullName: currentUser.FullName(),
-		CurrentSection:      strings.SplitN(strings.TrimPrefix(r.URL.Path, "/"), "/", 2)[0],
+		Page:           p,
+		CurrentUser:    currentUser,
+		CurrentSection: strings.SplitN(strings.TrimPrefix(r.URL.Path, "/"), "/", 2)[0],
+	}
+	if currentUser != nil {
+		data.CurrentUserFullName = currentUser.FullName()
 	}
 
 	for _, value := range s.Flashes() {
