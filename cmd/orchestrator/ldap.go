@@ -44,9 +44,10 @@ include %PORTUNUS_SLAPD_SCHEMA_DIR%/nis.schema
 
 access to dn.base="" by * read
 access to dn.base="cn=Subschema" by * read
+
 access to *
 	by dn.base="cn=portunus,%PORTUNUS_LDAP_SUFFIX%" write
-	by users read
+	by group.exact="cn=portunus-viewers,%PORTUNUS_LDAP_SUFFIX%" read
 	by anonymous auth
 
 database   mdb

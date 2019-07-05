@@ -19,6 +19,7 @@
 package core
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -228,12 +229,42 @@ func (e *engine) persistDatabase() {
 func (e *engine) persistLDAP() {
 	//NOTE: This is always called from functions that have locked e.Mutex, so we
 	//don't need to do it ourselves.
-	ldapDB := make([]LDAPObject, 0, len(e.Users)+len(e.Groups))
+	ldapDB := make([]LDAPObject, 0, len(e.Users)+len(e.Groups)+1)
 	for _, user := range e.Users {
 		ldapDB = append(ldapDB, user.RenderToLDAP(e.LDAPSuffix))
 	}
 	for _, group := range e.Groups {
 		ldapDB = append(ldapDB, group.RenderToLDAP(e.LDAPSuffix)...)
 	}
+	ldapDB = append(ldapDB, e.renderVirtualGroups()...)
 	e.LDAPUpdates <- ldapDB
+}
+
+func (e *engine) renderVirtualGroups() []LDAPObject {
+	//NOTE: This is always called from functions that have locked e.Mutex, so we
+	//don't need to do it ourselves.
+	isLDAPViewerDN := make(map[string]bool)
+	for _, group := range e.Groups {
+		if group.Permissions.LDAP.CanRead {
+			for loginName, isMember := range group.MemberLoginNames {
+				if isMember {
+					dn := fmt.Sprintf("uid=%s,ou=users,%s", loginName, e.LDAPSuffix)
+					isLDAPViewerDN[dn] = true
+				}
+			}
+		}
+	}
+	ldapViewerDNames := make([]string, 0, len(isLDAPViewerDN))
+	for dn := range isLDAPViewerDN {
+		ldapViewerDNames = append(ldapViewerDNames, dn)
+	}
+
+	return []LDAPObject{{
+		DN: fmt.Sprintf("cn=portunus-viewers,%s", e.LDAPSuffix),
+		Attributes: map[string][]string{
+			"cn":          {"portunus-viewers"},
+			"member":      ldapViewerDNames,
+			"objectClass": {"groupOfNames", "top"},
+		},
+	}}
 }
