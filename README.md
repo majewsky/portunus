@@ -4,7 +4,17 @@ Portunus was the ancient Roman god of keys and doors. However, this repo does no
 contain the god. It contains Portunus, a small and self-contained user/group
 management and authentication service.
 
-TODO explain more
+Portunus is aimed at individuals and small organizations that want to manage users and permissions
+across different services, and don't want to deal with the minutiae of LDAP administration. This
+product includes:
+
+- a simple and clean web GUI for managing user accounts and group memberships (no JavaScript
+  required!),
+- a fully-functional OpenLDAP server that services can use to authenticate users.
+- SAML or OAuth support will be added as soon as someone writes the code.
+
+The OpenLDAP server is completely managed by Portunus. No LDAP experience is required to run
+Portunus.
 
 ## Running
 
@@ -38,9 +48,8 @@ change this initial password after the first login.
 
 ### HTTP access
 
-In a productive environment, the HTTP frontend offered by `portunus-server`
-MUST be secured with TLS by putting it behind a TLS-capable reverse proxy such
-as httpd, nginx or haproxy.
+In a productive environment, the HTTP frontend offered by `portunus-server` MUST be secured with TLS
+by putting it behind a TLS-capable reverse proxy such as httpd, nginx or haproxy.
 
 ### LDAP directory structure
 
