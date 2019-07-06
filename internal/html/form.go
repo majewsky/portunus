@@ -51,6 +51,7 @@ func (s FormState) IsValid() bool {
 type FieldState struct {
 	Value        string          //only used by InputFieldSpec
 	Selected     map[string]bool //only used by SelectFieldSpec
+	IsUnfolded   bool            //only used by FieldSet
 	ErrorMessage string
 }
 
@@ -189,6 +190,65 @@ func (f StaticField) RenderField(FormState) template.HTML {
 		return f.Value
 	}
 	return staticFieldSnippet.Render(f)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// type FieldSet
+
+//FieldSet is a FormField that groups multiple FormFields together.
+type FieldSet struct {
+	Name       string
+	Label      string
+	Fields     []FormField
+	IsFoldable bool
+}
+
+//ReadState implements the FormField interface.
+func (fs FieldSet) ReadState(r *http.Request, s *FormState) {
+	if fs.IsFoldable {
+		isUnfolded := r.PostForm.Get(fs.Name) == "1"
+		s.Fields[fs.Name] = &FieldState{IsUnfolded: isUnfolded}
+		if !isUnfolded {
+			return
+		}
+	}
+
+	for _, f := range fs.Fields {
+		f.ReadState(r, s)
+	}
+}
+
+//NOTE: This does not use <legend> because <legend> inside <fieldset> applies
+//special layouting rules that make styling them with CSS unnecessarily hard.
+var fieldSetSnippet = NewSnippet(`
+	{{if .Spec.IsFoldable}}
+		<input type="checkbox" class="for-fieldset" id="{{.Spec.Name}}" name="{{.Spec.Name}}" value="1" {{if .State.IsUnfolded}}checked{{end}}>
+	{{end}}
+	<fieldset>
+		<label for="{{.Spec.Name}}">{{.Spec.Label}}</label>
+		{{.Fields}}
+	</fieldset>
+`)
+
+//RenderField implements the FormField interface.
+func (fs FieldSet) RenderField(state FormState) template.HTML {
+	data := struct {
+		Spec   FieldSet
+		State  *FieldState
+		Fields template.HTML
+	}{
+		Spec:  fs,
+		State: state.Fields[fs.Name],
+	}
+	if data.State == nil {
+		data.State = &FieldState{}
+	}
+
+	for _, f := range fs.Fields {
+		data.Fields = data.Fields + f.RenderField(state)
+	}
+
+	return fieldSetSnippet.Render(data)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

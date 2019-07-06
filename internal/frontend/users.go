@@ -129,111 +129,136 @@ func useUserForm(e core.Engine) HandlerStep {
 			i.FormSpec.SubmitLabel = "Save"
 		}
 
-		if i.TargetUser == nil {
-			mustNotBeInUse := func(loginName string) error {
-				if e.FindUser(loginName) != nil {
-					return errors.New("is already in use")
-				}
-				return nil
-			}
-			i.FormSpec.Fields = append(i.FormSpec.Fields, h.InputFieldSpec{
-				InputType: "text",
-				Name:      "uid",
-				Label:     "Login name",
-				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
-					h.MustNotHaveSurroundingSpaces,
-					h.MustBePosixAccountName,
-					mustNotBeInUse,
-				},
-			})
-		} else {
-			i.FormSpec.Fields = append(i.FormSpec.Fields, h.StaticField{
-				Label: "Login name",
-				Value: codeTagSnippet.Render(i.TargetUser.LoginName),
-			})
-		}
-
 		i.FormSpec.Fields = append(i.FormSpec.Fields,
-			h.InputFieldSpec{
-				InputType: "text",
-				Name:      "given_name",
-				Label:     "Given name",
-				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
-					h.MustNotHaveSurroundingSpaces,
-				},
-			},
-			h.InputFieldSpec{
-				InputType: "text",
-				Name:      "family_name",
-				Label:     "Family name",
-				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
-					h.MustNotHaveSurroundingSpaces,
-				},
-			},
+			buildUserMasterdataFieldset(e, i.TargetUser, i.FormState),
+			buildUserPasswordFieldset(i.TargetUser),
 		)
-		if i.TargetUser != nil {
-			i.FormState.Fields["given_name"] = &h.FieldState{Value: i.TargetUser.GivenName}
-			i.FormState.Fields["family_name"] = &h.FieldState{Value: i.TargetUser.FamilyName}
-		}
 
-		allGroups := e.ListGroups()
-		sort.Slice(allGroups, func(i, j int) bool {
-			return allGroups[i].LongName < allGroups[j].LongName
-		})
-		var groupOpts []h.SelectOptionSpec
-		isGroupSelected := make(map[string]bool)
-		for _, group := range allGroups {
-			groupOpts = append(groupOpts, h.SelectOptionSpec{
-				Value: group.Name,
-				Label: group.LongName,
-			})
-			if i.TargetUser != nil {
-				isGroupSelected[group.Name] = group.ContainsUser(*i.TargetUser)
+	}
+}
+
+func buildUserMasterdataFieldset(e core.Engine, u *core.User, state *h.FormState) h.FormField {
+	var masterDataFields []h.FormField
+	if u == nil {
+		mustNotBeInUse := func(loginName string) error {
+			if e.FindUser(loginName) != nil {
+				return errors.New("is already in use")
 			}
+			return nil
 		}
-		i.FormSpec.Fields = append(i.FormSpec.Fields, h.SelectFieldSpec{
-			Name:    "memberships",
-			Label:   "Group memberships",
-			Options: groupOpts,
+		masterDataFields = append(masterDataFields, h.InputFieldSpec{
+			InputType: "text",
+			Name:      "uid",
+			Label:     "Login name",
+			Rules: []h.ValidationRule{
+				h.MustNotBeEmpty,
+				h.MustNotHaveSurroundingSpaces,
+				h.MustBePosixAccountName,
+				mustNotBeInUse,
+			},
 		})
-		i.FormState.Fields["memberships"] = &h.FieldState{Selected: isGroupSelected}
+	} else {
+		masterDataFields = append(masterDataFields, h.StaticField{
+			Label: "Login name",
+			Value: codeTagSnippet.Render(u.LoginName),
+		})
+	}
 
-		if i.TargetUser == nil {
-			i.FormSpec.Fields = append(i.FormSpec.Fields,
-				h.InputFieldSpec{
-					InputType: "password",
-					Name:      "password",
-					Label:     "Initial password",
-					Rules: []h.ValidationRule{
-						h.MustNotBeEmpty,
-					},
-				},
-				h.InputFieldSpec{
-					InputType: "password",
-					Name:      "repeat_password",
-					Label:     "Repeat password",
-					Rules: []h.ValidationRule{
-						h.MustNotBeEmpty,
-					},
-				},
-			)
-		} else {
-			i.FormSpec.Fields = append(i.FormSpec.Fields,
-				h.InputFieldSpec{
-					InputType: "password",
-					Name:      "password",
-					Label:     "Reset password",
-				},
-				h.InputFieldSpec{
-					InputType: "password",
-					Name:      "repeat_password",
-					Label:     "Repeat password",
-				},
-			)
+	masterDataFields = append(masterDataFields,
+		h.InputFieldSpec{
+			InputType: "text",
+			Name:      "given_name",
+			Label:     "Given name",
+			Rules: []h.ValidationRule{
+				h.MustNotBeEmpty,
+				h.MustNotHaveSurroundingSpaces,
+			},
+		},
+		h.InputFieldSpec{
+			InputType: "text",
+			Name:      "family_name",
+			Label:     "Family name",
+			Rules: []h.ValidationRule{
+				h.MustNotBeEmpty,
+				h.MustNotHaveSurroundingSpaces,
+			},
+		},
+	)
+	if u != nil {
+		state.Fields["given_name"] = &h.FieldState{Value: u.GivenName}
+		state.Fields["family_name"] = &h.FieldState{Value: u.FamilyName}
+	}
+
+	allGroups := e.ListGroups()
+	sort.Slice(allGroups, func(i, j int) bool {
+		return allGroups[i].LongName < allGroups[j].LongName
+	})
+	var groupOpts []h.SelectOptionSpec
+	isGroupSelected := make(map[string]bool)
+	for _, group := range allGroups {
+		groupOpts = append(groupOpts, h.SelectOptionSpec{
+			Value: group.Name,
+			Label: group.LongName,
+		})
+		if u != nil {
+			isGroupSelected[group.Name] = group.ContainsUser(*u)
 		}
+	}
+	masterDataFields = append(masterDataFields, h.SelectFieldSpec{
+		Name:    "memberships",
+		Label:   "Group memberships",
+		Options: groupOpts,
+	})
+	state.Fields["memberships"] = &h.FieldState{Selected: isGroupSelected}
+
+	return h.FieldSet{
+		Label:      "Master data",
+		Fields:     masterDataFields,
+		IsFoldable: false,
+	}
+}
+
+func buildUserPasswordFieldset(u *core.User) h.FormField {
+	if u == nil {
+		return h.FieldSet{
+			Label:      "Initial password",
+			IsFoldable: false,
+			Fields: []h.FormField{
+				h.InputFieldSpec{
+					InputType: "password",
+					Name:      "password",
+					Label:     "Password",
+					Rules: []h.ValidationRule{
+						h.MustNotBeEmpty,
+					},
+				},
+				h.InputFieldSpec{
+					InputType: "password",
+					Name:      "repeat_password",
+					Label:     "Repeat password",
+					Rules: []h.ValidationRule{
+						h.MustNotBeEmpty,
+					},
+				},
+			},
+		}
+	}
+	return h.FieldSet{
+		Name:       "reset_password",
+		Label:      "Reset password",
+		IsFoldable: true,
+		Fields: []h.FormField{
+			h.InputFieldSpec{
+				InputType: "password",
+				Name:      "password",
+				Label:     "New password",
+			},
+			h.InputFieldSpec{
+				InputType: "password",
+				Name:      "repeat_password",
+				Label:     "Repeat password",
+			},
+		},
 	}
 }
 
@@ -277,18 +302,22 @@ func loadTargetUser(e core.Engine) HandlerStep {
 
 func validateEditUserForm(i *Interaction) {
 	fs := i.FormState
-	password1 := fs.Fields["password"].Value
-	password2 := fs.Fields["repeat_password"].Value
-	if password1 != "" && password1 != password2 {
-		fs.Fields["repeat_password"].ErrorMessage = "did not match"
+	if i.FormState.Fields["reset_password"].IsUnfolded {
+		password1 := fs.Fields["password"].Value
+		password2 := fs.Fields["repeat_password"].Value
+		if password1 != "" && password1 != password2 {
+			fs.Fields["repeat_password"].ErrorMessage = "did not match"
+		}
 	}
 }
 
 func executeEditUserForm(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
 		passwordHash := ""
-		if pw := i.FormState.Fields["password"].Value; pw != "" {
-			passwordHash = core.HashPasswordForLDAP(pw)
+		if i.FormState.Fields["reset_password"].IsUnfolded {
+			if pw := i.FormState.Fields["password"].Value; pw != "" {
+				passwordHash = core.HashPasswordForLDAP(pw)
+			}
 		}
 		err := e.ChangeUser(i.TargetUser.LoginName, func(u core.User) (*core.User, error) {
 			if u.LoginName == "" {

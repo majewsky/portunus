@@ -1,7 +1,28 @@
-form {
-  div.form-row, div.display-row {
-    margin: 1rem 0;
+@mixin invisible-checkbox {
+  appearance: none;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  display: none;
+  margin: 0;
+  padding: 0;
+}
+
+@mixin stack($gap) {
+  // Arranges for all children to be separated by the same distance, `$gap`, in
+  // such a way that children can also use the same layout (with a different
+  // gap) inside them.
+  //
+  // Source: <https://every-layout.dev/layouts/stack/>
+  & > * {
+    margin: 0;
   }
+  & > * + * {
+    margin-top: $gap;
+  }
+}
+
+form {
+  @include stack(0.5rem);
 
   .row-label {
     display: block;
@@ -85,12 +106,7 @@ form {
     }
 
     input[type=checkbox] {
-      appearance: none;
-      -moz-appearance: none;
-      -webkit-appearance: none;
-      margin: 0;
-      padding: 0;
-
+      @include invisible-checkbox;
       &:active, &:focus {
         & + label.item {
           border-color: #333;
@@ -101,5 +117,50 @@ form {
     &:not(.item-list-readonly) label.item {
       cursor: pointer;
     }
+  }
+
+  input.for-fieldset[type=checkbox] {
+    @include invisible-checkbox;
+
+    &:checked + fieldset > label:first-child:before {
+      display: inline;
+      content: "\2611";
+    }
+
+    &:not(:checked) + fieldset > label:first-child:before {
+      display: inline;
+      content: "\2610";
+    }
+
+    &:not(:checked) + fieldset > * + * {
+      display: none;
+    }
+  }
+
+  fieldset {
+    @include stack(0.5rem);
+    border: 0;
+    padding: 0 0 0 1rem;
+
+    & > label:first-child {
+      position: relative;
+      top: 0.2rem;
+      left: -1rem;
+      display: block;
+      margin: 0;
+      padding: 0;
+
+      cursor: pointer;
+      font-size: 1.2rem;
+      font-weight: bold;
+
+      &:before {
+        padding-right: 0.3rem;
+      }
+    }
+  }
+
+  div.button-row {
+    margin-top: 1rem;
   }
 }
