@@ -31,18 +31,20 @@ func useLoginForm(i *Interaction) {
 		SubmitLabel: "Login",
 		Fields: []h.FormField{
 			h.InputFieldSpec{
-				InputType: "text",
-				Name:      "uid",
-				Label:     "Login name",
-				AutoFocus: true,
+				InputType:        "text",
+				Name:             "uid",
+				Label:            "Login name",
+				AutoFocus:        true,
+				AutocompleteMode: "on",
 				Rules: []h.ValidationRule{
 					h.MustNotBeEmpty,
 				},
 			},
 			h.InputFieldSpec{
-				InputType: "password",
-				Name:      "password",
-				Label:     "Password",
+				InputType:        "password",
+				Name:             "password",
+				Label:            "Password",
+				AutocompleteMode: "on",
 				Rules: []h.ValidationRule{
 					h.MustNotBeEmpty,
 				},

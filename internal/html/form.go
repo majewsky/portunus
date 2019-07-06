@@ -112,11 +112,12 @@ func (f FormSpec) Render(r *http.Request, s FormState) template.HTML {
 
 //InputFieldSpec describes a single <input> field within type FormSpec.
 type InputFieldSpec struct {
-	Name      string
-	Label     string
-	InputType string
-	AutoFocus bool
-	Rules     []ValidationRule
+	Name             string
+	Label            string
+	InputType        string
+	AutoFocus        bool
+	AutocompleteMode string
+	Rules            []ValidationRule
 }
 
 //ReadState reads and validates the field value from r.PostForm, and stores it
@@ -146,6 +147,7 @@ var inputFieldSnippet = NewSnippet(`
 			{{ if and (ne .State.Value "") (ne .Spec.InputType "password") }}value="{{.State.Value}}"{{ end }}
 			{{ if .Spec.AutoFocus }}autofocus{{ end }}
 			class="row-input {{if .State.ErrorMessage}}form-error{{end}}"
+			autocomplete="{{if .Spec.AutocompleteMode}}{{.Spec.AutocompleteMode}}{{else}}off{{end}}"
 		/>
 	</div>
 `)
