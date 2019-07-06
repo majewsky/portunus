@@ -46,6 +46,7 @@ var groupsListSnippet = h.NewSnippet(`
 			<tr>
 				<th>Name</th>
 				<th>Long name</th>
+				<th>POSIX ID</th>
 				<th>Members</th>
 				<th>Permissions granted</th>
 				<th class="actions">
@@ -58,6 +59,11 @@ var groupsListSnippet = h.NewSnippet(`
 				<tr>
 					<td><code>{{.Group.Name}}</code></td>
 					<td>{{.Group.LongName}}</td>
+					{{ if .Group.PosixGID -}}
+						<td>{{.Group.PosixGID}}</td>
+					{{- else -}}
+						<td class="muted">None</td>
+					{{- end }}
 					<td>{{.MemberCount}}</td>
 					<td>{{.PermissionsText}}</td>
 					<td class="actions">

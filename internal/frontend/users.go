@@ -45,13 +45,13 @@ func getUsersHandler(e core.Engine) http.Handler {
 	)
 }
 
-//TODO: call "User ID" "login name" everywhere
 var usersListSnippet = h.NewSnippet(`
 	<table>
 		<thead>
 			<tr>
-				<th>User ID</th>
-				<th>Name</th>
+				<th>Login name</th>
+				<th>Full name</th>
+				<th>POSIX ID</th>
 				<th>Groups</th>
 				<th class="actions">
 					<a href="/users/new" class="btn btn-primary">New user</a>
@@ -63,6 +63,11 @@ var usersListSnippet = h.NewSnippet(`
 				<tr>
 					<td><code>{{.User.LoginName}}</code></td>
 					<td>{{.UserFullName}}</td>
+					{{ if .User.POSIX -}}
+						<td>{{.User.POSIX.UID}}</td>
+					{{- else -}}
+						<td class="muted">None</td>
+					{{- end }}
 					<td class="comma-separated-list">
 						{{- range .Groups -}}
 						<a href="/groups/{{.Name}}/edit">{{.LongName}}</a><span class="comma">,&nbsp;</span>
