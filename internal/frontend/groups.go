@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -121,6 +122,7 @@ func useGroupForm(e core.Engine) HandlerStep {
 			Fields: []h.FormField{
 				buildGroupMasterdataFieldset(e, i.TargetGroup, i.FormState),
 				buildGroupPermissionsFieldset(i.TargetGroup, i.FormState),
+				buildGroupPosixFieldset(i.TargetGroup, i.FormState),
 			},
 		}
 
@@ -222,6 +224,31 @@ func buildGroupPermissionsFieldset(g *core.Group, state *h.FormState) h.FormFiel
 	}
 }
 
+func buildGroupPosixFieldset(g *core.Group, state *h.FormState) h.FormField {
+	if g != nil && g.PosixGID != nil {
+		state.Fields["posix"] = &h.FieldState{IsUnfolded: true}
+		state.Fields["posix_gid"] = &h.FieldState{Value: g.PosixGID.String()}
+	}
+
+	return h.FieldSet{
+		Name:       "posix",
+		Label:      "Is a POSIX group",
+		IsFoldable: true,
+		Fields: []h.FormField{
+			h.InputFieldSpec{
+				Name:      "posix_gid",
+				Label:     "Group ID",
+				InputType: "text",
+				Rules: []h.ValidationRule{
+					h.MustNotBeEmpty,
+					h.MustNotHaveSurroundingSpaces,
+					h.MustBePosixUIDorGID,
+				},
+			},
+		},
+	}
+}
+
 func getGroupEditHandler(e core.Engine) http.Handler {
 	return Do(
 		LoadSession,
@@ -268,6 +295,13 @@ func executeEditGroupForm(e core.Engine) HandlerStep {
 			g.LongName = i.FormState.Fields["long_name"].Value
 			g.Permissions.Portunus.IsAdmin = i.FormState.Fields["portunus_perms"].Selected["is_admin"]
 			g.Permissions.LDAP.CanRead = i.FormState.Fields["ldap_perms"].Selected["can_read"]
+			if i.FormState.Fields["posix"].IsUnfolded {
+				gidAsUint64, _ := strconv.ParseUint(i.FormState.Fields["posix_gid"].Value, 10, 16)
+				gid := core.PosixID(gidAsUint64)
+				g.PosixGID = &gid
+			} else {
+				g.PosixGID = nil
+			}
 			return &g, nil
 		})
 		if err != nil {
@@ -306,6 +340,12 @@ func executeCreateGroupForm(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
 		name := i.FormState.Fields["name"].Value
 		e.ChangeGroup(name, func(g core.Group) (*core.Group, error) {
+			var posixGID *core.PosixID
+			if i.FormState.Fields["posix"].IsUnfolded {
+				gidAsUint64, _ := strconv.ParseUint(i.FormState.Fields["posix_gid"].Value, 10, 16)
+				gid := core.PosixID(gidAsUint64)
+				posixGID = &gid
+			}
 			return &core.Group{
 				Name:     name,
 				LongName: i.FormState.Fields["long_name"].Value,
@@ -317,6 +357,7 @@ func executeCreateGroupForm(e core.Engine) HandlerStep {
 						CanRead: i.FormState.Fields["ldap_perms"].Selected["can_read"],
 					},
 				},
+				PosixGID: posixGID,
 			}, nil
 		})
 

@@ -72,7 +72,7 @@ func newLDAPWorker() *LDAPWorker {
 	}
 
 	//create main structure: organizational units
-	for _, ouName := range []string{"users", "groups"} {
+	for _, ouName := range []string{"users", "groups", "posix-groups"} {
 		err := w.addObject(core.LDAPObject{
 			DN: fmt.Sprintf("ou=%s,%s", ouName, w.DNSuffix),
 			Attributes: map[string][]string{

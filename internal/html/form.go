@@ -23,6 +23,7 @@ import (
 	"html/template"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -267,6 +268,7 @@ var (
 
 	errNotPosixAccountName = errors.New("is not an acceptable user/group name matching the pattern /" + posixAccountNamePattern + "/")
 	posixAccountNameRx     = regexp.MustCompile(`^` + posixAccountNamePattern + `$`)
+	errNotPosixUIDorGID    = errors.New("is not a number between 0 and 65535 inclusive")
 )
 
 //MustNotBeEmpty is a ValidationRule.
@@ -294,4 +296,13 @@ func MustBePosixAccountName(val string) error {
 		return nil
 	}
 	return errNotPosixAccountName
+}
+
+//MustBePosixUIDorGID is a ValidationRule.
+func MustBePosixUIDorGID(val string) error {
+	_, err := strconv.ParseUint(val, 10, 16)
+	if err != nil {
+		return errNotPosixUIDorGID
+	}
+	return nil
 }

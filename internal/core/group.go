@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 )
 
 //Group represents a single group of users. Membership in a group implicitly
@@ -32,6 +33,7 @@ type Group struct {
 	LongName         string           `json:"long_name"`
 	MemberLoginNames GroupMemberNames `json:"members"`
 	Permissions      Permissions      `json:"permissions"`
+	PosixGID         *PosixID         `json:"posix_gid,omitempty"`
 }
 
 //Cloned returns a deep copy of this user.
@@ -42,6 +44,10 @@ func (g Group) Cloned() Group {
 		if isMember {
 			g.MemberLoginNames[name] = true
 		}
+	}
+	if g.PosixGID != nil {
+		val := *g.PosixGID
+		g.PosixGID = &val
 	}
 	return g
 }
@@ -58,13 +64,12 @@ func (g Group) IsEqualTo(other Group) bool {
 
 //RenderToLDAP produces the LDAPObject representing this group.
 func (g Group) RenderToLDAP(suffix string) []LDAPObject {
-	//TODO: allow making this a posixGroup instead of a groupOfNames (requires gidNumber attribute)
-	//NOTE: maybe duplicate posixGroups under a different ou so that we can have both a groupOfNames and a posixGroup for the same Group
-
 	memberDNames := make([]string, 0, len(g.MemberLoginNames))
+	memberLoginNames := make([]string, 0, len(g.MemberLoginNames))
 	for name, isMember := range g.MemberLoginNames {
 		if isMember {
 			memberDNames = append(memberDNames, fmt.Sprintf("uid=%s,ou=users,%s", name, suffix))
+			memberLoginNames = append(memberLoginNames, name)
 		}
 	}
 	if len(memberDNames) == 0 {
@@ -74,7 +79,7 @@ func (g Group) RenderToLDAP(suffix string) []LDAPObject {
 		memberDNames = append(memberDNames, "cn=nobody,"+suffix)
 	}
 
-	return []LDAPObject{{
+	objs := []LDAPObject{{
 		DN: fmt.Sprintf("cn=%s,ou=groups,%s", g.Name, suffix),
 		Attributes: map[string][]string{
 			"cn":          {g.Name},
@@ -82,6 +87,18 @@ func (g Group) RenderToLDAP(suffix string) []LDAPObject {
 			"objectClass": {"groupOfNames", "top"},
 		},
 	}}
+	if g.PosixGID != nil {
+		objs = append(objs, LDAPObject{
+			DN: fmt.Sprintf("cn=%s,ou=posix-groups,%s", g.Name, suffix),
+			Attributes: map[string][]string{
+				"cn":          {g.Name},
+				"gidNumber":   {g.PosixGID.String()},
+				"memberUid":   memberLoginNames,
+				"objectClass": {"posixGroup", "top"},
+			},
+		})
+	}
+	return objs
 }
 
 //GroupMemberNames is the type of Group.MemberLoginNames.
@@ -111,4 +128,13 @@ func (g *GroupMemberNames) UnmarshalJSON(data []byte) error {
 		(*g)[name] = true
 	}
 	return nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+//PosixID represents a POSIX user or group ID.
+type PosixID uint16
+
+func (id PosixID) String() string {
+	return strconv.FormatUint(uint64(id), 10)
 }
