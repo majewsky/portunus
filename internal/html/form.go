@@ -269,6 +269,8 @@ var (
 	errNotPosixAccountName = errors.New("is not an acceptable user/group name matching the pattern /" + posixAccountNamePattern + "/")
 	posixAccountNameRx     = regexp.MustCompile(`^` + posixAccountNamePattern + `$`)
 	errNotPosixUIDorGID    = errors.New("is not a number between 0 and 65535 inclusive")
+
+	errNotAbsolutePath = errors.New("must be an absolute path, i.e. start with a /")
 )
 
 //MustNotBeEmpty is a ValidationRule.
@@ -281,11 +283,13 @@ func MustNotBeEmpty(val string) error {
 
 //MustNotHaveSurroundingSpaces is a ValidationRule.
 func MustNotHaveSurroundingSpaces(val string) error {
-	if strings.TrimLeftFunc(val, unicode.IsSpace) != val {
-		return errLeadingSpaces
-	}
-	if strings.TrimRightFunc(val, unicode.IsSpace) != val {
-		return errTrailingSpaces
+	if val != "" {
+		if strings.TrimLeftFunc(val, unicode.IsSpace) != val {
+			return errLeadingSpaces
+		}
+		if strings.TrimRightFunc(val, unicode.IsSpace) != val {
+			return errTrailingSpaces
+		}
 	}
 	return nil
 }
@@ -300,9 +304,19 @@ func MustBePosixAccountName(val string) error {
 
 //MustBePosixUIDorGID is a ValidationRule.
 func MustBePosixUIDorGID(val string) error {
-	_, err := strconv.ParseUint(val, 10, 16)
-	if err != nil {
-		return errNotPosixUIDorGID
+	if val != "" {
+		_, err := strconv.ParseUint(val, 10, 16)
+		if err != nil {
+			return errNotPosixUIDorGID
+		}
+	}
+	return nil
+}
+
+//MustBeAbsolutePath is a ValidationRule.
+func MustBeAbsolutePath(val string) error {
+	if val != "" && !strings.HasPrefix(val, "/") {
+		return errNotAbsolutePath
 	}
 	return nil
 }

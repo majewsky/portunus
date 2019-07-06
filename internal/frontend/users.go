@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	"github.com/majewsky/portunus/internal/core"
@@ -44,6 +45,7 @@ func getUsersHandler(e core.Engine) http.Handler {
 	)
 }
 
+//TODO: call "User ID" "login name" everywhere
 var usersListSnippet = h.NewSnippet(`
 	<table>
 		<thead>
@@ -131,6 +133,7 @@ func useUserForm(e core.Engine) HandlerStep {
 
 		i.FormSpec.Fields = append(i.FormSpec.Fields,
 			buildUserMasterdataFieldset(e, i.TargetUser, i.FormState),
+			buildUserPosixFieldset(i.TargetUser, i.FormState),
 			buildUserPasswordFieldset(i.TargetUser),
 		)
 
@@ -252,11 +255,79 @@ func buildUserPasswordFieldset(u *core.User) h.FormField {
 				InputType: "password",
 				Name:      "password",
 				Label:     "New password",
+				Rules: []h.ValidationRule{
+					h.MustNotBeEmpty,
+				},
 			},
 			h.InputFieldSpec{
 				InputType: "password",
 				Name:      "repeat_password",
 				Label:     "Repeat password",
+				Rules: []h.ValidationRule{
+					h.MustNotBeEmpty,
+				},
+			},
+		},
+	}
+}
+
+func buildUserPosixFieldset(u *core.User, state *h.FormState) h.FormField {
+	if u != nil && u.POSIX != nil {
+		state.Fields["posix"] = &h.FieldState{IsUnfolded: true}
+		state.Fields["posix_uid"] = &h.FieldState{Value: u.POSIX.UID.String()}
+		state.Fields["posix_gid"] = &h.FieldState{Value: u.POSIX.GID.String()}
+		state.Fields["posix_home"] = &h.FieldState{Value: u.POSIX.HomeDirectory}
+		state.Fields["posix_shell"] = &h.FieldState{Value: u.POSIX.LoginShell}
+		state.Fields["posix_gecos"] = &h.FieldState{Value: u.POSIX.GECOS}
+	}
+
+	return h.FieldSet{
+		Name:       "posix",
+		Label:      "Is a POSIX user account",
+		IsFoldable: true,
+		Fields: []h.FormField{
+			h.InputFieldSpec{
+				Name:      "posix_uid",
+				Label:     "User ID",
+				InputType: "text",
+				Rules: []h.ValidationRule{
+					h.MustNotBeEmpty,
+					h.MustNotHaveSurroundingSpaces,
+					h.MustBePosixUIDorGID,
+				},
+			},
+			h.InputFieldSpec{
+				Name:      "posix_gid",
+				Label:     "Primary group ID",
+				InputType: "text",
+				Rules: []h.ValidationRule{
+					h.MustNotBeEmpty,
+					h.MustNotHaveSurroundingSpaces,
+					h.MustBePosixUIDorGID,
+				},
+			},
+			h.InputFieldSpec{
+				Name:      "posix_home",
+				Label:     "Home directory",
+				InputType: "text",
+				Rules: []h.ValidationRule{
+					h.MustNotBeEmpty,
+					h.MustNotHaveSurroundingSpaces,
+					h.MustBeAbsolutePath,
+				},
+			},
+			h.InputFieldSpec{
+				Name:      "posix_shell",
+				Label:     "Login shell (optional)",
+				InputType: "text",
+				Rules: []h.ValidationRule{
+					h.MustBeAbsolutePath,
+				},
+			},
+			h.InputFieldSpec{
+				Name:      "posix_gecos",
+				Label:     `GECOS`,
+				InputType: "text",
 			},
 		},
 	}
@@ -305,7 +376,7 @@ func validateEditUserForm(i *Interaction) {
 	if i.FormState.Fields["reset_password"].IsUnfolded {
 		password1 := fs.Fields["password"].Value
 		password2 := fs.Fields["repeat_password"].Value
-		if password1 != "" && password1 != password2 {
+		if password1 != password2 {
 			fs.Fields["repeat_password"].ErrorMessage = "did not match"
 		}
 	}
@@ -327,6 +398,19 @@ func executeEditUserForm(e core.Engine) HandlerStep {
 			u.FamilyName = i.FormState.Fields["family_name"].Value
 			if passwordHash != "" {
 				u.PasswordHash = passwordHash
+			}
+			if i.FormState.Fields["posix"].IsUnfolded {
+				uidAsUint64, _ := strconv.ParseUint(i.FormState.Fields["posix_uid"].Value, 10, 16)
+				gidAsUint64, _ := strconv.ParseUint(i.FormState.Fields["posix_gid"].Value, 10, 16)
+				u.POSIX = &core.UserPosixAttributes{
+					UID:           core.PosixID(uidAsUint64),
+					GID:           core.PosixID(gidAsUint64),
+					HomeDirectory: i.FormState.Fields["posix_home"].Value,
+					LoginShell:    i.FormState.Fields["posix_shell"].Value,
+					GECOS:         i.FormState.Fields["posix_gecos"].Value,
+				}
+			} else {
+				u.POSIX = nil
 			}
 			return &u, nil
 		})
@@ -387,12 +471,27 @@ func executeCreateUserForm(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
 		loginName := i.FormState.Fields["uid"].Value
 		passwordHash := core.HashPasswordForLDAP(i.FormState.Fields["password"].Value)
+
+		var posixAttrs *core.UserPosixAttributes
+		if i.FormState.Fields["posix"].IsUnfolded {
+			uidAsUint64, _ := strconv.ParseUint(i.FormState.Fields["posix_uid"].Value, 10, 16)
+			gidAsUint64, _ := strconv.ParseUint(i.FormState.Fields["posix_gid"].Value, 10, 16)
+			posixAttrs = &core.UserPosixAttributes{
+				UID:           core.PosixID(uidAsUint64),
+				GID:           core.PosixID(gidAsUint64),
+				HomeDirectory: i.FormState.Fields["posix_home"].Value,
+				LoginShell:    i.FormState.Fields["posix_shell"].Value,
+				GECOS:         i.FormState.Fields["posix_gecos"].Value,
+			}
+		}
+
 		e.ChangeUser(loginName, func(u core.User) (*core.User, error) {
 			return &core.User{
 				LoginName:    loginName,
 				GivenName:    i.FormState.Fields["given_name"].Value,
 				FamilyName:   i.FormState.Fields["family_name"].Value,
 				PasswordHash: passwordHash,
+				POSIX:        posixAttrs,
 			}, nil
 		})
 
