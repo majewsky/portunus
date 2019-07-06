@@ -114,9 +114,14 @@ func groupsList(e core.Engine) func(*Interaction) Page {
 
 func useGroupForm(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
-		i.FormSpec = &h.FormSpec{}
 		i.FormState = &h.FormState{
 			Fields: map[string]*h.FieldState{},
+		}
+		i.FormSpec = &h.FormSpec{
+			Fields: []h.FormField{
+				buildGroupMasterdataFieldset(e, i.TargetGroup, i.FormState),
+				buildGroupPermissionsFieldset(i.TargetGroup, i.FormState),
+			},
 		}
 
 		if i.TargetGroup == nil {
@@ -126,33 +131,42 @@ func useGroupForm(e core.Engine) HandlerStep {
 			i.FormSpec.PostTarget = "/groups/" + i.TargetGroup.Name + "/edit"
 			i.FormSpec.SubmitLabel = "Save"
 		}
+	}
+}
 
-		if i.TargetGroup == nil {
-			mustNotBeInUse := func(name string) error {
-				if e.FindGroup(name) != nil {
-					return errors.New("is already in use")
-				}
-				return nil
+func buildGroupMasterdataFieldset(e core.Engine, g *core.Group, state *h.FormState) h.FormField {
+	var nameField h.FormField
+	if g == nil {
+		mustNotBeInUse := func(name string) error {
+			if e.FindGroup(name) != nil {
+				return errors.New("is already in use")
 			}
-			i.FormSpec.Fields = append(i.FormSpec.Fields, h.InputFieldSpec{
-				InputType: "text",
-				Name:      "name",
-				Label:     "Name",
-				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
-					h.MustNotHaveSurroundingSpaces,
-					h.MustBePosixAccountName,
-					mustNotBeInUse,
-				},
-			})
-		} else {
-			i.FormSpec.Fields = append(i.FormSpec.Fields, h.StaticField{
-				Label: "Name",
-				Value: codeTagSnippet.Render(i.TargetGroup.Name),
-			})
+			return nil
 		}
+		nameField = h.InputFieldSpec{
+			InputType: "text",
+			Name:      "name",
+			Label:     "Name",
+			Rules: []h.ValidationRule{
+				h.MustNotBeEmpty,
+				h.MustNotHaveSurroundingSpaces,
+				h.MustBePosixAccountName,
+				mustNotBeInUse,
+			},
+		}
+	} else {
+		nameField = h.StaticField{
+			Label: "Name",
+			Value: codeTagSnippet.Render(g.Name),
+		}
+		state.Fields["long_name"] = &h.FieldState{Value: g.LongName}
+	}
 
-		i.FormSpec.Fields = append(i.FormSpec.Fields,
+	return h.FieldSet{
+		Label:      "Master data",
+		IsFoldable: false,
+		Fields: []h.FormField{
+			nameField,
 			h.InputFieldSpec{
 				InputType: "text",
 				Name:      "long_name",
@@ -162,6 +176,28 @@ func useGroupForm(e core.Engine) HandlerStep {
 					h.MustNotHaveSurroundingSpaces,
 				},
 			},
+		},
+	}
+}
+
+func buildGroupPermissionsFieldset(g *core.Group, state *h.FormState) h.FormField {
+	if g != nil {
+		state.Fields["portunus_perms"] = &h.FieldState{
+			Selected: map[string]bool{
+				"is_admin": g.Permissions.Portunus.IsAdmin,
+			},
+		}
+		state.Fields["ldap_perms"] = &h.FieldState{
+			Selected: map[string]bool{
+				"can_read": g.Permissions.LDAP.CanRead,
+			},
+		}
+	}
+
+	return h.FieldSet{
+		Label:      "Permissions",
+		IsFoldable: false,
+		Fields: []h.FormField{
 			h.SelectFieldSpec{
 				Name:  "portunus_perms",
 				Label: "Grants permissions in Portunus?",
@@ -182,20 +218,7 @@ func useGroupForm(e core.Engine) HandlerStep {
 					},
 				},
 			},
-		)
-		if i.TargetGroup != nil {
-			i.FormState.Fields["long_name"] = &h.FieldState{Value: i.TargetGroup.LongName}
-			i.FormState.Fields["portunus_perms"] = &h.FieldState{
-				Selected: map[string]bool{
-					"is_admin": i.TargetGroup.Permissions.Portunus.IsAdmin,
-				},
-			}
-			i.FormState.Fields["ldap_perms"] = &h.FieldState{
-				Selected: map[string]bool{
-					"can_read": i.TargetGroup.Permissions.LDAP.CanRead,
-				},
-			}
-		}
+		},
 	}
 }
 

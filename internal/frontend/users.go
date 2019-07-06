@@ -138,7 +138,7 @@ func useUserForm(e core.Engine) HandlerStep {
 }
 
 func buildUserMasterdataFieldset(e core.Engine, u *core.User, state *h.FormState) h.FormField {
-	var masterDataFields []h.FormField
+	var fields []h.FormField
 	if u == nil {
 		mustNotBeInUse := func(loginName string) error {
 			if e.FindUser(loginName) != nil {
@@ -146,7 +146,7 @@ func buildUserMasterdataFieldset(e core.Engine, u *core.User, state *h.FormState
 			}
 			return nil
 		}
-		masterDataFields = append(masterDataFields, h.InputFieldSpec{
+		fields = append(fields, h.InputFieldSpec{
 			InputType: "text",
 			Name:      "uid",
 			Label:     "Login name",
@@ -158,13 +158,13 @@ func buildUserMasterdataFieldset(e core.Engine, u *core.User, state *h.FormState
 			},
 		})
 	} else {
-		masterDataFields = append(masterDataFields, h.StaticField{
+		fields = append(fields, h.StaticField{
 			Label: "Login name",
 			Value: codeTagSnippet.Render(u.LoginName),
 		})
 	}
 
-	masterDataFields = append(masterDataFields,
+	fields = append(fields,
 		h.InputFieldSpec{
 			InputType: "text",
 			Name:      "given_name",
@@ -204,7 +204,7 @@ func buildUserMasterdataFieldset(e core.Engine, u *core.User, state *h.FormState
 			isGroupSelected[group.Name] = group.ContainsUser(*u)
 		}
 	}
-	masterDataFields = append(masterDataFields, h.SelectFieldSpec{
+	fields = append(fields, h.SelectFieldSpec{
 		Name:    "memberships",
 		Label:   "Group memberships",
 		Options: groupOpts,
@@ -213,7 +213,7 @@ func buildUserMasterdataFieldset(e core.Engine, u *core.User, state *h.FormState
 
 	return h.FieldSet{
 		Label:      "Master data",
-		Fields:     masterDataFields,
+		Fields:     fields,
 		IsFoldable: false,
 	}
 }
