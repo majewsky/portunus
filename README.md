@@ -4,6 +4,16 @@ Portunus was the ancient Roman god of keys and doors. However, this repo does no
 contain the god. It contains Portunus, a small and self-contained user/group
 management and authentication service.
 
+In this document:
+
+* [Overview](#overview)
+* [Running](#running)
+  * [HTTP access](#http-access)
+  * [LDAP directory structure](#ldap-directory-structure)
+* [Connecting services to Portunus](#connecting-services-to-portunus)
+
+## Overview
+
 Portunus is aimed at individuals and small organizations that want to manage users and permissions
 across different services, and don't want to deal with the minutiae of LDAP administration. This
 product includes:
@@ -53,4 +63,22 @@ by putting it behind a TLS-capable reverse proxy such as httpd, nginx or haproxy
 
 ### LDAP directory structure
 
-TODO
+*If you don't know how LDAP works, this section won't mean much to you. But don't worry! Skip ahead to [the next section](#connecting-services-to-portunus) to find out how to connect services to Portunus.*
+
+For illustrative purposes, `dc=example,dc=org` is used as the `PORTUNUS_LDAP_SUFFIX`. The last column only lists those attributes that are not implied by the object's RDN.
+
+| DN | Object classes | Explanation |
+| -- | -------------- | ----------- |
+| `dc=example,dc=org` | dcObject | |
+| `cn=portunus,dc=example,dc=org` | organizationalRole | The service user used by `portunus-server`. This is the only LDAP user with full write privileges. |
+| `cn=nobody,dc=example,dc=org` | organizationalRole | Since groups must have at least one `member` attribute, this dummy user is a member of all groups that have no actual members. |
+| `ou=users,dc=example,dc=org` | organizationalUnit | Contains all user accounts. |
+| `uid=xxx,ou=users,dc=example,dc=org` | posixAccount&nbsp;(maybe)<br>inetOrgPerson<br>organizationalPerson<br>person | A user account. The `uid` attribute is the login name.<br>*Attributes:* cn, sn, givenName, userPassword, memberOf&nbsp;(maybe).<br>*Attributes for POSIX users:* uidNumber, gidNumber, homeDirectory, loginShell&nbsp;(maybe), gecos. |
+| `ou=groups,dc=example,dc=org` | organizationalUnit | Contains all groups. |
+| `cn=xxx,ou=groups,dc=example,dc=org` | groupOfNames | A group. The `cn` attribute is the group name. *Attributes:* member (list of DNs). |
+| `ou=posix-groups,dc=example,dc=org` | organizationalUnit | Contains duplicates of all groups that are POSIX groups, because the `groupOfNames` and `posixGroup` object classes are mutually exclusive. |
+| `cn=xxx,ou=posix-groups,dc=example,dc=org` | posixGroup | A POSIX group. The `cn` attribute is the group name. *Attributes:* gidNumber, memberUid (list of login names). |
+
+## Connecting services to Portunus
+
+TODO describe how to consume Portunus' LDAP service from applications
