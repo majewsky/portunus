@@ -258,6 +258,9 @@ func (e *engine) renderVirtualGroups() []LDAPObject {
 	for dn := range isLDAPViewerDN {
 		ldapViewerDNames = append(ldapViewerDNames, dn)
 	}
+	if len(ldapViewerDNames) == 0 {
+		ldapViewerDNames = append(ldapViewerDNames, "cn=nobody,"+e.LDAPSuffix)
+	}
 
 	return []LDAPObject{{
 		DN: fmt.Sprintf("cn=portunus-viewers,%s", e.LDAPSuffix),
