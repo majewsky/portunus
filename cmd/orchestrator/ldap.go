@@ -65,17 +65,25 @@ index objectClass eq
 //We do not use the OLC machinery for the memberOf attribute because
 //portunus-server itself can do it much more easily. But that means we have to
 //define the memberOf attribute on the schema level.
+//
+//Also, in order to work in as many scenarios as possible, we do not use the
+//standard attribute name `memberOf`, but `isMemberOf` instead. (Some OpenLDAPs
+//define the `memberOf` attribute even if you don't enable the memberof
+//overlay.)
 var customSchema = `
-	attributetype ( 9999.1.1 NAME 'memberOf'
+	attributetype ( 9999.1.1 NAME 'isMemberOf'
 		DESC 'back-reference to groups this user is a member of'
 		SUP distinguishedName )
 
 	objectclass ( 9999.2.1 NAME 'hasMemberOf'
-		DESC 'addon to objectClass person that permits memberOf attribute'
+		DESC 'addon to objectClass person that permits isMemberOf attribute'
 		SUP top AUXILIARY
-		MAY memberOf )
+		MAY isMemberOf )
 
 `
+
+//^ The trailing empty line is important, otherwise slapd cannot correctly
+//parse this file. ikr?
 
 func renderSlapdConfig(environment map[string]string, ids map[string]int) []byte {
 	password := generateServiceUserPassword()

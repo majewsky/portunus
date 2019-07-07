@@ -73,7 +73,7 @@ func (u User) RenderToLDAP(suffix string, allGroups map[string]Group) LDAPObject
 			"sn":           {u.FamilyName},
 			"givenName":    {u.GivenName},
 			"userPassword": {u.PasswordHash},
-			"memberOf":     memberOfGroupDNames,
+			"isMemberOf":   memberOfGroupDNames,
 			"objectClass":  {"hasMemberOf", "inetOrgPerson", "organizationalPerson", "person", "top"},
 		},
 	}

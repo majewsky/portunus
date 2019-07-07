@@ -1,6 +1,14 @@
 This project follows [semantic versioning](https://semver.org/spec/v2.0.0.html). If you believe that
 SemVer was not adhered to in one of our releases, please open an issue.
 
+# v1.0.0-beta.3 (TBD)
+
+Changes:
+
+- Rename the `memberOf` attribute to `isMemberOf` to accommodate OpenLDAP
+  versions that auto-define the `memberOf` attribute according to the
+  slapo-memberof overlay.
+
 # v1.0.0-beta.2 (2019-07-07)
 
 Changes:
