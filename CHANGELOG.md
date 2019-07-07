@@ -3,6 +3,10 @@ SemVer was not adhered to in one of our releases, please open an issue.
 
 # v1.0.0-beta.2 (TBD)
 
+Changes:
+
+- Enable debug logging of slapd when `PORTUNUS_DEBUG` is set.
+
 Bugfixes:
 
 - Fix an error where the `portunus-viewers` virtual group could not be created

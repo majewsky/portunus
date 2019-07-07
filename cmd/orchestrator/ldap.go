@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/majewsky/portunus/internal/core"
@@ -104,6 +105,14 @@ func generateServiceUserPassword() string {
 
 //Does not return. Call with `go`.
 func runLDAPServer(environment map[string]string) {
+	debugLogFlags := uint64(0)
+	if logg.ShowDebug {
+		//with PORTUNUS_DEBUG=true, turn on all debug logging except for package
+		//traces (those might reveal user passwords in the logfile when bind
+		//requests are logged)
+		debugLogFlags = 0xFFFF &^ 0x12
+	}
+
 	logg.Info("starting LDAP server")
 	//run slapd
 	cmd := exec.Command(environment["PORTUNUS_SLAPD_BINARY"],
@@ -111,7 +120,9 @@ func runLDAPServer(environment map[string]string) {
 		"-g", environment["PORTUNUS_SLAPD_GROUP"],
 		"-h", "ldap:///",
 		"-f", filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "slapd.conf"),
-		"-d", "0", //no debug logging (but still important because presence of `-d` keeps slapd from daemonizing)
+		//even for debugLogFlags == 0, giving `-d` is still important because its
+		//presence keeps slapd from daemonizing)
+		"-d", strconv.FormatUint(debugLogFlags, 10),
 	)
 	cmd.Stdin = nil
 	cmd.Stdout = os.Stdout
