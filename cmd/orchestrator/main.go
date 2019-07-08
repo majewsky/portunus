@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 
 	"github.com/sapcc/go-bits/logg"
+	"github.com/tredoe/osutil/file"
 )
 
 func main() {
@@ -49,6 +50,18 @@ func main() {
 
 	slapdConfigPath := filepath.Join(slapdStatePath, "slapd.conf")
 	must(ioutil.WriteFile(slapdConfigPath, renderSlapdConfig(environment, ids), 0444))
+
+	//copy TLS cert and private key into a location where slapd can definitely read it
+	if certPath := environment["PORTUNUS_SLAPD_TLS_CERTIFICATE"]; certPath != "" {
+		certPath2 := filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "cert.pem")
+		must(file.Copy(certPath, certPath2))
+		must(os.Chown(certPath2, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
+
+		keyPath := environment["PORTUNUS_SLAPD_TLS_PRIVATE_KEY"]
+		keyPath2 := filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "key.pem")
+		must(file.Copy(keyPath, keyPath2))
+		must(os.Chown(keyPath2, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
+	}
 
 	//setup our state directory with the correct permissions
 	statePath := environment["PORTUNUS_SERVER_STATE_DIR"]

@@ -44,6 +44,9 @@ following environment variables:
 | `PORTUNUS_SLAPD_GROUP`<br>`PORTUNUS_SLAPD_USER` | `ldap` each | The Unix user/group that slapd will be run as. |
 | `PORTUNUS_SLAPD_SCHEMA_DIR` | `/etc/openldap/schema` | Where to find OpenLDAP's schema definitions. |
 | `PORTUNUS_SLAPD_STATE_DIR` | `/var/run/portunus-slapd` | The path where slapd stores its database. The contents of this directory are ephemeral and will be wiped when Portunus restarts, so you do not need to back this up. Place this on a tmpfs for optimal performance. |
+| `PORTUNUS_SLAPD_TLS_CERTIFICATE` | *(optional)* | **Highly recommended for productive deployments.** The path to the TLS certificate of the LDAP server. When given, LDAPS (on port 636) is served instead of LDAP (on port 389). |
+| `PORTUNUS_SLAPD_TLS_PRIVATE_KEY` | *(optional)* | *Required* when the previous option is given. The path to the private key belonging to the `$PORTUNUS_SLAPD_TLS_CERTIFICATE`. |
+| `PORTUNUS_SLAPD_TLS_CA_BUNDLE` | `/etc/ssl/certs/ca-certificates.crt` | A bundle of root CA certificates, one of which must have signed the `$PORTUNUS_SLAPD_TLS_CERTIFICATE` (if configured). |
 
 Root privileges are required for the orchestrator because it needs to setup runtime directories and
 bind the LDAP port which is a privileged port (389 without TLS, 636 with TLS). No process managed by

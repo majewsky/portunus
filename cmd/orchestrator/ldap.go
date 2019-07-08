@@ -32,10 +32,12 @@ import (
 	"github.com/sapcc/go-bits/logg"
 )
 
-//TODO: TLS (bind to ldap://127.0.0.1 and ldaps:///)
-
 //Notes on this configuration template:
 //- Only Portunus' own technical user has any sort of write access.
+//- The cn=portunus-viewers virtual group corresponds to Portunus' `LDAP.CanRead` permission.
+//- Users can read their own object, so that applications not using a service
+//  user can discover group memberships of a logged-in user.
+//- TLSProtocolMin 3.3 means "TLS 1.2 or higher". (TODO select cipher suites according to recommendations)
 var configTemplate = `
 include %PORTUNUS_SLAPD_SCHEMA_DIR%/core.schema
 include %PORTUNUS_SLAPD_SCHEMA_DIR%/cosine.schema
@@ -50,7 +52,13 @@ access to dn.base="cn=Subschema" by * read
 access to *
 	by dn.base="cn=portunus,%PORTUNUS_LDAP_SUFFIX%" write
 	by group.exact="cn=portunus-viewers,%PORTUNUS_LDAP_SUFFIX%" read
+	by self read
 	by anonymous auth
+
+TLSCACertificateFile  "%PORTUNUS_SLAPD_TLS_CA_BUNDLE%"
+TLSCertificateFile    "%PORTUNUS_SLAPD_STATE_DIR%/cert.pem"
+TLSCertificateKeyFile "%PORTUNUS_SLAPD_STATE_DIR%/key.pem"
+TLSProtocolMin 3.3
 
 database   mdb
 maxsize    1073741824
@@ -92,8 +100,13 @@ func renderSlapdConfig(environment map[string]string, ids map[string]int) []byte
 	environment["PORTUNUS_LDAP_PASSWORD"] = password
 	environment["PORTUNUS_LDAP_PASSWORD_HASH"] = core.HashPasswordForLDAP(password)
 
-	config := regexp.MustCompile(`%\w+%`).
-		ReplaceAllStringFunc(configTemplate, func(match string) string {
+	config := configTemplate
+	if environment["PORTUNUS_SLAPD_TLS_CERTIFICATE"] == "" {
+		config = regexp.MustCompile(`(?m)^TLS.*$`).ReplaceAllString(config, "")
+	}
+
+	config = regexp.MustCompile(`%\w+%`).
+		ReplaceAllStringFunc(config, func(match string) string {
 			match = strings.TrimPrefix(match, "%")
 			match = strings.TrimSuffix(match, "%")
 			return environment[match]
@@ -121,12 +134,17 @@ func runLDAPServer(environment map[string]string) {
 		debugLogFlags = 0xFFFF &^ 0x12
 	}
 
+	bindURL := "ldap:///"
+	if environment["PORTUNUS_SLAPD_TLS_CERTIFICATE"] != "" {
+		bindURL = "ldaps:///"
+	}
+
 	logg.Info("starting LDAP server")
 	//run slapd
 	cmd := exec.Command(environment["PORTUNUS_SLAPD_BINARY"],
 		"-u", environment["PORTUNUS_SLAPD_USER"],
 		"-g", environment["PORTUNUS_SLAPD_GROUP"],
-		"-h", "ldap:///",
+		"-h", bindURL,
 		"-f", filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "slapd.conf"),
 		//even for debugLogFlags == 0, giving `-d` is still important because its
 		//presence keeps slapd from daemonizing)
