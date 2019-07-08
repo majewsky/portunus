@@ -24,7 +24,7 @@ product includes:
 - SAML or OAuth support will be added as soon as someone writes the code.
 
 The OpenLDAP server is completely managed by Portunus. No LDAP experience is required to run
-Portunus.
+Portunus beyond what this README explains.
 
 ## Running
 
@@ -34,7 +34,7 @@ following environment variables:
 | Variable | Default | Explanation |
 | -------- | ------- | ----------- |
 | `PORTUNUS_DEBUG` | `false` | When true, log debug messages to standard error. May cause passwords to be logged. **Do not use in production.** |
-| `PORTUNUS_LDAP_SUFFIX` | *(required)* | The DN of the topmost entry in your LDAP directory. Must currently be a sequence of `dc=xxx` RDNs. (This requirement may be lifted in future versions.) See [*LDAP directory structure*](#ldap-directory-structure) for details. |
+| `PORTUNUS_LDAP_SUFFIX` | *(required)* | The DN of the topmost entry in your LDAP directory. Must currently be a sequence of `dc=xxx` RDNs. (This requirement may be lifted in future versions.) See [*LDAP directory structure*](#ldap-directory-structure) for details and a guide-level explanation. |
 | `PORTUNUS_SERVER_BINARY` | `portunus-server` | Where to find the portunus-server binary. Semantics match those of `execvp(3)`: If the supplied value is not a path containing slashes, `$PATH` will be searched for it. |
 | `PORTUNUS_SERVER_GROUP`<br>`PORTUNUS_SERVER_USER` | `portunus` each | The Unix user/group that Portunus' own server will be run as. |
 | `PORTUNUS_SERVER_HTTP_LISTEN` | `127.0.0.1:8080` | Listen address where Portunus' HTTP server shall be running. |
@@ -63,7 +63,47 @@ by putting it behind a TLS-capable reverse proxy such as httpd, nginx or haproxy
 
 ### LDAP directory structure
 
-*If you don't know how LDAP works, this section won't mean much to you. But don't worry! Skip ahead to [the next section](#connecting-services-to-portunus) to find out how to connect services to Portunus.*
+*If you know LDAP, you can skip ahead to the table at the end of this section.*
+
+Okay, you need just a tiny tiny bit of LDAP knowledge to understand this, so here we go. Objects in
+an LDAP directory are identified by *Distinguished Names* (DNs), which have a structure sort of
+similar to domain names. A domain name like
+
+```
+example.org
+|-----| |-|
+ word   word
+```
+
+is a dot-separated list of words where the most-specific word is on the left and the least-specific
+one is on the right. Similarly, a distinguished name like
+
+```
+uid=john,ou=users,dc=example,dc=org
+|------| |------| |--------| |----|
+  RDN      RDN       RDN      RDN
+```
+
+is a comma-separated list of *Relative Distinguished Names* (RDNs), which in 99.9% of cases just
+look like `attributename=value`, again with the most-specific RDN on the left. The attribute name
+says something about the type of the object. In this example, starting from the right, we have
+domain components (dc) describing the example.org domain. Below those domain components is an
+organizational unit (ou) containing the users of example.org, and below that is the user "john".
+
+Portunus defines the whole directory structure below the domain component objects in a way that
+matches conventional LDAP design, but it's up to you to specify the domain component objects in the
+`PORTUNUS_LDAP_SUFFIX` variable. If your services are below some domain, e.g. `foo.bar.tld`, your
+LDAP suffix should match that domain, e.g. `dc=foo,dc=bar,dc=tld`. If you are on a private network
+and don't have any domains registered, you can pick one under the `.home` or `.corp` TLDs for
+your purposes and derive the suffix from that like above.
+
+In the end, it doesn't matter much which suffix you pick, but this procedure ensures that Portunus
+generates a nice standards-conformant LDAP directory. That way, if you ever need to switch to a
+different LDAP solution, you can migrate your existing directory easily.
+
+With that out of the way, the following table shows all the objects that Portunus puts in the LDAP
+directory. This just serves as a reference. If you just want to find out how to connect services to
+Portunus, skip ahead to [the next section](#connecting-services-to-portunus).
 
 For illustrative purposes, `dc=example,dc=org` is used as the `PORTUNUS_LDAP_SUFFIX`. The last column only lists those attributes that are not implied by the object's RDN.
 
