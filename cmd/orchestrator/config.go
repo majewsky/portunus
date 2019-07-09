@@ -63,6 +63,7 @@ func readConfig() (environment map[string]string, ids map[string]int) {
 	//last-minute initializations in envDefaults
 	if os.Getenv("PORTUNUS_SLAPD_TLS_CERTIFICATE") != "" {
 		envDefaults["PORTUNUS_SLAPD_TLS_CERTIFICATE"] = ""
+		envDefaults["PORTUNUS_SLAPD_TLS_DOMAIN_NAME"] = ""
 		envDefaults["PORTUNUS_SLAPD_TLS_PRIVATE_KEY"] = ""
 		envDefaults["PORTUNUS_SLAPD_TLS_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
 	}

@@ -31,11 +31,12 @@ import (
 
 //LDAPWorker performs all the LDAP operations.
 type LDAPWorker struct {
-	DNSuffix string //e.g. "dc=example,dc=org"
-	UserDN   string //e.g. "cn=portunus,dc=example,dc=org"
-	Password string //for Portunus' service user
-	conn     *goldap.Conn
-	objects  map[string]core.LDAPObject //persisted objects, key = object DN
+	DNSuffix      string //e.g. "dc=example,dc=org"
+	UserDN        string //e.g. "cn=portunus,dc=example,dc=org"
+	TLSDomainName string
+	Password      string //for Portunus' service user
+	conn          *goldap.Conn
+	objects       map[string]core.LDAPObject //persisted objects, key = object DN
 }
 
 func newLDAPWorker() *LDAPWorker {
@@ -43,9 +44,10 @@ func newLDAPWorker() *LDAPWorker {
 	//because portunus-orchestrator supplied these values and we trust in the
 	//leadership of our glorious orchestrator)
 	w := &LDAPWorker{
-		DNSuffix: os.Getenv("PORTUNUS_LDAP_SUFFIX"),
-		Password: os.Getenv("PORTUNUS_LDAP_PASSWORD"),
-		objects:  make(map[string]core.LDAPObject),
+		DNSuffix:      os.Getenv("PORTUNUS_LDAP_SUFFIX"),
+		Password:      os.Getenv("PORTUNUS_LDAP_PASSWORD"),
+		TLSDomainName: os.Getenv("PORTUNUS_SLAPD_TLS_DOMAIN_NAME"),
+		objects:       make(map[string]core.LDAPObject),
 	}
 	w.UserDN = "cn=portunus," + w.DNSuffix
 
@@ -165,7 +167,15 @@ func (w LDAPWorker) getConn(retryCounter int, sleepInterval time.Duration) *gold
 	}
 	time.Sleep(sleepInterval)
 
-	conn, err := goldap.Dial("tcp", ":ldap")
+	var (
+		conn *goldap.Conn
+		err  error
+	)
+	if w.TLSDomainName != "" {
+		conn, err = goldap.DialTLS("tcp", w.TLSDomainName+":ldaps", nil)
+	} else {
+		conn, err = goldap.Dial("tcp", ":ldap")
+	}
 	if err == nil {
 		err = conn.Bind(w.UserDN, w.Password)
 	}
