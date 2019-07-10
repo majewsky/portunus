@@ -61,6 +61,11 @@ func main() {
 		keyPath2 := filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "key.pem")
 		must(file.Copy(keyPath, keyPath2))
 		must(os.Chown(keyPath2, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
+
+		caPath := environment["PORTUNUS_SLAPD_TLS_CA_CERTIFICATE"]
+		caPath2 := filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "ca.pem")
+		must(file.Copy(caPath, caPath2))
+		must(os.Chown(caPath2, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
 	}
 
 	//setup our state directory with the correct permissions

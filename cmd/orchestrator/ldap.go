@@ -55,7 +55,7 @@ access to *
 	by self read
 	by anonymous auth
 
-TLSCACertificateFile  "%PORTUNUS_SLAPD_TLS_CA_BUNDLE%"
+TLSCACertificateFile  "%PORTUNUS_SLAPD_STATE_DIR%/ca.pem"
 TLSCertificateFile    "%PORTUNUS_SLAPD_STATE_DIR%/cert.pem"
 TLSCertificateKeyFile "%PORTUNUS_SLAPD_STATE_DIR%/key.pem"
 TLSProtocolMin 3.3
