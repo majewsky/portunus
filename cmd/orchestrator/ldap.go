@@ -38,6 +38,7 @@ import (
 //- Users can read their own object, so that applications not using a service
 //  user can discover group memberships of a logged-in user.
 //- TLSProtocolMin 3.3 means "TLS 1.2 or higher". (TODO select cipher suites according to recommendations)
+//TODO when TLS is configured, also listen on ldap:///, but require StartTLS through `security minssf=256`.
 var configTemplate = `
 include %PORTUNUS_SLAPD_SCHEMA_DIR%/core.schema
 include %PORTUNUS_SLAPD_SCHEMA_DIR%/cosine.schema

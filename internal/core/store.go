@@ -91,7 +91,7 @@ func (s *FileStore) run(loadChan chan<- Database, saveChan <-chan Database) {
 			s.cleanupWatcher(watcher)
 			watcher = s.makeWatcher()
 		case err := <-watcher.Errors:
-			logg.Error(err.Error()) //TODO: should this be logg.Fatal()?
+			logg.Error(err.Error())
 		case db := <-saveChan:
 			//stop watching while we modify the database file, so as not to pick up
 			//our own change
