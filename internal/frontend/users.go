@@ -191,10 +191,19 @@ func buildUserMasterdataFieldset(e core.Engine, u *core.User, state *h.FormState
 				h.MustNotHaveSurroundingSpaces,
 			},
 		},
+		h.InputFieldSpec{
+			InputType: "text",
+			Name:      "email",
+			Label:     "Email address (optional in Portunus, but required by some services)",
+			Rules: []h.ValidationRule{
+				h.MustNotHaveSurroundingSpaces,
+			},
+		},
 	)
 	if u != nil {
 		state.Fields["given_name"] = &h.FieldState{Value: u.GivenName}
 		state.Fields["family_name"] = &h.FieldState{Value: u.FamilyName}
+		state.Fields["email"] = &h.FieldState{Value: u.EMailAddress}
 	}
 
 	allGroups := e.ListGroups()
@@ -401,6 +410,7 @@ func executeEditUserForm(e core.Engine) HandlerStep {
 			}
 			u.GivenName = i.FormState.Fields["given_name"].Value
 			u.FamilyName = i.FormState.Fields["family_name"].Value
+			u.EMailAddress = i.FormState.Fields["email"].Value
 			if passwordHash != "" {
 				u.PasswordHash = passwordHash
 			}
@@ -495,6 +505,7 @@ func executeCreateUserForm(e core.Engine) HandlerStep {
 				LoginName:    loginName,
 				GivenName:    i.FormState.Fields["given_name"].Value,
 				FamilyName:   i.FormState.Fields["family_name"].Value,
+				EMailAddress: i.FormState.Fields["email"].Value,
 				PasswordHash: passwordHash,
 				POSIX:        posixAttrs,
 			}, nil

@@ -31,6 +31,9 @@ import (
 var userFullNameSnippet = h.NewSnippet(`
 	<span class="given-name">{{.GivenName}}</span> <span class="family-name">{{.FamilyName}}</span>
 `)
+var userEMailAddressSnippet = h.NewSnippet(`
+	{{if .EMailAddress}}{{.EMailAddress}}{{else}}<em>Not specified</em>{{end}}
+`)
 
 func useSelfServiceForm(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
@@ -75,6 +78,10 @@ func useSelfServiceForm(e core.Engine) HandlerStep {
 				h.StaticField{
 					Label: "Full name",
 					Value: userFullNameSnippet.Render(user),
+				},
+				h.StaticField{
+					Label: "Email address",
+					Value: userEMailAddressSnippet.Render(user),
 				},
 				h.SelectFieldSpec{
 					Name:     "memberships",

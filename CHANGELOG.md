@@ -1,6 +1,13 @@
 This project follows [semantic versioning](https://semver.org/spec/v2.0.0.html). If you believe that
 SemVer was not adhered to in one of our releases, please open an issue.
 
+# v1.0.0-beta.5 (TBD)
+
+New features:
+
+- Add optional email address field to user accounts.
+- Export email address to LDAP as `email` attribute.
+
 # v1.0.0-beta.4 (2019-07-10)
 
 New features:
