@@ -1,0 +1,194 @@
+//Include this mixin in other files to signal that they require this file.
+@mixin requires-module-base {}
+
+//dependencies of this module
+@include requires-module-lib;
+@include requires-module-fonts;
+
+////////////////////////////////////////////////////////////////////////////////
+// CSS reset
+
+html {
+  box-sizing: border-box;
+}
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+
+html, body {
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+main, article, section {
+  max-width: var(--content-width);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// global variables
+
+:root {
+  //minimum size in any dimension of a clickable thing
+  --click-target: 1.2rem;
+  --button-height: 1.6rem;
+  //mobile devices need larger click targets
+  @media (max-width: 40rem) {
+    --click-target: 2rem;
+    --button-height: 2rem;
+  }
+
+  //maximum width of content containers
+  --content-width: 800px;
+
+  //color for borders, button backgrounds etc.
+  --highlight-color: #{$color-primary};
+  //color for links
+  --link-color: #00F;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// basic typography
+
+html {
+  --sans-serif-font-stack: Raleway, sans-serif;
+  --serif-font-stack: "Source Serif Pro", serif;
+  font-family: var(--sans-serif-font-stack);
+  font-size: 18px; /* is 1rem */
+  background: #{$color-page-bg};
+}
+
+h1, h2, h3, h4, h5, h6, p, ul, ol, dl, pre, code, blockquote {
+  @include is-unstyled;
+  margin: 0;
+  padding: 0;
+}
+
+body > * {
+  @include is-unstyled;
+  //<body> does not use is-stack(0.5rem) because is-stack has problems when its
+  //last child is display:hidden. This method is more resilient against hidden
+  //elements, at the cost of flexibility.
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+
+  &:not(table) {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+body > table {
+  //<table> does not support the padding property, so use a margin instead here.
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+}
+
+.contains-body-text {
+  // Applies meaningful styles to paragraphs, headings, lists etc. directly
+  // below this element. Most useful with <main>, <article>, <section> etc.
+  // Can be extended with class="serif".
+  //
+  // These elements should never @include is-card since some children are cards
+  // themselves.
+
+  @include is-styled;
+  @include is-stack(0.5rem);
+
+  & > *:not(blockquote):not(pre) {
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+  }
+
+  &.serif {
+    &, & > blockquote {
+      & > p, & > ul, & > ol, & > ul > li, & > ol > li {
+        font-family: var(--serif-font-stack);
+      }
+    }
+  }
+
+  &, & > blockquote {
+    & > p, & > ul, & > ol, & > ul > li, & > ol > li {
+      @include is-styled;
+    }
+
+    & > p, & > ul > li, & > ol > li {
+      line-height: 1.3;
+
+      text-rendering: optimizeLegibility;
+      font-variant-ligatures: common-ligatures;
+      font-kerning: normal;
+
+      hyphens: auto;
+      -ms-hyphens: auto;
+      -webkit-hyphens: auto;
+
+      text-align: justify;
+
+      & > * {
+        text-align: left;
+      }
+
+      & > code {
+        @include is-styled;
+        padding: 0.2em 0.4em;
+        font-size: 85%;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 3px;
+        white-space: nowrap;
+      }
+    }
+
+    & > h1, & > h2 {
+      @include is-styled;
+      line-height: 1.2;
+    }
+    & > h1 {
+      font-size: 1.8rem;
+    }
+    & > h2 {
+      font-size: 1.5rem;
+    }
+
+    & > ul, & > ol {
+      @include is-stack(0.25rem);
+      padding-left: 1.5rem;
+    }
+  }
+
+  & > blockquote, & > pre {
+    @include is-styled;
+    @include is-card;
+    @include has-highlight(border-left);
+  }
+
+  & > pre {
+    font-size: 85%;
+  }
+
+  & > pre > code {
+    @include is-styled;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// styles for inline text
+
+.small {
+  font-size: 0.8em;
+}
+
+.text-muted {
+  color: gray;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// links
+
+a:not(.button) {
+  text-decoration: none;
+
+  &, &:visited, &:hover, &:focus, &:active {
+    color: var(--link-color);
+  }
+}

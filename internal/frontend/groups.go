@@ -41,7 +41,7 @@ func getGroupsHandler(e core.Engine) http.Handler {
 }
 
 var groupsListSnippet = h.NewSnippet(`
-	<table>
+	<table class="table responsive">
 		<thead>
 			<tr>
 				<th>Name</th>
@@ -50,28 +50,28 @@ var groupsListSnippet = h.NewSnippet(`
 				<th>Members</th>
 				<th>Permissions granted</th>
 				<th class="actions">
-					<a href="/groups/new" class="btn btn-primary">New group</a>
+					<a href="/groups/new" class="button button-primary">New group</a>
 				</th>
 			</tr>
 		</thead>
 		<tbody>
 			{{range .}}
 				<tr>
-					<td><code>{{.Group.Name}}</code></td>
-					<td>{{.Group.LongName}}</td>
+					<td data-label="Name"><code>{{.Group.Name}}</code></td>
+					<td data-label="Long name">{{.Group.LongName}}</td>
 					{{ if .Group.PosixGID -}}
-						<td>{{.Group.PosixGID}}</td>
+						<td data-label="POSIX ID">{{.Group.PosixGID}}</td>
 					{{- else -}}
-						<td class="muted">None</td>
+						<td data-label="POSIX ID" class="text-muted">None</td>
 					{{- end }}
-					<td>{{.MemberCount}}</td>
-					<td>{{.PermissionsText}}</td>
+					<td data-label="Members">{{.MemberCount}}</td>
+					<td data-label="Permissions granted">{{.PermissionsText}}</td>
 					<td class="actions">
 						<a href="/groups/{{.Group.Name}}/edit">Edit</a>
 						·
 						<a href="/groups/{{.Group.Name}}/delete">Delete</a>
 					</td>
-				<tr>
+				</tr>
 			{{end}}
 		</tbody>
 	</table>
@@ -285,7 +285,7 @@ func loadTargetGroup(e core.Engine) HandlerStep {
 		group := e.FindGroup(groupName)
 		if group == nil {
 			msg := fmt.Sprintf("Group %q does not exist.", groupName)
-			i.RedirectWithFlashTo("/groups", Flash{"error", msg})
+			i.RedirectWithFlashTo("/groups", Flash{"danger", msg})
 		} else {
 			i.TargetGroup = group
 		}
@@ -311,7 +311,7 @@ func executeEditGroupForm(e core.Engine) HandlerStep {
 			return &g, nil
 		})
 		if err != nil {
-			i.RedirectWithFlashTo("/groups", Flash{"error", err.Error()})
+			i.RedirectWithFlashTo("/groups", Flash{"danger", err.Error()})
 			return
 		}
 

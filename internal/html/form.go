@@ -87,7 +87,7 @@ var formSpecSnippet = NewSnippet(`
 	<form method="POST" action={{.Spec.PostTarget}}>
 		{{.Fields}}
 		<div class="button-row">
-			<button type="submit" class="btn btn-primary">{{.Spec.SubmitLabel}}</button>
+			<button type="submit" class="button button-primary">{{.Spec.SubmitLabel}}</button>
 		</div>
 	</form>
 `)
@@ -136,7 +136,7 @@ func (f InputFieldSpec) ReadState(r *http.Request, formState *FormState) {
 
 var inputFieldSnippet = NewSnippet(`
 	<div class="form-row">
-		<label for="{{.Spec.Name}}" class="row-label">
+		<label for="{{.Spec.Name}}">
 			{{.Spec.Label}}
 			{{if .State.ErrorMessage}}
 				<span class="form-error">{{.State.ErrorMessage}}</span>
@@ -181,8 +181,8 @@ func (f StaticField) ReadState(*http.Request, *FormState) {
 }
 
 var staticFieldSnippet = NewSnippet(`
-	<div class="display-row">
-		<div class="row-label">{{.Label}}</div>
+	<div class="form-row">
+		<label>{{.Label}}</label>
 		<div class="row-value">{{.Value}}</div>
 	</div>
 `)

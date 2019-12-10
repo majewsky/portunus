@@ -27,6 +27,7 @@ import (
 
 	"github.com/majewsky/portunus/internal/core"
 	"github.com/majewsky/portunus/internal/frontend"
+	_ "github.com/majewsky/xyrillian.css"
 	"github.com/sapcc/go-bits/logg"
 )
 

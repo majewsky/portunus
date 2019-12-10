@@ -1,0 +1,28 @@
+//Include this mixin in other files to signal that they require this file.
+@mixin requires-module-flashes {}
+
+//dependencies of this module
+@include requires-module-lib;
+@include requires-module-base;
+
+.flash {
+  @include is-styled;
+  @include is-card;
+  @include has-highlight(border-left);
+
+  body > & {
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+  }
+}
+
+@mixin is-flash-with-color($color) {
+  --highlight-color: #{$color};
+  background: mix($color, white, 5%);
+}
+
+.flash-primary   { @include is-flash-with-color($color-primary);   }
+.flash-secondary { @include is-flash-with-color($color-secondary); }
+.flash-success   { @include is-flash-with-color($color-success);   }
+.flash-warning   { @include is-flash-with-color($color-warning);   }
+.flash-danger    { @include is-flash-with-color($color-danger);    }

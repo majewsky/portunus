@@ -45,23 +45,40 @@ var mainSnippet = h.NewSnippet(`
 			</title>
 			<link rel="stylesheet" type="text/css" href="/static/css/portunus.css" />
 		</head>
-		<body>
-			<nav><ul>
-				<li><h1>Portunus</h1></li>
-				{{if .CurrentUser}}
-					<li><a href="/self" {{if eq .CurrentSection "self"}}class="current"{{end}}>My profile</a></li>
-					{{if .CurrentUser.Perms.Portunus.IsAdmin}}
-						<li><a href="/users" {{if eq .CurrentSection "users"}}class="current"{{end}}>Users</a></li>
-						<li><a href="/groups" {{if eq .CurrentSection "groups"}}class="current"{{end}}>Groups</a></li>
-					{{end}}
-					<li class="spacer"></li>
-					<li><a class="current">{{.CurrentUserFullName}}</a></li>
-					<li><a href="/logout">Logout</a></li>
-				{{else}}
-					<li><a href="/login" {{if eq .CurrentSection "login"}}class="current"{{end}}>Login</a></li>
-				{{end}}
-			</ul></nav>
-			<main {{if .Page.Wide}}class="wide"{{end}}>
+		<body {{if .Page.Wide}}class="wide"{{end}}>
+			<nav id="nav">
+				<div id="nav-bar">
+					<div id="nav-title">
+						<img src="/static/img/logo-for-menubar.png" alt="Site logo">
+					</div>
+					<a id="nav-fold" href="#">
+						<img src="/static/img/logo-for-menubar.png" alt="Site logo">
+						<span>Close menu</span>
+					</a>
+					<a id="nav-unfold" href="#nav">
+						<img src="/static/img/logo-for-menubar.png" alt="Site logo">
+						<span>{{.Page.Title}} - Portunus</span>
+					</a>
+					<div class="nav-area" id="nav-left">
+						{{ if .CurrentUser }}
+							<a href="/self" class="nav-item {{if eq .CurrentSection "self"}}nav-item-current{{end}}">My profile</a>
+							{{if .CurrentUser.Perms.Portunus.IsAdmin}}
+								<a href="/users" class="nav-item {{if eq .CurrentSection "users"}}nav-item-current{{end}}">Users</a>
+								<a href="/groups" class="nav-item {{if eq .CurrentSection "groups"}}nav-item-current{{end}}">Groups</a>
+							{{end}}
+						{{ else }}
+							<a class="nav-item nav-item-current" href="/login">Login to Portunus</a>
+						{{ end }}
+					</div>
+					<div class="nav-area" id="nav-right">
+						{{ if .CurrentUserFullName }}
+							<div class="nav-item nav-item-current">{{.CurrentUserFullName}}</div>
+							<a class="nav-item" href="/logout">Logout</a>
+						{{ end }}
+					</div>
+				</div>
+			</nav>
+			<main>
 				{{range .Flashes}}<div class="flash flash-{{.Type}}">{{.Message}}</div>{{end}}
 				{{.Page.Contents}}
 			</main>
@@ -71,7 +88,7 @@ var mainSnippet = h.NewSnippet(`
 
 //Flash is a flash message.
 type Flash struct {
-	Type    string //either "error" or "success"
+	Type    string //either "danger" or "success"
 	Message string
 }
 
@@ -94,6 +111,7 @@ func (p Page) Render(w http.ResponseWriter, r *http.Request, currentUser *core.U
 		CurrentUser         *core.UserWithPerms
 		CurrentUserFullName string
 		CurrentSection      string
+		Navigation          template.HTML
 		Flashes             []Flash
 	}{
 		Page:           p,

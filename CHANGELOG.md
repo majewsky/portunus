@@ -1,6 +1,12 @@
 This project follows [semantic versioning](https://semver.org/spec/v2.0.0.html). If you believe that
 SemVer was not adhered to in one of our releases, please open an issue.
 
+# v1.0.0-beta.6 (TBD)
+
+Changes:
+
+- Use the [xyrillian.css](https://github.com/majewsky/xyrillian.css) framework.
+
 # v1.0.0-beta.5 (2019-07-12)
 
 New features:

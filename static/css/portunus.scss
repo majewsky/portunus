@@ -1,12 +1,53 @@
-/* This file only does CSS resets. Everything else is in the imported files. */
+@import 'fonts.scss';
+@import 'xy-lib.scss';
+@import 'xy-base.scss';
+@import 'xy-buttons.scss';
+@import 'xy-flashes.scss';
+@import 'xy-forms.scss';
+@import 'xy-nav.scss';
+@import 'xy-tables.scss';
 
-*, *:before, *:after {
-	box-sizing: border-box;
+.wide {
+	--content-width: 1200px;
 }
 
-@import 'typography.scss';
-@import 'structure.scss';
-@import 'buttons.scss';
-@import 'forms.scss';
-@import 'flashes.scss';
-@import 'tables.scss';
+nav#nav > #nav-bar {
+	--horiz-padding: 0;
+
+	& > * > img {
+		width: 96px;
+		height: 48px;
+		margin-right: 0.5rem;
+	}
+
+	div.nav-item.nav-item-current {
+		color: gray;
+	}
+}
+
+main {
+	@include is-stack(0.5rem);
+	@include is-styled;
+
+	& > form {
+		.form-row > .row-value {
+			@include is-form-input;
+		}
+
+		& > p {
+			@include is-styled;
+		}
+	}
+}
+
+table.table > thead > tr > th {
+	text-align: left;
+}
+
+code {
+	@include is-styled;
+}
+
+.comma-separated-list > .comma:last-child {
+	display: none;
+}

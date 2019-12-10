@@ -56,38 +56,26 @@ func (f SelectFieldSpec) ReadState(r *http.Request, formState *FormState) {
 	formState.Fields[f.Name] = &s
 }
 
-var selectFieldSnippetReadonly = NewSnippet(`
-	<div class="form-row">
-		<div class="row-label">{{.Spec.Label}}</div>
-		<div class="item-list item-list-readonly">
-			{{range .Spec.Options}}
-				{{ $unchecked := not (index $.State.Selected .Value) }}
-				<span class="item item-{{if $unchecked}}un{{end}}checked">{{.Label}}</span>
-			{{end}}
-		</div>
-	</div>
-`)
-
 var selectFieldSnippet = NewSnippet(`
-	<div class="form-row">
-		<div class="row-label">
+	<div class="form-row item-list">
+		<label>
 			{{.Spec.Label}}
 			{{if .State.ErrorMessage}}
 				<span class="form-error">{{.State.ErrorMessage}}</span>
 			{{end}}
-		</div>
-		<div class="item-list">
-			{{- range $idx, $opt := .Spec.Options -}}
-				{{- $id := printf "%s-%d" $.Spec.Name $idx -}}
-				<input
-					type="checkbox"
-					name="{{$.Spec.Name}}"
-					id="{{$id}}"
-					value="{{$opt.Value}}"
-					{{if index $.State.Selected $opt.Value}}checked{{end}}
-				/><label for="{{$id}}" class="item">{{$opt.Label}}</label>
-			{{- end -}}
-		</div>
+		</label>
+		{{- range $idx, $opt := .Spec.Options -}}
+			{{- $id := printf "%s-%d" $.Spec.Name $idx -}}
+			<input
+				type="checkbox" id="{{$id}}"
+				{{if $.Spec.ReadOnly}}
+					readonly
+				{{else}}
+					name="{{$.Spec.Name}}" value="{{$opt.Value}}"
+				{{end}}
+				{{if index $.State.Selected $opt.Value}} checked {{end}}
+			/><label {{if not $.Spec.ReadOnly}} for="{{$id}}" {{end}}>{{$opt.Label}}</label>
+		{{- end -}}
 	</div>
 `)
 
@@ -104,9 +92,6 @@ func (f SelectFieldSpec) RenderField(state FormState) template.HTML {
 		data.State = &FieldState{}
 	}
 
-	if f.ReadOnly {
-		return selectFieldSnippetReadonly.Render(data)
-	}
 	return selectFieldSnippet.Render(data)
 }
 

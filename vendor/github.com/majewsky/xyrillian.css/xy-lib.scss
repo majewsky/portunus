@@ -1,0 +1,82 @@
+//Include this mixin in other files to signal that they require this file.
+@mixin requires-module-lib {}
+
+////////////////////////////////////////////////////////////////////////////////
+// SCSS variables
+
+$color-page-bg:   #DDD;
+$color-primary:   #55F;
+$color-secondary: #777;
+$color-success:   #0C0;
+$color-warning:   #EC0;
+$color-danger:    #D00;
+
+////////////////////////////////////////////////////////////////////////////////
+// unstyled-marker
+
+@mixin is-unstyled {
+  // Ensures that we don't forget to apply styles to these elements.
+  outline: 1px dashed red;
+}
+
+@mixin is-styled {
+  outline: initial;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// layout strategies for display:block and display:inline-block elements
+
+@mixin is-stack($gap) {
+  // Arranges for all children to be separated by the same distance, `$gap`, in
+  // such a way that children can also use the same layout (with a different
+  // gap) inside them.
+  //
+  // Source: <https://every-layout.dev/layouts/stack/>
+  //
+  // Special syntax for usage of $gap because of
+  // <https://www.sass-lang.com/documentation/breaking-changes/css-vars>
+  --more-space: 0px;
+  --less-space: 0px;
+
+  & > * {
+    margin: 0;
+  }
+  & > * + * {
+    margin-top: calc(#{$gap} + var(--more-space) - var(--less-space));
+  }
+
+  // By using the --more-space/--less-space variables, child elements can
+  // easily override the gap to match their own margins, e.g.:
+  //
+  //     .some-stack > .child-with-exception-above     { --less-space: 0.25rem; }
+  //     .some-stack > .child-with-exception-below + * { --more-space: 0.25rem; }
+}
+
+@mixin is-column($gap) {
+  //Like is-stack, but arranges children in a row instead of in a column.
+
+  display: flex;
+  justify-content: flex-start;
+
+  & > * {
+    flex: 0;
+    display: block;
+  }
+  & > * + * {
+    margin-left: $gap;
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// design building blocks
+
+@mixin is-card {
+  background: white;
+  box-shadow: 0 0 2px 3px #CCC;
+  padding: 0.5rem;
+}
+
+@mixin has-highlight($border) {
+  #{$border}: 4px solid var(--highlight-color);
+}

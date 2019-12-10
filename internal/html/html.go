@@ -41,7 +41,7 @@ func (s Snippet) Render(data interface{}) template.HTML {
 	var buf bytes.Buffer
 	err := s.T.Execute(&buf, data)
 	if err != nil {
-		return template.HTML(`<div class="flash flash-error">` + html.EscapeString(err.Error()) + `</div>`)
+		return template.HTML(`<div class="flash flash-danger">` + html.EscapeString(err.Error()) + `</div>`)
 	}
 	return template.HTML(buf.String())
 }

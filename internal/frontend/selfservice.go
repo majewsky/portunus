@@ -172,7 +172,7 @@ func executeSelfServiceForm(e core.Engine) HandlerStep {
 		if err == nil {
 			i.Session.AddFlash(Flash{"success", "Password changed."})
 		} else {
-			i.Session.AddFlash(Flash{"error", err.Error()})
+			i.Session.AddFlash(Flash{"danger", err.Error()})
 		}
 	}
 }

@@ -46,7 +46,7 @@ func getUsersHandler(e core.Engine) http.Handler {
 }
 
 var usersListSnippet = h.NewSnippet(`
-	<table>
+	<table class="table responsive">
 		<thead>
 			<tr>
 				<th>Login name</th>
@@ -54,21 +54,21 @@ var usersListSnippet = h.NewSnippet(`
 				<th>POSIX ID</th>
 				<th>Groups</th>
 				<th class="actions">
-					<a href="/users/new" class="btn btn-primary">New user</a>
+					<a href="/users/new" class="button button-primary">New user</a>
 				</th>
 			</tr>
 		</thead>
 		<tbody>
 			{{range .}}
 				<tr>
-					<td><code>{{.User.LoginName}}</code></td>
-					<td>{{.UserFullName}}</td>
+					<td data-label="Login name"><code>{{.User.LoginName}}</code></td>
+					<td data-label="Full name">{{.UserFullName}}</td>
 					{{ if .User.POSIX -}}
-						<td>{{.User.POSIX.UID}}</td>
+						<td data-label="POSIX ID">{{.User.POSIX.UID}}</td>
 					{{- else -}}
-						<td class="muted">None</td>
+						<td data-label="POSIX ID" class="text-muted">None</td>
 					{{- end }}
-					<td class="comma-separated-list">
+					<td data-label="Groups" class="comma-separated-list">
 						{{- range .Groups -}}
 						<a href="/groups/{{.Name}}/edit">{{.LongName}}</a><span class="comma">,&nbsp;</span>
 						{{- end -}}
@@ -78,7 +78,7 @@ var usersListSnippet = h.NewSnippet(`
 						·
 						<a href="/users/{{.User.LoginName}}/delete">Delete</a>
 					</td>
-				<tr>
+				</tr>
 			{{end}}
 		</tbody>
 	</table>
@@ -378,7 +378,7 @@ func loadTargetUser(e core.Engine) HandlerStep {
 		user := e.FindUser(userLoginName)
 		if user == nil {
 			msg := fmt.Sprintf("User %q does not exist.", userLoginName)
-			i.RedirectWithFlashTo("/users", Flash{"error", msg})
+			i.RedirectWithFlashTo("/users", Flash{"danger", msg})
 		} else {
 			i.TargetUser = &user.User
 		}
@@ -430,7 +430,7 @@ func executeEditUserForm(e core.Engine) HandlerStep {
 			return &u, nil
 		})
 		if err != nil {
-			i.RedirectWithFlashTo("/users", Flash{"error", err.Error()})
+			i.RedirectWithFlashTo("/users", Flash{"danger", err.Error()})
 			return
 		}
 
@@ -548,7 +548,7 @@ var deleteUserConfirmSnippet = h.NewSnippet(`
 
 func useDeleteUserForm(i *Interaction) {
 	if i.TargetUser.LoginName == i.CurrentUser.LoginName {
-		i.RedirectWithFlashTo("/users", Flash{"error", "You cannot delete yourself."})
+		i.RedirectWithFlashTo("/users", Flash{"danger", "You cannot delete yourself."})
 		return
 	}
 

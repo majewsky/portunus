@@ -10,23 +10,25 @@ github.com/gorilla/mux
 github.com/gorilla/securecookie
 # github.com/gorilla/sessions v1.1.3
 github.com/gorilla/sessions
+# github.com/majewsky/xyrillian.css v0.0.0-20191113145857-d07f6dae0faa
+github.com/majewsky/xyrillian.css
 # github.com/pkg/errors v0.8.0
 github.com/pkg/errors
 # github.com/sapcc/go-bits v0.0.0-20190111093410-620b317f22bc
 github.com/sapcc/go-bits/logg
 # github.com/tredoe/goutil v0.0.0-20161130132832-0a73aea41b0b
 github.com/tredoe/goutil/cmdutil
-github.com/tredoe/goutil/reflectutil
 github.com/tredoe/goutil/merrors
+github.com/tredoe/goutil/reflectutil
 # github.com/tredoe/osutil v0.0.0-20161130133508-7d3ee1afa71c
-github.com/tredoe/osutil/user
-github.com/tredoe/osutil/user/crypt/sha256_crypt
 github.com/tredoe/osutil/config/shconf
 github.com/tredoe/osutil/file
+github.com/tredoe/osutil/user
 github.com/tredoe/osutil/user/crypt
-github.com/tredoe/osutil/user/crypt/md5_crypt
-github.com/tredoe/osutil/user/crypt/sha512_crypt
 github.com/tredoe/osutil/user/crypt/common
+github.com/tredoe/osutil/user/crypt/md5_crypt
+github.com/tredoe/osutil/user/crypt/sha256_crypt
+github.com/tredoe/osutil/user/crypt/sha512_crypt
 # golang.org/x/sys v0.0.0-20190426135247-a129542de9ae
 golang.org/x/sys/unix
 # gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d

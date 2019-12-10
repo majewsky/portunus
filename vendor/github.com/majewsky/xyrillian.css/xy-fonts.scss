@@ -1,0 +1,19 @@
+//Include this mixin in other files to signal that they require this file.
+@mixin requires-module-fonts {}
+
+////////////////////////////////////////////////////////////////////////////////
+// This file will usually need to be copied into the target project and
+// adjusted for that project's URL structure.
+
+@font-face {
+  font-family: Raleway;
+  src: local("Raleway"), url("/Raleway-Regular-Original.otf") format("opentype");
+  font-weight: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: Raleway;
+  src: local("Raleway"), url("/Raleway-SemiBold-Original.otf") format("opentype");
+  font-weight: bold;
+  font-display: swap;
+}
