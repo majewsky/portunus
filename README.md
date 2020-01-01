@@ -201,13 +201,14 @@ Double-bind authentication requires a service user account with read access to t
 | Bind DN | `uid=$SERVICE_USERNAME,ou=users,$SUFFIX` | The DN of the service user. |
 | Bind Password | `$SERVICE_PASSWORD` | The password of the service user. |
 | User Search Base | `ou=users,$SUFFIX` | The path in the directory where the application will search for users. |
+| Search Base | `$SUFFIX` | Only set this when the application has no separate "User Search Base" and "Group Search Base" options (looking at you, Grafana). |
 
 The following attributes are only required by some applications:
 
 | Configuration field | Value | Notes |
 | ------------------- | ----- | ----- |
 | Group Search Base | `ou=groups,$SUFFIX` | The path in the directory where the application will search for groups. |
-| Group Name Filter | _(see notes)_ | Each application will only care about memberships in a certain few groups. For example, your Gitea might only be interested in the `gitea-users` and `gitea-admins` groups. In this case, the correct value would be `(|(cn=gitea-users)(cn=gitea-admins))`. For more than two groups, just add additional `(cn=groupname)` phrases inside the outer parentheses. If only one group is of interest, you can just write `(cn=groupname) without the surrounding `(|...)`. |
+| Group Search Filter | `(objectclass=group)` | Which groups to consider. Some applications need a more specific filter since they want to match only the groups they are interested in. For example, Gitea might only be interested in the `gitea-users` and `gitea-admins` groups. In this case, the correct value would be `(&(objectclass=group)(|(cn=gitea-users)(cn=gitea-admins)))`. For more than two groups, just add additional `(cn=groupname)` phrases inside the outer parentheses. If only one group is of interest, you can just write `(&(objectclass=group)(cn=groupname))` without the `(|...)` around the `(cn=groupname)` phrase. |
 | User Attribute in Group | `cn` | Which attribute of each user account is listed in the group. |
 | Group Attribute for User | `member` | The attribute of the group containing these values. |
 
@@ -220,3 +221,4 @@ When the application asks for which attributes exist on each user account, give 
 | Surname<br/>Family Name | `sn` |
 | Full name | `cn` |
 | E-mail address | `mail` |
+| Group memberships | `isMemberOf` |
