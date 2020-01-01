@@ -1,4 +1,4 @@
-![Logo](./static/img/logo.png)
+![Portunus logo](./doc/img/logo.png)
 
 Portunus was the ancient Roman god of keys and doors. However, this repo does not
 contain the god. It contains Portunus, a small and self-contained user/group
