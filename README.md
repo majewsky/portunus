@@ -165,6 +165,23 @@ The following options are common to both authentication methods:
 | LDAP server port | `636` | 636 is the port for LDAPS. If the application supports only 389 (LDAP without TLS), make sure to enable StartTLS, otherwise your LDAP traffic will be unencrypted! |
 | LDAP server URL | `ldap://ldap.example.org`<br/>`ldaps://ldap.example.org` | Some applications want this instead of the previous two options. `ldap://` is port 389, `ldaps://` is port 636. |
 | Use TLS or StartTLS | `true` | When the port is 636, enable "Use TLS". When the port is 389, enable "Use StartTLS". |
+| User Filter | _(see below)_ | An LDAP search expression that restricts which users are allowed to login. This attribute is technically only required for double-bind authentication, but some applications also insist on it even for single-bind authentication. |
+
+The correct value for the user filter depends on two things:
+
+1. Most applications want to match on the username, so they expect a placeholder like `%s` in the expression somewhere. Check the application documentation for which placeholder is expected, and replace `%s` as necessary below.
+2. You can choose to restrict login to members of a certain group. If you do, replace `$GROUP_NAME` below with the correct group name.
+
+Furthermore, replace `$SUFFIX` by your LDAP suffix.
+
+| w/ placeholder | w/ group match | User Filter |
+| -------------- | -------------- | ----------- |
+| no | no | `(objectclass=person)` |
+| yes | no | `(&(objectclass=person)(uid=%s))` |
+| no | yes | `(&(objectclass=person)(isMemberOf=cn=$GROUP_NAME,ou=groups,$SUFFIX))` |
+| yes | yes | `(&(objectclass=person)(uid=%s)(isMemberOf=cn=$GROUP_NAME,ou=groups,$SUFFIX))` |
+
+When using double-bind authentication, you can choose to allow users to log in with their mail address by replacing `(uid=%s)` with `(|(uid=%s)(mail=%s))`. Note that some applications may have a different syntax when the `%s` placeholder appears more than once. Check the application documentation for details.
 
 ### Single-bind authentication
 
@@ -174,11 +191,32 @@ Replace `$SUFFIX` by your LDAP suffix.
 | ------------------- | ----- | ----- |
 | User DN | `uid=%s,ou=users,$SUFFIX` | The DN for the user account with name `%s`. If the application documentation says that it uses a different placeholder than `%s`, use that placeholder instead. |
 | User Search Base | `ou=users,$SUFFIX` | This should not be necessary because it's implied in the User DN above, so leave this option empty unless the application absolutely requires it. |
-| User Filter | _(see notes)_ | This should not be necessary, but some applications insist on having it. A sane default is `(&(objectclass=person)(uid=%s))` if the application wants to have the `%s` placeholder in here like with the User DN. If the username is not interpolated, use `(objectclass=person)`.<br/>You can use this option to restrict login to members of a certain group like this: `(&(objectclass=person)(uid=%s)(isMemberOf=cn=mygroupname,ou=groups,$SUFFIX))` (replace `mygroupname` with the correct group name). If the username is not interpolated, remove the `(uid=%s)` part. |
 
 ### Double-bind authentication
 
+Double-bind authentication requires a service user account with read access to the entire directory. Using the Portunus web UI, create a group that grants read access to LDAP, then create a service user who is a member of this group. Below, replace `$SERVICE_USERNAME` and `$SERVICE_PASSWORD` by this user's credentials, and `$SUFFIX` by your LDAP suffix.
+
 | Configuration field | Value | Notes |
 | ------------------- | ----- | ----- |
+| Bind DN | `uid=$SERVICE_USERNAME,ou=users,$SUFFIX` | The DN of the service user. |
+| Bind Password | `$SERVICE_PASSWORD` | The password of the service user. |
+| User Search Base | `ou=users,$SUFFIX` | The path in the directory where the application will search for users. |
 
-TODO
+The following attributes are only required by some applications:
+
+| Configuration field | Value | Notes |
+| ------------------- | ----- | ----- |
+| Group Search Base | `ou=groups,$SUFFIX` | The path in the directory where the application will search for groups. |
+| Group Name Filter | _(see notes)_ | Each application will only care about memberships in a certain few groups. For example, your Gitea might only be interested in the `gitea-users` and `gitea-admins` groups. In this case, the correct value would be `(|(cn=gitea-users)(cn=gitea-admins))`. For more than two groups, just add additional `(cn=groupname)` phrases inside the outer parentheses. If only one group is of interest, you can just write `(cn=groupname) without the surrounding `(|...)`. |
+| User Attribute in Group | `cn` | Which attribute of each user account is listed in the group. |
+| Group Attribute for User | `member` | The attribute of the group containing these values. |
+
+When the application asks for which attributes exist on each user account, give the following values:
+
+| Value | Attribute name |
+| ----- | -------------- |
+| Username | `uid` |
+| First Name<br/>Given Name | `givenName` |
+| Surname<br/>Family Name | `sn` |
+| Full name | `cn` |
+| E-mail address | `mail` |
