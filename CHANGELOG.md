@@ -1,7 +1,11 @@
 This project follows [semantic versioning](https://semver.org/spec/v2.0.0.html). If you believe that
 SemVer was not adhered to in one of our releases, please open an issue.
 
-# v1.0.0-beta.6 (TBD)
+# v1.0.0 (2020-01-01)
+
+New features:
+
+- The README now describes how to connect applications to Portunus.
 
 Changes:
 
