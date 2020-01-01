@@ -11,6 +11,8 @@ In this document:
   * [HTTP access](#http-access)
   * [LDAP directory structure](#ldap-directory-structure)
 * [Connecting services to Portunus](#connecting-services-to-portunus)
+  * [Single-bind authentication](#single-bind-authentication)
+  * [Double-bind authentication](#double-bind-authentication)
 
 ## Overview
 
@@ -125,4 +127,58 @@ For illustrative purposes, `dc=example,dc=org` is used as the `PORTUNUS_LDAP_SUF
 
 ## Connecting services to Portunus
 
-TODO describe how to consume Portunus' LDAP service from applications
+An LDAP server is pretty useless without any applications that use it for
+authentication. In this section, you will learn how to configure your
+applications to use Portunus for authentication.
+
+There are two principal methods that applications use to authenticate users in
+LDAP. As far as I'm aware, there are no standard names for them, so I'm giving
+them the following names:
+
+* In **single-bind authentication**, the application uses the supplied username
+  and password to log into the user's account in LDAP. This will verify the
+  password. Once logged in, the application can use the user's permissions to
+  inspect the user's attributes and group memberships.
+
+* In **double-bind authentication**, the application first logs in using a
+  service user account and uses the service user privileges to find the user
+  with the given username. If group memberships are required for login, the
+  search is constrained to members of these groups. Upon finding the correct
+  user account, the application then logs in as the user only to verify the
+  supplied password.
+
+Many applications support both methods, but some applications only support one.
+In general, if the application's configuration refers to a "bind password", it
+wants double-bind authentication, otherwise it wants single-bind authentication.
+
+The following subsections describe which configuration options you need to set
+in applications to set them up for single-bind or double-bind authentication.
+Note that the names of configuration options may vary slightly between
+applications. **If you have any questions about how to connect your application
+to Portunus, feel free to ask for help using a GitHub issue.**
+
+The following options are common to both authentication methods:
+
+| Configuration field | Value | Notes |
+| ------------------- | ----- | ----- |
+| LDAP server hostname | `ldap.example.org` | Replace by your own hostname. What you put here must match the LDAP server's TLS certificate, so you probably do not want to put an IP address here. |
+| LDAP server port | `636` | 636 is the port for LDAPS. If the application supports only 389 (LDAP without TLS), make sure to enable StartTLS, otherwise your LDAP traffic will be unencrypted! |
+| LDAP server URL | `ldap://ldap.example.org`<br/>`ldaps://ldap.example.org` | Some applications want this instead of the previous two options. `ldap://` is port 389, `ldaps://` is port 636. |
+| Use TLS or StartTLS | `true` | When the port is 636, enable "Use TLS". When the port is 389, enable "Use StartTLS". |
+
+### Single-bind authentication
+
+Replace `$SUFFIX` by your LDAP suffix.
+
+| Configuration field | Value | Notes |
+| ------------------- | ----- | ----- |
+| User DN | `uid=%s,ou=users,$SUFFIX` | The DN for the user account with name `%s`. If the application documentation says that it uses a different placeholder than `%s`, use that placeholder instead. |
+| User Search Base | `ou=users,$SUFFIX` | This should not be necessary because it's implied in the User DN above, so leave this option empty unless the application absolutely requires it. |
+| User Filter | _(see notes)_ | This should not be necessary, but some applications insist on having it. A sane default is `(&(objectclass=person)(uid=%s))` if the application wants to have the `%s` placeholder in here like with the User DN. If the username is not interpolated, use `(objectclass=person)`.<br/>You can use this option to restrict login to members of a certain group like this: `(&(objectclass=person)(uid=%s)(isMemberOf=cn=mygroupname,ou=groups,$SUFFIX))` (replace `mygroupname` with the correct group name). If the username is not interpolated, remove the `(uid=%s)` part. |
+
+### Double-bind authentication
+
+| Configuration field | Value | Notes |
+| ------------------- | ----- | ----- |
+
+TODO
