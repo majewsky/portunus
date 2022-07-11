@@ -28,6 +28,15 @@ product includes:
 The OpenLDAP server is completely managed by Portunus. No LDAP experience is required to run
 Portunus beyond what this README explains.
 
+<details>
+<summary>Screenshots</summary>
+
+![Groups list](./doc/img/ui-groups.png)
+
+![New user form](./doc/img/ui-newuser.png)
+
+</details>
+
 ## Running
 
 Once installed, run `portunus-orchestrator` with root privileges. Config is passed to it via the
