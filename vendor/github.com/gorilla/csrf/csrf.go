@@ -52,6 +52,26 @@ var (
 	ErrBadToken = errors.New("CSRF token invalid")
 )
 
+// SameSiteMode allows a server to define a cookie attribute making it impossible for
+// the browser to send this cookie along with cross-site requests. The main
+// goal is to mitigate the risk of cross-origin information leakage, and provide
+// some protection against cross-site request forgery attacks.
+//
+// See https://tools.ietf.org/html/draft-ietf-httpbis-cookie-same-site-00 for details.
+type SameSiteMode int
+
+// SameSite options
+const (
+	// SameSiteDefaultMode sets the `SameSite` cookie attribute, which is
+	// invalid in some older browsers due to changes in the SameSite spec. These
+	// browsers will not send the cookie to the server.
+	// csrf uses SameSiteLaxMode (SameSite=Lax) as the default as of v1.7.0+
+	SameSiteDefaultMode SameSiteMode = iota + 1
+	SameSiteLaxMode
+	SameSiteStrictMode
+	SameSiteNoneMode
+)
+
 type csrf struct {
 	h    http.Handler
 	sc   *securecookie.SecureCookie
@@ -66,12 +86,14 @@ type options struct {
 	Path   string
 	// Note that the function and field names match the case of the associated
 	// http.Cookie field instead of the "correct" HTTPOnly name that golint suggests.
-	HttpOnly      bool
-	Secure        bool
-	RequestHeader string
-	FieldName     string
-	ErrorHandler  http.Handler
-	CookieName    string
+	HttpOnly       bool
+	Secure         bool
+	SameSite       SameSiteMode
+	RequestHeader  string
+	FieldName      string
+	ErrorHandler   http.Handler
+	CookieName     string
+	TrustedOrigins []string
 }
 
 // Protect is HTTP middleware that provides Cross-Site Request Forgery
@@ -165,6 +187,7 @@ func Protect(authKey []byte, opts ...Option) func(http.Handler) http.Handler {
 				maxAge:   cs.opts.MaxAge,
 				secure:   cs.opts.Secure,
 				httpOnly: cs.opts.HttpOnly,
+				sameSite: cs.opts.SameSite,
 				path:     cs.opts.Path,
 				domain:   cs.opts.Domain,
 				sc:       cs.sc,
@@ -233,23 +256,40 @@ func (cs *csrf) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			if sameOrigin(r.URL, referer) == false {
+			valid := sameOrigin(r.URL, referer)
+
+			if !valid {
+				for _, trustedOrigin := range cs.opts.TrustedOrigins {
+					if referer.Host == trustedOrigin {
+						valid = true
+						break
+					}
+				}
+			}
+
+			if valid == false {
 				r = envError(r, ErrBadReferer)
 				cs.opts.ErrorHandler.ServeHTTP(w, r)
 				return
 			}
 		}
 
-		// If the token returned from the session store is nil for non-idempotent
-		// ("unsafe") methods, call the error handler.
-		if realToken == nil {
+		// Retrieve the combined token (pad + masked) token...
+		maskedToken, err := cs.requestToken(r)
+		if err != nil {
+			r = envError(r, ErrBadToken)
+			cs.opts.ErrorHandler.ServeHTTP(w, r)
+			return
+		}
+
+		if maskedToken == nil {
 			r = envError(r, ErrNoToken)
 			cs.opts.ErrorHandler.ServeHTTP(w, r)
 			return
 		}
 
-		// Retrieve the combined token (pad + masked) token and unmask it.
-		requestToken := unmask(cs.requestToken(r))
+		// ... and unmask it.
+		requestToken := unmask(maskedToken)
 
 		// Compare the request token against the real token
 		if !compareTokens(requestToken, realToken) {

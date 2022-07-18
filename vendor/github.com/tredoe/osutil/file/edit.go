@@ -59,7 +59,7 @@ func NewEdit(filename string) (*edit, error) {
 
 // Append writes len(b) bytes at the end of the File. It returns an error, if any.
 func (e *edit) Append(b []byte) error {
-	_, err := e.file.Seek(0, os.SEEK_END)
+	_, err := e.file.Seek(0, io.SeekEnd)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (e *edit) Comment(reLine []string) error {
 		}
 	}
 
-	if _, err := e.file.Seek(0, os.SEEK_SET); err != nil {
+	if _, err := e.file.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
 
@@ -191,7 +191,7 @@ func (e *edit) genReplace(r []Replacer, n int) error {
 	if n == 0 {
 		return nil
 	}
-	if _, err := e.file.Seek(0, os.SEEK_SET); err != nil {
+	if _, err := e.file.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
 
@@ -236,7 +236,7 @@ func (e *edit) genReplaceAtLine(r []ReplacerAtLine, n int) error {
 	if n == 0 {
 		return nil
 	}
-	if _, err := e.file.Seek(0, os.SEEK_SET); err != nil {
+	if _, err := e.file.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
 
@@ -300,7 +300,7 @@ func (e *edit) genReplaceAtLine(r []ReplacerAtLine, n int) error {
 }
 
 func (e *edit) rewrite(b []byte) error {
-	if _, err := e.file.Seek(0, os.SEEK_SET); err != nil {
+	if _, err := e.file.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
 

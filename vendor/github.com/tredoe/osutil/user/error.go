@@ -26,7 +26,7 @@ func IsExist(err error) bool {
 	return false
 }
 
-// An IdUsedError reports the presence of an identifier already used.
+// IdUsedError reports the presence of an identifier already used.
 type IdUsedError int
 
 func (e IdUsedError) Error() string { return "id used: " + strconv.Itoa(int(e)) }

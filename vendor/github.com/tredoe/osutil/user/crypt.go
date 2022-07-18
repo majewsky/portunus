@@ -30,13 +30,13 @@ import (
 	//_ "github.com/tredoe/osutil/user/crypt/bcrypt"
 )
 
-const _LOCK_CHAR = '!' // Character added at the beginning of the passwd to lock it.
+const lockChar = '!' // Character added at the beginning of the passwd to lock it.
 
 var ErrShadowPasswd = errors.New("no found user with shadowed passwd")
 
 // lookupCrypter returns the first crypt function found in shadowed passwd file.
 func lookupCrypter() (crypt.Crypter, error) {
-	f, err := os.Open(_SHADOW_FILE)
+	f, err := os.Open(fileShadow)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func lookupCrypter() (crypt.Crypter, error) {
 			return crypt.NewFromHash(shadow.password), nil
 		}
 	}
-	return nil, ErrShadowPasswd
+	//return nil, ErrShadowPasswd
 }
 
 // SetCrypter sets the crypt function to can hash the passwords.
@@ -123,8 +123,8 @@ func LockUser(name string) error {
 		return err
 	}
 
-	if shadow.password[0] != _LOCK_CHAR {
-		shadow.password = string(_LOCK_CHAR) + shadow.password
+	if shadow.password[0] != lockChar {
+		shadow.password = string(lockChar) + shadow.password
 		return edit(name, shadow)
 	}
 	return nil
@@ -137,7 +137,7 @@ func UnlockUser(name string) error {
 		return err
 	}
 
-	if shadow.password[0] == _LOCK_CHAR {
+	if shadow.password[0] == lockChar {
 		shadow.password = shadow.password[1:]
 		return edit(name, shadow)
 	}
