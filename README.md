@@ -217,7 +217,7 @@ The following attributes are only required by some applications:
 | Configuration field | Value | Notes |
 | ------------------- | ----- | ----- |
 | Group Search Base | `ou=groups,$SUFFIX` | The path in the directory where the application will search for groups. |
-| Group Search Filter | `(objectclass=group)` | Which groups to consider. Some applications need a more specific filter since they want to match only the groups they are interested in. For example, Gitea might only be interested in the `gitea-users` and `gitea-admins` groups. In this case, the correct value would be `(&(objectclass=group)(|(cn=gitea-users)(cn=gitea-admins)))`. For more than two groups, just add additional `(cn=groupname)` phrases inside the outer parentheses. If only one group is of interest, you can just write `(&(objectclass=group)(cn=groupname))` without the `(|...)` around the `(cn=groupname)` phrase. |
+| Group Search Filter | `(objectclass=group)` | Which groups to consider. Some applications need a more specific filter since they want to match only the groups they are interested in. For example, Gitea might only be interested in the `gitea-users` and `gitea-admins` groups. In this case, the correct value would be `(&(objectclass=group)(\|(cn=gitea-users)(cn=gitea-admins)))`. For more than two groups, just add additional `(cn=groupname)` phrases inside the outer parentheses. If only one group is of interest, you can just write `(&(objectclass=group)(cn=groupname))` without the `(|...)` around the `(cn=groupname)` phrase. |
 | User Attribute in Group | `cn` | Which attribute of each user account is listed in the group. |
 | Group Attribute for User | `member` | The attribute of the group containing these values. |
 
