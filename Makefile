@@ -9,8 +9,6 @@ all: build/orchestrator build/server
 build/%: internal/static/bindata.go FORCE
 	go build -o $@ $(GO_BUILDFLAGS) -ldflags '-s -w $(GO_LDFLAGS)' 'github.com/majewsky/portunus/cmd/$*'
 
-internal/static/bindata.go: $(shell find static -type f)
-	go-bindata -ignore '\.scss$$' -prefix static/ -o $@ static/...
 static/css/portunus.css: static/css/*.scss
 	sassc -t compressed -I vendor/github.com/majewsky/xyrillian.css -I static/css static/css/portunus.scss static/css/portunus.css
 
@@ -23,5 +21,7 @@ vendor: FORCE
 	go mod tidy
 	go mod verify
 	go mod vendor
+	@# need to move these files into static/ to enable embedding into the binary
+	rm -f -- static/fonts/*.otf && cp -t static/fonts/ vendor/github.com/majewsky/xyrillian.css/Raleway-*.otf
 
 .PHONY: FORCE

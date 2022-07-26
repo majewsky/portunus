@@ -19,11 +19,9 @@
 package frontend
 
 import (
-	"bytes"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/gorilla/csrf"
@@ -32,7 +30,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
-	"github.com/majewsky/portunus/internal/static"
+	"github.com/majewsky/portunus/static"
 	"github.com/sapcc/go-bits/logg"
 )
 
@@ -40,7 +38,7 @@ import (
 func HTTPHandler(engine core.Engine, isBehindTLSProxy bool) http.Handler {
 	r := mux.NewRouter()
 	r.Methods("GET").Path(`/`).Handler(getToplevelHandler(engine))
-	r.Methods("GET").Path(`/static/{path:.+}`).HandlerFunc(staticHandler)
+	r.Methods("GET").Path(`/static/{path:.+}`).Handler(http.StripPrefix("/static/", http.FileServer(http.FS(static.FS))))
 
 	r.Methods("GET").Path(`/login`).Handler(getLoginHandler(engine))
 	r.Methods("POST").Path(`/login`).Handler(postLoginHandler(engine))
@@ -86,22 +84,6 @@ func securityHeadersMiddleware(inner http.Handler) http.Handler {
 		hdr.Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data:;")
 		inner.ServeHTTP(w, r)
 	})
-}
-
-func staticHandler(w http.ResponseWriter, r *http.Request) {
-	assetPath := mux.Vars(r)["path"]
-	assetBytes, err := static.Asset(assetPath)
-	if err != nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	assetInfo, err := static.AssetInfo(assetPath)
-	if err != nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-
-	http.ServeContent(w, r, path.Base(assetPath), assetInfo.ModTime(), bytes.NewReader(assetBytes))
 }
 
 func getToplevelHandler(e core.Engine) http.Handler {
