@@ -6,7 +6,7 @@ GO_LDFLAGS    =
 
 all: build/orchestrator build/server
 
-build/%: FORCE
+build/%: static/css/portunus.css FORCE
 	go build -o $@ $(GO_BUILDFLAGS) -ldflags '-s -w $(GO_LDFLAGS)' 'github.com/majewsky/portunus/cmd/$*'
 
 static/css/portunus.css: static/css/*.scss
