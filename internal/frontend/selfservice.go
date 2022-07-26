@@ -69,7 +69,7 @@ func useSelfServiceForm(e core.Engine) HandlerStep {
 
 		i.FormSpec = &h.FormSpec{
 			PostTarget:  "/self",
-			SubmitLabel: "Change password",
+			SubmitLabel: "Update profile",
 			Fields: []h.FormField{
 				h.StaticField{
 					Label: "Login name",
@@ -89,28 +89,35 @@ func useSelfServiceForm(e core.Engine) HandlerStep {
 					Options:  memberships,
 					ReadOnly: true,
 				},
-				h.InputFieldSpec{
-					InputType: "password",
-					Name:      "old_password",
-					Label:     "Old password",
-					Rules: []h.ValidationRule{
-						h.MustNotBeEmpty,
-					},
-				},
-				h.InputFieldSpec{
-					InputType: "password",
-					Name:      "new_password",
-					Label:     "New password",
-					Rules: []h.ValidationRule{
-						h.MustNotBeEmpty,
-					},
-				},
-				h.InputFieldSpec{
-					InputType: "password",
-					Name:      "repeat_password",
-					Label:     "Repeat password",
-					Rules: []h.ValidationRule{
-						h.MustNotBeEmpty,
+				h.FieldSet{
+					Name:       "change_password",
+					Label:      "Change password",
+					IsFoldable: true,
+					Fields: []h.FormField{
+						h.InputFieldSpec{
+							InputType: "password",
+							Name:      "old_password",
+							Label:     "Old password",
+							Rules: []h.ValidationRule{
+								h.MustNotBeEmpty,
+							},
+						},
+						h.InputFieldSpec{
+							InputType: "password",
+							Name:      "new_password",
+							Label:     "New password",
+							Rules: []h.ValidationRule{
+								h.MustNotBeEmpty,
+							},
+						},
+						h.InputFieldSpec{
+							InputType: "password",
+							Name:      "repeat_password",
+							Label:     "Repeat password",
+							Rules: []h.ValidationRule{
+								h.MustNotBeEmpty,
+							},
+						},
 					},
 				},
 			},
@@ -143,34 +150,40 @@ func postSelfHandler(e core.Engine) http.Handler {
 func validateSelfServiceForm(i *Interaction) {
 	fs := i.FormState
 
-	if fs.IsValid() {
-		newPassword1 := fs.Fields["new_password"].Value
-		newPassword2 := fs.Fields["repeat_password"].Value
-		if newPassword1 != newPassword2 {
-			fs.Fields["repeat_password"].ErrorMessage = "did not match"
+	if fs.Fields["change_password"].IsUnfolded {
+		if fs.IsValid() {
+			newPassword1 := fs.Fields["new_password"].Value
+			newPassword2 := fs.Fields["repeat_password"].Value
+			if newPassword1 != newPassword2 {
+				fs.Fields["repeat_password"].ErrorMessage = "did not match"
+			}
 		}
-	}
 
-	if fs.IsValid() {
-		oldPassword := fs.Fields["old_password"].Value
-		if !core.CheckPasswordHash(oldPassword, i.CurrentUser.PasswordHash) {
-			fs.Fields["old_password"].ErrorMessage = "is not correct"
+		if fs.IsValid() {
+			oldPassword := fs.Fields["old_password"].Value
+			if !core.CheckPasswordHash(oldPassword, i.CurrentUser.PasswordHash) {
+				fs.Fields["old_password"].ErrorMessage = "is not correct"
+			}
 		}
 	}
 }
 
 func executeSelfServiceForm(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
-		newPasswordHash := core.HashPasswordForLDAP(i.FormState.Fields["new_password"].Value)
+		fs := i.FormState
+
 		err := e.ChangeUser(i.CurrentUser.LoginName, func(u core.User) (*core.User, error) {
 			if u.LoginName == "" {
 				return nil, fmt.Errorf("no such user")
 			}
-			u.PasswordHash = newPasswordHash
+			if fs.Fields["change_password"].IsUnfolded {
+				u.PasswordHash = core.HashPasswordForLDAP(i.FormState.Fields["new_password"].Value)
+			}
 			return &u, nil
 		})
+
 		if err == nil {
-			i.Session.AddFlash(Flash{"success", "Password changed."})
+			i.Session.AddFlash(Flash{"success", "Profile updated."})
 		} else {
 			i.Session.AddFlash(Flash{"danger", err.Error()})
 		}
