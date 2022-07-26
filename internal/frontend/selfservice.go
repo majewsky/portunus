@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
@@ -64,8 +65,8 @@ func useSelfServiceForm(e core.Engine) HandlerStep {
 				"memberships": &h.FieldState{
 					Selected: isSelected,
 				},
-				"ssh_public_key": &h.FieldState{
-					Value: user.SSHPublicKey,
+				"ssh_public_keys": &h.FieldState{
+					Value: strings.Join(user.SSHPublicKeys, "\r\n"),
 				},
 			},
 		}
@@ -92,13 +93,12 @@ func useSelfServiceForm(e core.Engine) HandlerStep {
 					Options:  memberships,
 					ReadOnly: true,
 				},
-				h.InputFieldSpec{
-					InputType: "text",
-					Name:      "ssh_public_key",
-					Label:     "SSH public key",
+				h.MultilineInputFieldSpec{
+					Name:  "ssh_public_keys",
+					Label: "SSH public key(s)",
 					Rules: []h.ValidationRule{
 						h.MustNotHaveSurroundingSpaces,
-						h.MustBeSSHPublicKey,
+						h.MustBeSSHPublicKeys,
 					},
 				},
 				h.FieldSet{
@@ -191,7 +191,7 @@ func executeSelfServiceForm(e core.Engine) HandlerStep {
 			if fs.Fields["change_password"].IsUnfolded {
 				u.PasswordHash = core.HashPasswordForLDAP(i.FormState.Fields["new_password"].Value)
 			}
-			u.SSHPublicKey = i.FormState.Fields["ssh_public_key"].Value
+			u.SSHPublicKeys = h.SplitSSHPublicKeys(i.FormState.Fields["ssh_public_keys"].Value)
 			return &u, nil
 		})
 

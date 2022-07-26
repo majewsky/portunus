@@ -20,6 +20,7 @@ package core
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 )
 
@@ -169,7 +170,7 @@ func (e *engine) ChangeUser(loginName string, action func(User) (*User, error)) 
 		}
 		delete(e.Users, loginName)
 	} else {
-		if oldState == *newState {
+		if reflect.DeepEqual(oldState, *newState) {
 			return nil
 		}
 		e.Users[loginName] = *newState

@@ -20,6 +20,7 @@ package h
 
 import (
 	"errors"
+	"fmt"
 	"html/template"
 	"net/http"
 	"regexp"
@@ -169,6 +170,62 @@ func (f InputFieldSpec) RenderField(state FormState) template.HTML {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// type MultilineInputFieldSpec
+
+//MultilineInputFieldSpec describes a single <input> field within type FormSpec.
+type MultilineInputFieldSpec struct {
+	Name  string
+	Label string
+	Rules []ValidationRule
+}
+
+//ReadState reads and validates the field value from r.PostForm, and stores it
+//in the given FormState.
+func (f MultilineInputFieldSpec) ReadState(r *http.Request, formState *FormState) {
+	s := FieldState{Value: r.PostForm.Get(f.Name)}
+	for _, rule := range f.Rules {
+		err := rule(s.Value)
+		if err != nil {
+			s.ErrorMessage = err.Error()
+			break
+		}
+	}
+	formState.Fields[f.Name] = &s
+}
+
+var multilineInputFieldSnippet = NewSnippet(`
+	<div class="form-row">
+		<label for="{{.Spec.Name}}">
+			{{.Spec.Label}}
+			{{if .State.ErrorMessage}}
+				<span class="form-error">{{.State.ErrorMessage}}</span>
+			{{end}}
+		</label>
+		<textarea
+			name="{{.Spec.Name}}"
+			class="row-input {{if .State.ErrorMessage}}form-error{{end}}"
+			autocomplete="off">
+				{{- .State.Value -}}
+		</textarea>
+	</div>
+`)
+
+//RenderField produces the HTML for this field.
+func (f MultilineInputFieldSpec) RenderField(state FormState) template.HTML {
+	data := struct {
+		Spec  MultilineInputFieldSpec
+		State *FieldState
+	}{
+		Spec:  f,
+		State: state.Fields[f.Name],
+	}
+	if data.State == nil {
+		data.State = &FieldState{}
+	}
+	return multilineInputFieldSnippet.Render(data)
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // type StaticField
 
 //StaticField is a FormField with a static value.
@@ -273,8 +330,7 @@ var (
 	posixAccountNameRx     = regexp.MustCompile(`^` + posixAccountNamePattern + `$`)
 	errNotPosixUIDorGID    = errors.New("is not a number between 0 and 65535 inclusive")
 
-	errNotAbsolutePath   = errors.New("must be an absolute path, i.e. start with a /")
-	errNotAnSSHPublicKey = errors.New("is not a valid SSH public key")
+	errNotAbsolutePath = errors.New("must be an absolute path, i.e. start with a /")
 )
 
 //MustNotBeEmpty is a ValidationRule.
@@ -325,12 +381,25 @@ func MustBeAbsolutePath(val string) error {
 	return nil
 }
 
-//MustBeSSHPublicKey is a ValidationRule.
-func MustBeSSHPublicKey(val string) error {
-	if val != "" {
-		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(val))
+//SplitSSHPublicKeys preprocesses the content of a submitted <textarea> where a
+//list of SSH public keys is expected. The result will have one public key per
+//array entry.
+func SplitSSHPublicKeys(val string) (result []string) {
+	for _, line := range strings.Split(val, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			result = append(result, line)
+		}
+	}
+	return result
+}
+
+//MustBeSSHPublicKeys is a ValidationRule.
+func MustBeSSHPublicKeys(val string) error {
+	for idx, line := range SplitSSHPublicKeys(val) {
+		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(line))
 		if err != nil {
-			return errNotAnSSHPublicKey
+			return fmt.Errorf("must have a valid SSH public key on each line (parse error on line %d)", idx+1)
 		}
 	}
 	return nil
