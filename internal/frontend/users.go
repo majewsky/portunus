@@ -199,11 +199,21 @@ func buildUserMasterdataFieldset(e core.Engine, u *core.User, state *h.FormState
 				h.MustNotHaveSurroundingSpaces,
 			},
 		},
+		h.InputFieldSpec{
+			InputType: "text",
+			Name:      "ssh_public_key",
+			Label:     "SSH public key",
+			Rules: []h.ValidationRule{
+				h.MustNotHaveSurroundingSpaces,
+				h.MustBeSSHPublicKey,
+			},
+		},
 	)
 	if u != nil {
 		state.Fields["given_name"] = &h.FieldState{Value: u.GivenName}
 		state.Fields["family_name"] = &h.FieldState{Value: u.FamilyName}
 		state.Fields["email"] = &h.FieldState{Value: u.EMailAddress}
+		state.Fields["ssh_public_key"] = &h.FieldState{Value: u.SSHPublicKey}
 	}
 
 	allGroups := e.ListGroups()
@@ -411,6 +421,7 @@ func executeEditUserForm(e core.Engine) HandlerStep {
 			u.GivenName = i.FormState.Fields["given_name"].Value
 			u.FamilyName = i.FormState.Fields["family_name"].Value
 			u.EMailAddress = i.FormState.Fields["email"].Value
+			u.SSHPublicKey = i.FormState.Fields["ssh_public_key"].Value
 			if passwordHash != "" {
 				u.PasswordHash = passwordHash
 			}

@@ -64,6 +64,9 @@ func useSelfServiceForm(e core.Engine) HandlerStep {
 				"memberships": &h.FieldState{
 					Selected: isSelected,
 				},
+				"ssh_public_key": &h.FieldState{
+					Value: user.SSHPublicKey,
+				},
 			},
 		}
 
@@ -88,6 +91,15 @@ func useSelfServiceForm(e core.Engine) HandlerStep {
 					Label:    "Group memberships",
 					Options:  memberships,
 					ReadOnly: true,
+				},
+				h.InputFieldSpec{
+					InputType: "text",
+					Name:      "ssh_public_key",
+					Label:     "SSH public key",
+					Rules: []h.ValidationRule{
+						h.MustNotHaveSurroundingSpaces,
+						h.MustBeSSHPublicKey,
+					},
 				},
 				h.FieldSet{
 					Name:       "change_password",
@@ -179,6 +191,7 @@ func executeSelfServiceForm(e core.Engine) HandlerStep {
 			if fs.Fields["change_password"].IsUnfolded {
 				u.PasswordHash = core.HashPasswordForLDAP(i.FormState.Fields["new_password"].Value)
 			}
+			u.SSHPublicKey = i.FormState.Fields["ssh_public_key"].Value
 			return &u, nil
 		})
 

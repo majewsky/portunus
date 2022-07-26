@@ -3,6 +3,10 @@ SemVer was not adhered to in one of our releases, please open an issue.
 
 # v1.1.0 (TBD)
 
+New features:
+
+- Add "sshPublicKey" attribute. This attribute can also be maintained by users via self-service.
+
 Changes:
 
 - Update all Go library dependencies.

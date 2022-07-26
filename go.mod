@@ -12,6 +12,7 @@ require (
 	github.com/majewsky/xyrillian.css v0.0.0-20191113145857-d07f6dae0faa
 	github.com/sapcc/go-bits v0.0.0-20220706183424-591e645cac86
 	github.com/tredoe/osutil v1.0.4
+	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29
 )
 
 require (
@@ -19,6 +20,5 @@ require (
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/tredoe/goutil v0.0.0-20161130132832-0a73aea41b0b // indirect
-	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29 // indirect
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
 )

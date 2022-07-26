@@ -28,6 +28,7 @@ import (
 	"unicode"
 
 	"github.com/gorilla/csrf"
+	"golang.org/x/crypto/ssh"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,7 +273,8 @@ var (
 	posixAccountNameRx     = regexp.MustCompile(`^` + posixAccountNamePattern + `$`)
 	errNotPosixUIDorGID    = errors.New("is not a number between 0 and 65535 inclusive")
 
-	errNotAbsolutePath = errors.New("must be an absolute path, i.e. start with a /")
+	errNotAbsolutePath   = errors.New("must be an absolute path, i.e. start with a /")
+	errNotAnSSHPublicKey = errors.New("is not a valid SSH public key")
 )
 
 //MustNotBeEmpty is a ValidationRule.
@@ -319,6 +321,17 @@ func MustBePosixUIDorGID(val string) error {
 func MustBeAbsolutePath(val string) error {
 	if val != "" && !strings.HasPrefix(val, "/") {
 		return errNotAbsolutePath
+	}
+	return nil
+}
+
+//MustBeSSHPublicKey is a ValidationRule.
+func MustBeSSHPublicKey(val string) error {
+	if val != "" {
+		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(val))
+		if err != nil {
+			return errNotAnSSHPublicKey
+		}
 	}
 	return nil
 }

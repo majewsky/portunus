@@ -84,10 +84,14 @@ var customSchema = `
 		DESC 'back-reference to groups this user is a member of'
 		SUP distinguishedName )
 
-	objectclass ( 9999.2.1 NAME 'hasMemberOf'
-		DESC 'addon to objectClass person that permits isMemberOf attribute'
+	attributetype ( 9999.1.2 NAME 'sshPublicKey'
+		DESC 'SSH public key used by this user'
+		SUP name )
+
+	objectclass ( 9999.2.1 NAME 'portunusPerson'
+		DESC 'addon to objectClass person that adds Portunus-specific attributes'
 		SUP top AUXILIARY
-		MAY isMemberOf )
+		MAY ( isMemberOf $ sshPublicKey ) )
 
 `
 
