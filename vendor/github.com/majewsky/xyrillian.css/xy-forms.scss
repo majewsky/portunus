@@ -98,7 +98,7 @@ div.form-row {
     }
   }
 
-  & > input, & > select {
+  & > input, & > select, & > textarea {
     @include is-form-input;
     display: block;
     width: 100%;
@@ -126,6 +126,17 @@ div.form-row {
         border-color: #300;
       }
     }
+  }
+
+  & > textarea {
+    //Usually we have line-height: var(--button-height) on form controls, but this line height is too large for multi-line text. We choose a smaller line-height here instead, and add top/bottom paddings to make single-line text values align in the same way as for single-line controls.
+    --line-height: 1.3rem;
+    --extra-padding: calc(0.5 * var(--button-height) - 0.5 * var(--line-height));
+    padding-top: var(--extra-padding);
+    padding-bottom: var(--extra-padding);
+    line-height: var(--line-height);
+    min-height: calc(3.5 * var(--line-height) + 2 * var(--extra-padding));
+    resize: vertical;
   }
 }
 

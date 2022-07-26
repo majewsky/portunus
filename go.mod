@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.2.1
-	github.com/majewsky/xyrillian.css v0.0.0-20191113145857-d07f6dae0faa
+	github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25
 	github.com/sapcc/go-bits v0.0.0-20220706183424-591e645cac86
 	github.com/tredoe/osutil v1.0.4
 	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29

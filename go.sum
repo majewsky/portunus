@@ -14,8 +14,8 @@ github.com/gorilla/securecookie v1.1.1 h1:miw7JPhV+b/lAHSXz4qd/nN9jRiAFV5FwjeKyC
 github.com/gorilla/securecookie v1.1.1/go.mod h1:ra0sb63/xPlUeL+yeDciTfxMRAA+MP+HVt/4epWDjd4=
 github.com/gorilla/sessions v1.2.1 h1:DHd3rPN5lE3Ts3D8rKkQ8x/0kqfeNmBAaiSi+o7FsgI=
 github.com/gorilla/sessions v1.2.1/go.mod h1:dk2InVEVJ0sfLlnXv9EAgkf6ecYs/i80K/zI+bUmuGM=
-github.com/majewsky/xyrillian.css v0.0.0-20191113145857-d07f6dae0faa h1:QcbcUedaumNIwgv1TCFKHpGtwzU+pyvE5oTApzBifNs=
-github.com/majewsky/xyrillian.css v0.0.0-20191113145857-d07f6dae0faa/go.mod h1:7hqd4c6WS/k8JAutdt668nZauYI8/mm67iIlQldeqj8=
+github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25 h1:rQ9BxeHYtPe8nG2a36QWhwcrlAwUdOvUUMub7YRV5gM=
+github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25/go.mod h1:7hqd4c6WS/k8JAutdt668nZauYI8/mm67iIlQldeqj8=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/sapcc/go-bits v0.0.0-20220706183424-591e645cac86 h1:kuaSdCXr5ShLDcPSPgIhva8MVGlR2eDzFD1oJQaMXsk=

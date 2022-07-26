@@ -22,7 +22,7 @@ github.com/gorilla/securecookie
 # github.com/gorilla/sessions v1.2.1
 ## explicit
 github.com/gorilla/sessions
-# github.com/majewsky/xyrillian.css v0.0.0-20191113145857-d07f6dae0faa
+# github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25
 ## explicit
 github.com/majewsky/xyrillian.css
 # github.com/pkg/errors v0.9.1
