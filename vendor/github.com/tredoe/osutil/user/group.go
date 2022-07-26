@@ -62,7 +62,7 @@ type Group struct {
 	addSystemGroup bool
 }
 
-// AddGroup returns a new Group.
+// NewGroup returns a new Group.
 func NewGroup(name string, members ...string) *Group {
 	return &Group{
 		Name:     name,
@@ -84,7 +84,7 @@ func NewSystemGroup(name string, members ...string) *Group {
 	}
 }
 
-func (g *Group) filename() string { return _GROUP_FILE }
+func (g *Group) filename() string { return fileGroup }
 
 // IsOfSystem indicates whether it is a system group.
 func (g *Group) IsOfSystem() bool {
@@ -105,12 +105,12 @@ func (g *Group) String() string {
 func parseGroup(row string) (*Group, error) {
 	fields := strings.Split(row, ":")
 	if len(fields) != 4 {
-		return nil, rowError{_GROUP_FILE, row}
+		return nil, rowError{fileGroup, row}
 	}
 
 	gid, err := strconv.Atoi(fields[2])
 	if err != nil {
-		return nil, atoiError{_GROUP_FILE, row, "GID"}
+		return nil, atoiError{fileGroup, row, "GID"}
 	}
 
 	return &Group{
@@ -137,7 +137,7 @@ func (*Group) lookUp(line string, f field, value interface{}) interface{} {
 	// Check integers
 	var err error
 	if intField[2], err = strconv.Atoi(allField[2]); err != nil {
-		panic(atoiError{_GROUP_FILE, line, "GID"})
+		panic(atoiError{fileGroup, line, "GID"})
 	}
 
 	// Check fields
@@ -307,7 +307,7 @@ func (g *Group) Add() (gid int, err error) {
 		}
 		g.GID = gid
 	} else {
-		db, err = openDBFile(_GROUP_FILE, os.O_WRONLY|os.O_APPEND)
+		db, err = openDBFile(fileGroup, os.O_WRONLY|os.O_APPEND)
 		if err != nil {
 			return
 		}

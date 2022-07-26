@@ -125,7 +125,7 @@ func NewSystemUser(name, homeDir string, gid int) *User {
 	}
 }
 
-func (u *User) filename() string { return _USER_FILE }
+func (u *User) filename() string { return fileUser }
 
 // IsOfSystem indicates whether it is a system user.
 func (u *User) IsOfSystem() bool {
@@ -146,16 +146,16 @@ func (u *User) String() string {
 func parseUser(row string) (*User, error) {
 	fields := strings.Split(row, ":")
 	if len(fields) != 7 {
-		return nil, rowError{_USER_FILE, row}
+		return nil, rowError{fileUser, row}
 	}
 
 	uid, err := strconv.Atoi(fields[2])
 	if err != nil {
-		return nil, atoiError{_USER_FILE, row, "UID"}
+		return nil, atoiError{fileUser, row, "UID"}
 	}
 	gid, err := strconv.Atoi(fields[3])
 	if err != nil {
-		return nil, atoiError{_USER_FILE, row, "GID"}
+		return nil, atoiError{fileUser, row, "GID"}
 	}
 
 	return &User{
@@ -182,10 +182,10 @@ func (*User) lookUp(line string, f field, value interface{}) interface{} {
 	// Check integers
 	var err error
 	if intField[2], err = strconv.Atoi(allField[2]); err != nil {
-		panic(atoiError{_USER_FILE, line, "UID"})
+		panic(atoiError{fileUser, line, "UID"})
 	}
 	if intField[3], err = strconv.Atoi(allField[3]); err != nil {
-		panic(atoiError{_USER_FILE, line, "GID"})
+		panic(atoiError{fileUser, line, "GID"})
 	}
 
 	// Check fields
@@ -279,9 +279,9 @@ func GetUsername() string {
 // GetUsernameFromEnv returns the user name from the environment variable
 // for the actual process.
 func GetUsernameFromEnv() string {
-	user_env := []string{"USER", "USERNAME", "LOGNAME", "LNAME"}
+	userEnv := []string{"USER", "USERNAME", "LOGNAME", "LNAME"}
 
-	for _, val := range user_env {
+	for _, val := range userEnv {
 		name := os.Getenv(val)
 		if name != "" {
 			return name
@@ -351,7 +351,7 @@ func (u *User) Add() (uid int, err error) {
 		}
 		u.UID = uid
 	} else {
-		db, err = openDBFile(_USER_FILE, os.O_WRONLY|os.O_APPEND)
+		db, err = openDBFile(fileUser, os.O_WRONLY|os.O_APPEND)
 		if err != nil {
 			return 0, err
 		}

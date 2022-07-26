@@ -9,8 +9,8 @@ package user
 // Since tests will be done in temporary files, there is to use variables to
 // change the values at testing.
 var (
-	_USER_FILE    = "/etc/passwd"
-	_GROUP_FILE   = "/etc/group"
-	_SHADOW_FILE  = "/etc/shadow"
-	_GSHADOW_FILE = "/etc/gshadow"
+	fileUser    = "/etc/passwd"
+	fileGroup   = "/etc/group"
+	fileShadow  = "/etc/shadow"
+	fileGShadow = "/etc/gshadow"
 )

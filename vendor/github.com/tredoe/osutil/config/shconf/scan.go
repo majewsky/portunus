@@ -33,6 +33,12 @@ func (e noASCIIKeyError) Error() string {
 	return strconv.Itoa(int(e)) + ": the key only must to have ASCII characters"
 }
 
+type invalidCharError int
+
+func (e invalidCharError) Error() string {
+	return strconv.Itoa(int(e)) + ": key with invalid character"
+}
+
 type openQuoteError int
 
 func (e openQuoteError) Error() string {
@@ -47,20 +53,14 @@ func (e valueError) Error() string {
 
 // * * *
 
-// _DEF_SEPARATOR is the character used like separator, by default.
-var _DEF_SEPARATOR = []byte{'='}
-
-// option represents the option to run the scanner.
-type Option uint8
-
-const (
-	SKIP_KEYS_DISABLED Option = iota + 1
-	GET_KEYS_DISABLED
-)
+// separator is the character used like separator, by default.
+var separator = []byte{'='}
 
 // Scanner provides a convenient interface for reading data such as a file of
 // lines of text in format key-value. Successive calls to the Scan method will
 // step through the 'tokens' of a file, skipping the bytes between the tokens.
+//
+// The valid characters for the keys are: [a-zA-Z_.]
 //
 // Scanning stops unrecoverably at EOF, the first I/O error, or a token too
 // large to fit in the buffer.
@@ -144,8 +144,12 @@ func (s *Scanner) Scan() bool {
 			break
 		}
 
-		if n > 1 || !isValidChar(thisRune) {
+		if n > 1 {
 			s.err = noASCIIKeyError(s.line)
+			return false
+		}
+		if !isValidChar(thisRune) {
+			s.err = invalidCharError(s.line)
 			return false
 		}
 		key = append(key, thisRune)
@@ -340,7 +344,7 @@ func (s *Scanner) Separator() []byte {
 			if err := s.Err(); err != nil {
 				panic(err)
 			}
-			return _DEF_SEPARATOR
+			return separator
 		}
 	}
 	return s.separator
@@ -349,8 +353,13 @@ func (s *Scanner) Separator() []byte {
 // == Utility
 
 func isValidChar(r rune) bool {
-	if (r < 'A' || r > 'Z') /*&& r < 'a' && r > 'z'*/ && r != '_' {
+	if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') {
+		return true
+	}
+	switch r {
+	case '_', '.':
+		return true
+	default:
 		return false
 	}
-	return true
 }

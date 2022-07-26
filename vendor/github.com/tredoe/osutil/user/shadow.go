@@ -224,12 +224,21 @@ func (s *Shadow) EnableAging() { s.setChange() }
 // SetExpire sets the date of expiration of the account.
 func (s *Shadow) SetExpire(t *time.Time) { s.expire = secToDay(t.Unix()) }
 
-func (s *Shadow) filename() string { return _SHADOW_FILE }
+func (s *Shadow) filename() string { return fileShadow }
 
 func (s *Shadow) String() string {
-	var inactive, expire, flag string
+	var min, max, warn, inactive, expire, flag string
 
 	// Optional fields
+	if s.Min != 0 {
+		min = strconv.Itoa(s.Min)
+	}
+	if s.Max != 0 {
+		max = strconv.Itoa(s.Max)
+	}
+	if s.Warn != 0 {
+		warn = strconv.Itoa(s.Warn)
+	}
 	if s.Inactive != 0 {
 		inactive = strconv.Itoa(s.Inactive)
 	}
@@ -240,51 +249,54 @@ func (s *Shadow) String() string {
 		flag = strconv.Itoa(s.flag)
 	}
 
-	return fmt.Sprintf("%s:%s:%s:%d:%d:%d:%s:%s:%s\n",
-		s.Name, s.password, s.changed, s.Min, s.Max, s.Warn, inactive, expire, flag)
+	return fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s:%s:%s\n",
+		s.Name, s.password, s.changed, min, max, warn, inactive, expire, flag)
 }
 
 // parseShadow parses the row of a shadowed password.
 func parseShadow(row string) (*Shadow, error) {
 	fields := strings.Split(row, ":")
 	if len(fields) != 9 {
-		return nil, rowError{_SHADOW_FILE, row}
+		return nil, rowError{fileShadow, row}
 	}
 
-	var inactive, expire, flag int
+	var min, max, warn, inactive, expire, flag int
 
 	changed, err := parseChange(fields[2])
 	if err != nil {
-		return nil, atoiError{_SHADOW_FILE, row, "changed"}
-	}
-	min, err := strconv.Atoi(fields[3])
-	if err != nil {
-		return nil, atoiError{_SHADOW_FILE, row, "Min"}
-	}
-	max, err := strconv.Atoi(fields[4])
-	if err != nil {
-		return nil, atoiError{_SHADOW_FILE, row, "Max"}
-	}
-	warn, err := strconv.Atoi(fields[5])
-	if err != nil {
-		return nil, atoiError{_SHADOW_FILE, row, "Warn"}
+		return nil, atoiError{fileShadow, row, "changed"}
 	}
 
 	// Optional fields
 
+	if fields[3] != "" {
+		if min, err = strconv.Atoi(fields[3]); err != nil {
+			return nil, atoiError{fileShadow, row, "Min"}
+		}
+	}
+	if fields[4] != "" {
+		if max, err = strconv.Atoi(fields[4]); err != nil {
+			return nil, atoiError{fileShadow, row, "Max"}
+		}
+	}
+	if fields[5] != "" {
+		if warn, err = strconv.Atoi(fields[5]); err != nil {
+			return nil, atoiError{fileShadow, row, "Warn"}
+		}
+	}
 	if fields[6] != "" {
 		if inactive, err = strconv.Atoi(fields[6]); err != nil {
-			return nil, atoiError{_SHADOW_FILE, row, "Inactive"}
+			return nil, atoiError{fileShadow, row, "Inactive"}
 		}
 	}
 	if fields[7] != "" {
 		if expire, err = strconv.Atoi(fields[7]); err != nil {
-			return nil, atoiError{_SHADOW_FILE, row, "expire"}
+			return nil, atoiError{fileShadow, row, "expire"}
 		}
 	}
 	if fields[8] != "" {
 		if flag, err = strconv.Atoi(fields[8]); err != nil {
-			return nil, atoiError{_SHADOW_FILE, row, "flag"}
+			return nil, atoiError{fileShadow, row, "flag"}
 		}
 	}
 
@@ -314,31 +326,37 @@ func (*Shadow) lookUp(line string, f field, value interface{}) interface{} {
 	// Check integers
 	changed, err := parseChange(allField[2])
 	if err != nil {
-		panic(atoiError{_SHADOW_FILE, line, "changed"})
-	}
-	if intField[3], err = strconv.Atoi(allField[3]); err != nil {
-		panic(atoiError{_SHADOW_FILE, line, "Min"})
-	}
-	if intField[4], err = strconv.Atoi(allField[4]); err != nil {
-		panic(atoiError{_SHADOW_FILE, line, "Max"})
-	}
-	if intField[5], err = strconv.Atoi(allField[5]); err != nil {
-		panic(atoiError{_SHADOW_FILE, line, "Warn"})
+		panic(atoiError{fileShadow, line, "changed"})
 	}
 	// These fields could be empty.
+	if allField[3] != "" {
+		if intField[3], err = strconv.Atoi(allField[3]); err != nil {
+			panic(atoiError{fileShadow, line, "Min"})
+		}
+	}
+	if allField[4] != "" {
+		if intField[4], err = strconv.Atoi(allField[4]); err != nil {
+			panic(atoiError{fileShadow, line, "Max"})
+		}
+	}
+	if allField[5] != "" {
+		if intField[5], err = strconv.Atoi(allField[5]); err != nil {
+			panic(atoiError{fileShadow, line, "Warn"})
+		}
+	}
 	if allField[6] != "" {
 		if intField[6], err = strconv.Atoi(allField[6]); err != nil {
-			panic(atoiError{_SHADOW_FILE, line, "Inactive"})
+			panic(atoiError{fileShadow, line, "Inactive"})
 		}
 	}
 	if allField[7] != "" {
 		if intField[7], err = strconv.Atoi(allField[7]); err != nil {
-			panic(atoiError{_SHADOW_FILE, line, "expire"})
+			panic(atoiError{fileShadow, line, "expire"})
 		}
 	}
 	if allField[8] != "" {
 		if intField[8], err = strconv.Atoi(allField[8]); err != nil {
-			panic(atoiError{_SHADOW_FILE, line, "flag"})
+			panic(atoiError{fileShadow, line, "flag"})
 		}
 	}
 
@@ -448,11 +466,11 @@ func (s *Shadow) Add(key []byte) (err error) {
 	}
 
 	// Backup
-	if err = backup(_SHADOW_FILE); err != nil {
+	if err = backup(fileShadow); err != nil {
 		return
 	}
 
-	db, err := openDBFile(_SHADOW_FILE, os.O_WRONLY|os.O_APPEND)
+	db, err := openDBFile(fileShadow, os.O_WRONLY|os.O_APPEND)
 	if err != nil {
 		return
 	}

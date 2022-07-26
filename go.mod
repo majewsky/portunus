@@ -1,18 +1,24 @@
 module github.com/majewsky/portunus
 
-go 1.12
+go 1.18
 
 require (
-	github.com/fsnotify/fsnotify v1.4.7
-	github.com/gorilla/csrf v1.5.1
-	github.com/gorilla/mux v1.7.1
+	github.com/fsnotify/fsnotify v1.5.4
+	github.com/go-ldap/ldap/v3 v3.4.3
+	github.com/gorilla/csrf v1.7.1
+	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/securecookie v1.1.1
-	github.com/gorilla/sessions v1.1.3
+	github.com/gorilla/sessions v1.2.1
 	github.com/majewsky/xyrillian.css v0.0.0-20191113145857-d07f6dae0faa
-	github.com/sapcc/go-bits v0.0.0-20190111093410-620b317f22bc
+	github.com/sapcc/go-bits v0.0.0-20220706183424-591e645cac86
+	github.com/tredoe/osutil v1.0.4
+)
+
+require (
+	github.com/Azure/go-ntlmssp v0.0.0-20211209120228-48547f28849e // indirect
+	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/tredoe/goutil v0.0.0-20161130132832-0a73aea41b0b // indirect
-	github.com/tredoe/osutil v0.0.0-20161130133508-7d3ee1afa71c
-	golang.org/x/sys v0.0.0-20190426135247-a129542de9ae // indirect
-	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
-	gopkg.in/ldap.v3 v3.0.3
+	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29 // indirect
+	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
 )

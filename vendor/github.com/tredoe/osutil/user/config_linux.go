@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/tredoe/goutil/cmdutil"
 	"github.com/tredoe/goutil/reflectutil"
 	"github.com/tredoe/osutil/config/shconf"
 	"github.com/tredoe/osutil/user/crypt"
@@ -24,9 +23,9 @@ import (
 
 // == System configuration files.
 
-const _CONF_LOGIN = "/etc/login.defs"
+const fileLogin = "/etc/login.defs"
 
-type conf_login struct {
+type confLogin struct {
 	PASS_MIN_DAYS int
 	PASS_MAX_DAYS int
 	PASS_MIN_LEN  int
@@ -50,9 +49,9 @@ type conf_login struct {
 	CRYPT_ROUNDS int    // 8
 }
 
-const _CONF_USERADD = "/etc/default/useradd"
+const fileUseradd = "/etc/default/useradd"
 
-type conf_useradd struct {
+type confUseradd struct {
 	HOME  string // Default to '/home'
 	SHELL string // Default to '/bin/sh'
 }
@@ -60,9 +59,9 @@ type conf_useradd struct {
 // == Optional files.
 
 // Used in systems derivated from Debian: Ubuntu, Mint.
-const _CONF_ADDUSER = "/etc/adduser.conf"
+const fileAdduser = "/etc/adduser.conf"
 
-type conf_adduser struct {
+type confAdduser struct {
 	FIRST_SYSTEM_UID int
 	LAST_SYSTEM_UID  int
 	FIRST_SYSTEM_GID int
@@ -76,17 +75,17 @@ type conf_adduser struct {
 
 // Used in Arch, Manjaro, OpenSUSE.
 // But it is only used by 'pam_unix2.so'.
-const _CONF_PASSWD = "/etc/default/passwd"
+const filePasswd = "/etc/default/passwd"
 
 // TODO: to see the other options of that file.
-type conf_passwd struct {
+type confPasswd struct {
 	CRYPT string // lower
 }
 
 // Used in systems derivated from Red Hat: CentOS, Fedora, Mageia, PCLinuxOS.
-const _CONF_LIBUSER = "/etc/libuser.conf"
+const fileLibuser = "/etc/libuser.conf"
 
-type conf_libuser struct {
+type confLibuser struct {
 	login_defs  string
 	crypt_style string // lower
 
@@ -97,12 +96,12 @@ type conf_libuser struct {
 
 // * * *
 
-var _DEBUG bool
+var debug bool // For testing
 
 // A configData represents the configuration used to add users and groups.
 type configData struct {
-	login   conf_login
-	useradd conf_useradd
+	login   confLogin
+	useradd confUseradd
 
 	crypter crypt.Crypter
 	sync.Once
@@ -112,130 +111,127 @@ var config configData
 
 // init sets the configuration data.
 func (c *configData) init() error {
-	_conf_login := &conf_login{}
-	cmdutil.SetPrefix("\n* ", "")
+	_confLogin := &confLogin{}
 
-	cfg, err := shconf.ParseFile(_CONF_LOGIN)
+	cfg, err := shconf.ParseFile(fileLogin)
 	if err != nil {
 		return err
-	} else {
-		if err = cfg.Unmarshal(_conf_login); err != nil {
-			return err
-		}
-		if _DEBUG {
-			cmdutil.Println(_CONF_LOGIN)
-			reflectutil.PrintStruct(_conf_login)
-		}
-
-		if _conf_login.PASS_MAX_DAYS == 0 {
-			_conf_login.PASS_MAX_DAYS = 99999
-		}
-		if _conf_login.PASS_WARN_AGE == 0 {
-			_conf_login.PASS_WARN_AGE = 7
-		}
+	}
+	if err = cfg.Unmarshal(_confLogin); err != nil {
+		return err
+	}
+	if debug {
+		fmt.Printf("\n* %s\n", fileLogin)
+		reflectutil.PrintStruct(_confLogin)
 	}
 
-	cfg, err = shconf.ParseFile(_CONF_USERADD)
+	if _confLogin.PASS_MAX_DAYS == 0 {
+		_confLogin.PASS_MAX_DAYS = 99999
+	}
+	if _confLogin.PASS_WARN_AGE == 0 {
+		_confLogin.PASS_WARN_AGE = 7
+	}
+
+	cfg, err = shconf.ParseFile(fileUseradd)
 	if err != nil {
 		return err
-	} else {
-		_conf_useradd := &conf_useradd{}
-		if err = cfg.Unmarshal(_conf_useradd); err != nil {
-			return err
-		}
-		if _DEBUG {
-			cmdutil.Println(_CONF_USERADD)
-			reflectutil.PrintStruct(_conf_useradd)
-		}
-
-		if _conf_useradd.HOME == "" {
-			_conf_useradd.HOME = "/home"
-		}
-		if _conf_useradd.SHELL == "" {
-			_conf_useradd.SHELL = "/bin/sh"
-		}
-		config.useradd = *_conf_useradd
 	}
+	_confUseradd := &confUseradd{}
+	if err = cfg.Unmarshal(_confUseradd); err != nil {
+		return err
+	}
+	if debug {
+		fmt.Printf("\n* %s\n", fileUseradd)
+		reflectutil.PrintStruct(_confUseradd)
+	}
+
+	if _confUseradd.HOME == "" {
+		_confUseradd.HOME = "/home"
+	}
+	if _confUseradd.SHELL == "" {
+		_confUseradd.SHELL = "/bin/sh"
+	}
+	config.useradd = *_confUseradd
 
 	// Optional files
 
-	found, err := exist(_CONF_ADDUSER) // Based in Debian.
+	found, err := exist(fileAdduser) // Based in Debian.
 	if found {
-		cfg, err := shconf.ParseFile(_CONF_ADDUSER)
+		cfg, err := shconf.ParseFile(fileAdduser)
 		if err != nil {
 			return err
 		}
-		_conf_adduser := &conf_adduser{}
-		if err = cfg.Unmarshal(_conf_adduser); err != nil {
+		_confAdduser := &confAdduser{}
+		if err = cfg.Unmarshal(_confAdduser); err != nil {
 			return err
 		}
-		if _DEBUG {
-			cmdutil.Println(_CONF_ADDUSER)
-			reflectutil.PrintStruct(_conf_adduser)
+		if debug {
+			fmt.Printf("\n* %s\n", fileAdduser)
+			reflectutil.PrintStruct(_confAdduser)
 		}
 
-		if _conf_login.SYS_UID_MIN == 0 || _conf_login.SYS_UID_MAX == 0 ||
-			_conf_login.SYS_GID_MIN == 0 || _conf_login.SYS_GID_MAX == 0 ||
-			_conf_login.UID_MIN == 0 || _conf_login.UID_MAX == 0 ||
-			_conf_login.GID_MIN == 0 || _conf_login.GID_MAX == 0 {
+		if _confLogin.SYS_UID_MIN == 0 || _confLogin.SYS_UID_MAX == 0 ||
+			_confLogin.SYS_GID_MIN == 0 || _confLogin.SYS_GID_MAX == 0 ||
+			_confLogin.UID_MIN == 0 || _confLogin.UID_MAX == 0 ||
+			_confLogin.GID_MIN == 0 || _confLogin.GID_MAX == 0 {
 
-			_conf_login.SYS_UID_MIN = _conf_adduser.FIRST_SYSTEM_UID
-			_conf_login.SYS_UID_MAX = _conf_adduser.LAST_SYSTEM_UID
-			_conf_login.SYS_GID_MIN = _conf_adduser.FIRST_SYSTEM_GID
-			_conf_login.SYS_GID_MAX = _conf_adduser.LAST_SYSTEM_GID
+			_confLogin.SYS_UID_MIN = _confAdduser.FIRST_SYSTEM_UID
+			_confLogin.SYS_UID_MAX = _confAdduser.LAST_SYSTEM_UID
+			_confLogin.SYS_GID_MIN = _confAdduser.FIRST_SYSTEM_GID
+			_confLogin.SYS_GID_MAX = _confAdduser.LAST_SYSTEM_GID
 
-			_conf_login.UID_MIN = _conf_adduser.FIRST_UID
-			_conf_login.UID_MAX = _conf_adduser.LAST_UID
-			_conf_login.GID_MIN = _conf_adduser.FIRST_GID
-			_conf_login.GID_MAX = _conf_adduser.LAST_GID
+			_confLogin.UID_MIN = _confAdduser.FIRST_UID
+			_confLogin.UID_MAX = _confAdduser.LAST_UID
+			_confLogin.GID_MIN = _confAdduser.FIRST_GID
+			_confLogin.GID_MAX = _confAdduser.LAST_GID
 		}
 	} else if err != nil {
 		return err
 
-	} else if found, err = exist(_CONF_LIBUSER); found { // Based in Red Hat.
-		cfg, err := shconf.ParseFile(_CONF_LIBUSER)
+	} else if found, err = exist(fileLibuser); found { // Based in Red Hat.
+		cfg, err := shconf.ParseFile(fileLibuser)
 		if err != nil {
 			return err
 		}
-		_conf_libuser := &conf_libuser{}
-		if err = cfg.Unmarshal(_conf_libuser); err != nil {
+		_confLibuser := &confLibuser{}
+		if err = cfg.Unmarshal(_confLibuser); err != nil {
 			return err
 		}
-		if _DEBUG {
-			cmdutil.Println(_CONF_LIBUSER)
-			reflectutil.PrintStruct(_conf_libuser)
+		if debug {
+			fmt.Printf("\n* %s\n", fileLibuser)
+			reflectutil.PrintStruct(_confLibuser)
 		}
 
-		if _conf_libuser.login_defs != _CONF_LOGIN {
-			_conf_login.ENCRYPT_METHOD = _conf_libuser.crypt_style
-			_conf_login.SHA_CRYPT_MIN_ROUNDS = _conf_libuser.hash_rounds_min
-			_conf_login.SHA_CRYPT_MAX_ROUNDS = _conf_libuser.hash_rounds_max
+		if _confLibuser.login_defs != fileLogin {
+			_confLogin.ENCRYPT_METHOD = _confLibuser.crypt_style
+			_confLogin.SHA_CRYPT_MIN_ROUNDS = _confLibuser.hash_rounds_min
+			_confLogin.SHA_CRYPT_MAX_ROUNDS = _confLibuser.hash_rounds_max
 		}
 	} else if err != nil {
 		return err
 
-	} /*else if found, err = exist(_CONF_PASSWD); found {
-		cfg, err := shconf.ParseFile(_CONF_PASSWD)
+	} /*else if found, err = exist(filePasswd); found {
+		cfg, err := shconf.ParseFile(filePasswd)
 		if err != nil {
 			return err
 		}
-		_conf_passwd := &conf_passwd{}
-		if err = cfg.Unmarshal(_conf_passwd); err != nil {
+		_confPasswd := &confPasswd{}
+		if err = cfg.Unmarshal(_confPasswd); err != nil {
 			return err
 		}
-		if _DEBUG {
-			cmdutil.Println(_CONF_PASSWD)
-			reflectutil.PrintStruct(_conf_passwd)
+		if debug {
+			fmt.Printf("\n* %s\n", filePasswd)
+			reflectutil.PrintStruct(_confPasswd)
 		}
 
-		if _conf_passwd.CRYPT != "" {
-			_conf_login.ENCRYPT_METHOD = _conf_passwd.CRYPT
+		if _confPasswd.CRYPT != "" {
+			_confLogin.ENCRYPT_METHOD = _confPasswd.CRYPT
 		}
 	} else if err != nil {
 		return err
 	}*/
 
-	switch strings.ToUpper(_conf_login.ENCRYPT_METHOD) {
+	switch strings.ToUpper(_confLogin.ENCRYPT_METHOD) {
 	case "MD5":
 		c.crypter = crypt.New(crypt.MD5)
 	case "SHA256":
@@ -251,23 +247,23 @@ func (c *configData) init() error {
 			c.login.ENCRYPT_METHOD)
 	}
 
-	if _conf_login.SYS_UID_MIN == 0 || _conf_login.SYS_UID_MAX == 0 ||
-		_conf_login.SYS_GID_MIN == 0 || _conf_login.SYS_GID_MAX == 0 ||
-		_conf_login.UID_MIN == 0 || _conf_login.UID_MAX == 0 ||
-		_conf_login.GID_MIN == 0 || _conf_login.GID_MAX == 0 {
+	if _confLogin.SYS_UID_MIN == 0 || _confLogin.SYS_UID_MAX == 0 ||
+		_confLogin.SYS_GID_MIN == 0 || _confLogin.SYS_GID_MAX == 0 ||
+		_confLogin.UID_MIN == 0 || _confLogin.UID_MAX == 0 ||
+		_confLogin.GID_MIN == 0 || _confLogin.GID_MAX == 0 {
 
-		_conf_login.SYS_UID_MIN = 100
-		_conf_login.SYS_UID_MAX = 999
-		_conf_login.SYS_GID_MIN = 100
-		_conf_login.SYS_GID_MAX = 999
+		_confLogin.SYS_UID_MIN = 100
+		_confLogin.SYS_UID_MAX = 999
+		_confLogin.SYS_GID_MIN = 100
+		_confLogin.SYS_GID_MAX = 999
 
-		_conf_login.UID_MIN = 1000
-		_conf_login.UID_MAX = 29999
-		_conf_login.GID_MIN = 1000
-		_conf_login.GID_MAX = 29999
+		_confLogin.UID_MIN = 1000
+		_confLogin.UID_MAX = 29999
+		_confLogin.GID_MIN = 1000
+		_confLogin.GID_MAX = 29999
 	}
 
-	config.login = *_conf_login
+	config.login = *_confLogin
 	return nil
 }
 

@@ -90,7 +90,7 @@ func NewGShadow(username string, members ...string) *GShadow {
 	}
 }
 
-func (gs *GShadow) filename() string { return _GSHADOW_FILE }
+func (gs *GShadow) filename() string { return fileGShadow }
 
 func (gs *GShadow) String() string {
 	return fmt.Sprintf("%s:%s:%s:%s\n",
@@ -101,7 +101,7 @@ func (gs *GShadow) String() string {
 func parseGShadow(row string) (*GShadow, error) {
 	fields := strings.Split(row, ":")
 	if len(fields) != 4 {
-		return nil, rowError{_GSHADOW_FILE, row}
+		return nil, rowError{fileGShadow, row}
 	}
 
 	return &GShadow{
@@ -211,11 +211,11 @@ func (gs *GShadow) Add(key []byte) (err error) {
 	}
 
 	// Backup
-	if err = backup(_GSHADOW_FILE); err != nil {
+	if err = backup(fileGShadow); err != nil {
 		return
 	}
 
-	db, err := openDBFile(_GSHADOW_FILE, os.O_WRONLY|os.O_APPEND)
+	db, err := openDBFile(fileGShadow, os.O_WRONLY|os.O_APPEND)
 	if err != nil {
 		return
 	}

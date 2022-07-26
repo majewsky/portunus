@@ -26,7 +26,7 @@ import (
 
 	"github.com/majewsky/portunus/internal/core"
 	"github.com/sapcc/go-bits/logg"
-	goldap "gopkg.in/ldap.v3"
+	goldap "github.com/go-ldap/ldap/v3"
 )
 
 //LDAPWorker performs all the LDAP operations.
