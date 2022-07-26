@@ -6,7 +6,7 @@ GO_LDFLAGS    =
 
 all: build/orchestrator build/server
 
-build/%: internal/static/bindata.go FORCE
+build/%: FORCE
 	go build -o $@ $(GO_BUILDFLAGS) -ldflags '-s -w $(GO_LDFLAGS)' 'github.com/majewsky/portunus/cmd/$*'
 
 static/css/portunus.css: static/css/*.scss
