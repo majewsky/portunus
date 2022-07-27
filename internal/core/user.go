@@ -49,6 +49,9 @@ func (u User) Cloned() User {
 		val := *u.POSIX
 		u.POSIX = &val
 	}
+	if u.SSHPublicKeys != nil {
+		u.SSHPublicKeys = append([]string(nil), u.SSHPublicKeys...)
+	}
 	return u
 }
 
