@@ -6,6 +6,7 @@ SemVer was not adhered to in one of our releases, please open an issue.
 New features:
 
 - Add "sshPublicKey" attribute. This attribute can also be maintained by users via self-service.
+- Add seeding to support statically-configured users and groups.
 
 Changes:
 
