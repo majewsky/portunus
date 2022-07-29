@@ -115,3 +115,12 @@ func MustBeSSHPublicKeys(val string) error {
 	}
 	return nil
 }
+
+//MustBeSSHPublicKey is a h.ValidationRule.
+func MustBeSSHPublicKey(val string) error {
+	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(val))
+	if err != nil {
+		return errors.New("must be a valid SSH public key")
+	}
+	return nil
+}
