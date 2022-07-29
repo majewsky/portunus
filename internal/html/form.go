@@ -19,17 +19,10 @@
 package h
 
 import (
-	"errors"
-	"fmt"
 	"html/template"
 	"net/http"
-	"regexp"
-	"strconv"
-	"strings"
-	"unicode"
 
 	"github.com/gorilla/csrf"
-	"golang.org/x/crypto/ssh"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,6 +104,9 @@ func (f FormSpec) Render(r *http.Request, s FormState) template.HTML {
 
 ////////////////////////////////////////////////////////////////////////////////
 // type InputFieldSpec
+
+//ValidationRule returns an error message if the given field value is invalid.
+type ValidationRule func(string) error
 
 //InputFieldSpec describes a single <input> field within type FormSpec.
 type InputFieldSpec struct {
@@ -310,97 +306,4 @@ func (fs FieldSet) RenderField(state FormState) template.HTML {
 	}
 
 	return fieldSetSnippet.Render(data)
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// type ValidationRule
-
-//ValidationRule returns an error message if the given field value is invalid.
-type ValidationRule func(string) error
-
-//this regexp copied from useradd(8) manpage
-const posixAccountNamePattern = `[a-z_][a-z0-9_-]*\$?`
-
-var (
-	errIsMissing      = errors.New("is missing")
-	errLeadingSpaces  = errors.New("may not start with a space character")
-	errTrailingSpaces = errors.New("may not end with a space character")
-
-	errNotPosixAccountName = errors.New("is not an acceptable user/group name matching the pattern /" + posixAccountNamePattern + "/")
-	posixAccountNameRx     = regexp.MustCompile(`^` + posixAccountNamePattern + `$`)
-	errNotPosixUIDorGID    = errors.New("is not a number between 0 and 65535 inclusive")
-
-	errNotAbsolutePath = errors.New("must be an absolute path, i.e. start with a /")
-)
-
-//MustNotBeEmpty is a ValidationRule.
-func MustNotBeEmpty(val string) error {
-	if strings.TrimSpace(val) == "" {
-		return errIsMissing
-	}
-	return nil
-}
-
-//MustNotHaveSurroundingSpaces is a ValidationRule.
-func MustNotHaveSurroundingSpaces(val string) error {
-	if val != "" {
-		if strings.TrimLeftFunc(val, unicode.IsSpace) != val {
-			return errLeadingSpaces
-		}
-		if strings.TrimRightFunc(val, unicode.IsSpace) != val {
-			return errTrailingSpaces
-		}
-	}
-	return nil
-}
-
-//MustBePosixAccountName is a ValidationRule.
-func MustBePosixAccountName(val string) error {
-	if posixAccountNameRx.MatchString(val) {
-		return nil
-	}
-	return errNotPosixAccountName
-}
-
-//MustBePosixUIDorGID is a ValidationRule.
-func MustBePosixUIDorGID(val string) error {
-	if val != "" {
-		_, err := strconv.ParseUint(val, 10, 16)
-		if err != nil {
-			return errNotPosixUIDorGID
-		}
-	}
-	return nil
-}
-
-//MustBeAbsolutePath is a ValidationRule.
-func MustBeAbsolutePath(val string) error {
-	if val != "" && !strings.HasPrefix(val, "/") {
-		return errNotAbsolutePath
-	}
-	return nil
-}
-
-//SplitSSHPublicKeys preprocesses the content of a submitted <textarea> where a
-//list of SSH public keys is expected. The result will have one public key per
-//array entry.
-func SplitSSHPublicKeys(val string) (result []string) {
-	for _, line := range strings.Split(val, "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			result = append(result, line)
-		}
-	}
-	return result
-}
-
-//MustBeSSHPublicKeys is a ValidationRule.
-func MustBeSSHPublicKeys(val string) error {
-	for idx, line := range SplitSSHPublicKeys(val) {
-		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(line))
-		if err != nil {
-			return fmt.Errorf("must have a valid SSH public key on each line (parse error on line %d)", idx+1)
-		}
-	}
-	return nil
 }
