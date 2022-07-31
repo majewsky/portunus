@@ -19,9 +19,12 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
+
+	"github.com/sapcc/go-bits/logg"
 )
 
 //LDAPObject describes an object that can be stored in the LDAP directory.
@@ -48,6 +51,7 @@ type Engine interface {
 //engine implements the Engine interface.
 type engine struct {
 	FileStoreAPI *FileStoreAPI
+	Seed         *DatabaseSeed
 	LDAPUpdates  chan<- []LDAPObject
 	Users        map[string]User
 	Groups       map[string]Group
@@ -62,6 +66,7 @@ func RunEngineAsync(fsAPI *FileStoreAPI, ldapSuffix string, seed *DatabaseSeed) 
 	ldapUpdatesChan := make(chan []LDAPObject, 1)
 	e := engine{
 		FileStoreAPI: fsAPI,
+		Seed:         seed,
 		LDAPUpdates:  ldapUpdatesChan,
 		Mutex:        &sync.RWMutex{},
 		LDAPSuffix:   ldapSuffix,
@@ -76,17 +81,70 @@ func RunEngineAsync(fsAPI *FileStoreAPI, ldapSuffix string, seed *DatabaseSeed) 
 	return &e, ldapUpdatesChan
 }
 
+func (e *engine) findGroupSeed(name string) *GroupSeed {
+	if e.Seed == nil {
+		return nil
+	}
+	for _, g := range e.Seed.Groups {
+		if string(g.Name) == name {
+			return &g
+		}
+	}
+	return nil
+}
+
+func (e *engine) findUserSeed(loginName string) *UserSeed {
+	if e.Seed == nil {
+		return nil
+	}
+	for _, u := range e.Seed.Users {
+		if string(u.LoginName) == loginName {
+			return &u
+		}
+	}
+	return nil
+}
+
 func (e *engine) handleLoadEvent(db Database) {
 	e.Mutex.Lock()
 	defer e.Mutex.Unlock()
 
+	seedApplied := false
+
 	e.Groups = make(map[string]Group, len(db.Groups))
 	for _, group := range db.Groups {
 		e.Groups[group.Name] = group
+
+		//check if seed needs to be re-applied
+		groupSeed := e.findGroupSeed(group.Name)
+		if groupSeed != nil {
+			groupCloned := group.Cloned()
+			groupSeed.ApplyTo(&groupCloned)
+			if !reflect.DeepEqual(group, groupCloned) {
+				e.Groups[group.Name] = groupCloned
+				seedApplied = true
+			}
+		}
 	}
+
 	e.Users = make(map[string]User, len(db.Users))
 	for _, user := range db.Users {
 		e.Users[user.LoginName] = user
+
+		//check if seed needs to be re-applied
+		userSeed := e.findUserSeed(user.LoginName)
+		if userSeed != nil {
+			userCloned := user.Cloned()
+			userSeed.ApplyTo(&userCloned)
+			if !reflect.DeepEqual(user, userCloned) {
+				e.Users[user.LoginName] = userCloned
+				seedApplied = true
+			}
+		}
+	}
+
+	if seedApplied {
+		e.persistDatabase()
 	}
 	e.persistLDAP()
 }
@@ -148,6 +206,13 @@ func (e *engine) ListUsers() []User {
 	return result
 }
 
+var (
+	errCannotDeleteSeededGroup         = errors.New("cannot delete group that is statically configured in seed")
+	errCannotOverwriteSeededGroupAttrs = errors.New("cannot overwrite group attributes that are statically configured in seed")
+	errCannotDeleteSeededUser          = errors.New("cannot delete user account that is statically configured in seed")
+	errCannotOverwriteSeededUserAttrs  = errors.New("cannot overwrite user attributes that are statically configured in seed")
+)
+
 //ChangeUser implements the Engine interface.
 func (e *engine) ChangeUser(loginName string, action func(User) (*User, error)) error {
 	e.Mutex.Lock()
@@ -161,6 +226,21 @@ func (e *engine) ChangeUser(loginName string, action func(User) (*User, error)) 
 	newState, err := action(oldState.Cloned())
 	if err != nil {
 		return err
+	}
+
+	//check that changed user still conforms with seed (if any)
+	userSeed := e.findUserSeed(loginName)
+	if userSeed != nil {
+		if newState == nil {
+			return errCannotDeleteSeededUser
+		}
+		newStateCloned := newState.Cloned()
+		userSeed.ApplyTo(&newStateCloned)
+		if !reflect.DeepEqual(newStateCloned, *newState) {
+			logg.Debug("seed check failed: newState before seed = %#v", *newState)
+			logg.Debug("seed check failed: newState after seed  = %#v", newStateCloned)
+			return errCannotOverwriteSeededUserAttrs
+		}
 	}
 
 	//only change database if there are actual changes
@@ -194,6 +274,21 @@ func (e *engine) ChangeGroup(name string, action func(Group) (*Group, error)) er
 	newState, err := action(oldState.Cloned())
 	if err != nil {
 		return err
+	}
+
+	//check that changed group still conforms with seed (if any)
+	groupSeed := e.findGroupSeed(name)
+	if groupSeed != nil {
+		if newState == nil {
+			return errCannotDeleteSeededGroup
+		}
+		newStateCloned := newState.Cloned()
+		groupSeed.ApplyTo(&newStateCloned)
+		if !reflect.DeepEqual(newStateCloned, *newState) {
+			logg.Debug("seed check failed: newState before seed = %#v", *newState)
+			logg.Debug("seed check failed: newState after seed  = %#v", newStateCloned)
+			return errCannotOverwriteSeededGroupAttrs
+		}
 	}
 
 	//only change database if there are actual changes
