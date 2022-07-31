@@ -19,12 +19,16 @@
 package core
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/gorilla/securecookie"
+	"github.com/sapcc/go-bits/logg"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,6 +81,51 @@ func (d DatabaseSeed) Validate() error {
 	return nil
 }
 
+//DatabaseInitializer returns a function that initalizes the Database from the
+//given seed on first use. If the seed is nil, the default initialization
+//behavior is used.
+func DatabaseInitializer(d *DatabaseSeed) func() Database {
+	//if no seed has been given, create the "admin" user with access to the
+	//Portunus UI and log the password once
+	if d == nil {
+		return func() Database {
+			password := hex.EncodeToString(securecookie.GenerateRandomKey(16))
+			logg.Info("first-time initialization: adding user %q with password %q",
+				"admin", password)
+
+			return Database{
+				Groups: []Group{{
+					Name:             "admins",
+					LongName:         "Portunus Administrators",
+					MemberLoginNames: GroupMemberNames{"admin": true},
+					Permissions:      Permissions{Portunus: PortunusPermissions{IsAdmin: true}},
+				}},
+				Users: []User{{
+					LoginName:    "admin",
+					GivenName:    "Initial",
+					FamilyName:   "Administrator",
+					PasswordHash: HashPasswordForLDAP(password),
+				}},
+			}
+		}
+	}
+
+	//otherwise, initialize the DB from the seed
+	return func() (db Database) {
+		for _, userSeed := range d.Users {
+			user := User{LoginName: string(userSeed.LoginName)}
+			userSeed.ApplyTo(&user)
+			db.Users = append(db.Users, user)
+		}
+		for _, groupSeed := range d.Groups {
+			group := Group{Name: string(groupSeed.Name)}
+			groupSeed.ApplyTo(&group)
+			db.Groups = append(db.Groups, group)
+		}
+		return
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // type GroupSeed
 
@@ -126,6 +175,34 @@ func (g GroupSeed) validate(isUserLoginName, isGroupName map[string]bool) error 
 	}
 
 	return nil
+}
+
+//ApplyTo changes the attributes of this group to conform to the given seed.
+func (g GroupSeed) ApplyTo(target *Group) {
+	//consistency check (the caller must ensure that the seed matches the object)
+	if target.Name != string(g.Name) {
+		panic(fmt.Sprintf("cannot apply seed with Name = %q to group with Name = %q",
+			string(g.Name), target.Name))
+	}
+
+	target.LongName = string(g.LongName)
+
+	if target.MemberLoginNames == nil {
+		target.MemberLoginNames = make(GroupMemberNames)
+	}
+	for _, loginName := range g.MemberLoginNames {
+		target.MemberLoginNames[string(loginName)] = true
+	}
+
+	if g.Permissions.Portunus.IsAdmin != nil {
+		target.Permissions.Portunus.IsAdmin = *g.Permissions.Portunus.IsAdmin
+	}
+	if g.Permissions.LDAP.CanRead != nil {
+		target.Permissions.LDAP.CanRead = *g.Permissions.LDAP.CanRead
+	}
+	if g.PosixGID != nil {
+		target.PosixGID = g.PosixGID
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,6 +299,53 @@ func (u UserSeed) validate(isUserLoginName map[string]bool) error {
 	}
 
 	return nil
+}
+
+//ApplyTo changes the attributes of this group to conform to the given seed.
+func (u UserSeed) ApplyTo(target *User) {
+	//consistency check (the caller must ensure that the seed matches the object)
+	if target.LoginName != string(u.LoginName) {
+		panic(fmt.Sprintf("cannot apply seed with LoginName = %q to user with LoginName = %q",
+			string(u.LoginName), target.LoginName))
+	}
+
+	target.GivenName = string(u.GivenName)
+	target.FamilyName = string(u.FamilyName)
+	if u.EMailAddress != "" {
+		target.EMailAddress = string(u.EMailAddress)
+	}
+
+	if len(u.SSHPublicKeys) > 0 {
+		target.SSHPublicKeys = nil
+		for _, key := range u.SSHPublicKeys {
+			target.SSHPublicKeys = append(target.SSHPublicKeys, string(key))
+		}
+	}
+
+	if u.Password != "" {
+		//Password is only applied on creation (when no PasswordHash exists) or on
+		//password mismatch, otherwise we avoid useless rehashing
+		pw := string(u.Password)
+		if target.PasswordHash == "" || !CheckPasswordHash(pw, target.PasswordHash) {
+			target.PasswordHash = HashPasswordForLDAP(pw)
+		}
+	}
+
+	if u.POSIX != nil {
+		if target.POSIX == nil {
+			target.POSIX = &UserPosixAttributes{}
+		}
+		p := *u.POSIX
+		target.POSIX.UID = *p.UID
+		target.POSIX.GID = *p.GID
+		target.POSIX.HomeDirectory = string(p.HomeDirectory)
+		if p.LoginShell != "" {
+			target.POSIX.LoginShell = string(p.LoginShell)
+		}
+		if p.GECOS != "" {
+			target.POSIX.GECOS = string(p.GECOS)
+		}
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////

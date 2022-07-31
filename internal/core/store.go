@@ -20,7 +20,6 @@ package core
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -30,7 +29,6 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/gorilla/securecookie"
 	"github.com/sapcc/go-bits/logg"
 )
 
@@ -44,9 +42,13 @@ type Database struct {
 
 //FileStore is responsible for loading Portunus' database from
 //PORTUNUS_SERVER_STATE_DIR, and persisting it when changes are made to it.
+//
+//The Initializer function is called at most once, only when there is no
+//existing database file at the given Path.
 type FileStore struct {
-	Path    string
-	running bool
+	Path        string
+	Initializer func() Database
+	running     bool
 }
 
 //FileStoreAPI is the interface that the engine uses to interact with the
@@ -126,7 +128,7 @@ func (s *FileStore) loadDB(allowEmpty bool) (db Database) {
 	if err != nil {
 		//initialize empty DB on first run
 		if os.IsNotExist(err) && allowEmpty {
-			s.saveDB(createInitialDB())
+			s.saveDB(s.Initializer())
 			return s.loadDB(false)
 		}
 		logg.Fatal(err.Error())
@@ -143,27 +145,6 @@ func (s *FileStore) loadDB(allowEmpty bool) (db Database) {
 
 	//TODO validate DB (e.g. groups should only contain users that actually exist)
 	return
-}
-
-func createInitialDB() Database {
-	password := hex.EncodeToString(securecookie.GenerateRandomKey(16))
-	logg.Info("first-time initialization: adding user %q with password %q",
-		"admin", password)
-
-	return Database{
-		Groups: []Group{{
-			Name:             "admins",
-			LongName:         "Portunus Administrators",
-			MemberLoginNames: GroupMemberNames{"admin": true},
-			Permissions:      Permissions{Portunus: PortunusPermissions{IsAdmin: true}},
-		}},
-		Users: []User{{
-			LoginName:    "admin",
-			GivenName:    "Initial",
-			FamilyName:   "Administrator",
-			PasswordHash: HashPasswordForLDAP(password),
-		}},
-	}
 }
 
 func (s *FileStore) saveDB(db Database) {

@@ -58,7 +58,7 @@ type engine struct {
 //RunEngineAsync runs the main engine of portunus-server. It consumes the
 //FileStoreAPI and returns an Engine interface for the HTTP server to use, and
 //a stream of events for the LDAP worker.
-func RunEngineAsync(fsAPI *FileStoreAPI, ldapSuffix string) (Engine, <-chan []LDAPObject) {
+func RunEngineAsync(fsAPI *FileStoreAPI, ldapSuffix string, seed *DatabaseSeed) (Engine, <-chan []LDAPObject) {
 	ldapUpdatesChan := make(chan []LDAPObject, 1)
 	e := engine{
 		FileStoreAPI: fsAPI,
