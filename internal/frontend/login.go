@@ -37,7 +37,7 @@ func useLoginForm(i *Interaction) {
 				AutoFocus:        true,
 				AutocompleteMode: "on",
 				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
+					core.MustNotBeEmpty,
 				},
 			},
 			h.InputFieldSpec{
@@ -46,7 +46,7 @@ func useLoginForm(i *Interaction) {
 				Label:            "Password",
 				AutocompleteMode: "on",
 				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
+					core.MustNotBeEmpty,
 				},
 			},
 		},

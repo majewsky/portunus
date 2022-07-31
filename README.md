@@ -13,6 +13,7 @@ In this document:
 * [Connecting services to Portunus](#connecting-services-to-portunus)
   * [Single-bind authentication](#single-bind-authentication)
   * [Double-bind authentication](#double-bind-authentication)
+* [Seeding users and groups from static configuration](#seeding-users-and-groups-from-static-configuration)
 
 ## Overview
 
@@ -46,6 +47,7 @@ following environment variables:
 | -------- | ------- | ----------- |
 | `PORTUNUS_DEBUG` | `false` | When true, log debug messages to standard error. May cause passwords to be logged. **Do not use in production.** |
 | `PORTUNUS_LDAP_SUFFIX` | *(required)* | The DN of the topmost entry in your LDAP directory. Must currently be a sequence of `dc=xxx` RDNs. (This requirement may be lifted in future versions.) See [*LDAP directory structure*](#ldap-directory-structure) for details and a guide-level explanation. |
+| `PORTUNUS_SEED_PATH` | *(optional)* | If given, seed users and groups from the configuration file at the given path. This is the recommended setup method when using configuration management. [See below](#seeding-users-and-groups-from-static-configuration) for details. |
 | `PORTUNUS_SERVER_BINARY` | `portunus-server` | Where to find the portunus-server binary. Semantics match those of `execvp(3)`: If the supplied value is not a path containing slashes, `$PATH` will be searched for it. |
 | `PORTUNUS_SERVER_GROUP`<br>`PORTUNUS_SERVER_USER` | `portunus` each | The Unix user/group that Portunus' own server will be run as. |
 | `PORTUNUS_SERVER_HTTP_LISTEN` | `127.0.0.1:8080` | Listen address where Portunus' HTTP server shall be running. |
@@ -67,9 +69,10 @@ Portunus will offer a network service while running as root:
 - LDAP and LDAPS are offered by slapd which is running as `ldap:ldap` by default.
 - HTTP is offered by `portunus-server` which is running as `portunus:portunus` by default.
 
-When Portunus first starts up, it will create an empty database with the initial user account
+When Portunus first starts up, it will initialize a fresh database with the initial user account
 `admin`, and show that user's initial password on stdout **once**. It is highly recommended to
-change this initial password after the first login.
+change this initial password after the first login. This behavior is suppressed when
+[seeding](#seeding-users-and-groups-from-static-configuration) is used.
 
 ### HTTP access
 
@@ -231,3 +234,89 @@ When the application asks for which attributes exist on each user account, give 
 | Full name | `cn` |
 | E-mail address | `mail` |
 | Group memberships | `isMemberOf` |
+
+## Seeding users and groups from static configuration
+
+If the `PORTUNUS_SEED_PATH` environment variable is set, a JSON file is expected at that path
+containing static definitions of users and groups. Portunus will create those users and groups
+on startup or, if they already exist, adjust their attributes accordingly. The file is read by
+the portunus-server process and thus needs to be accessible to the user specified by the
+`PORTUNUS_SERVER_USER` and `PORTUNUS_SERVER_GROUP` commands.
+
+The contents of the seed file look like in this example:
+
+```json
+{
+  "groups": [
+    {
+      "name": "admin-team",
+      "long_name": "Portunus Administrators",
+      "members": [ "technical-admin" ],
+      "permissions": {
+        "portunus": { "is_admin": true },
+        "ldap": { "can_read": true }
+      },
+      "posix_gid": 101
+    }
+  ],
+  "users": [
+    {
+      "login_name": "technical-admin",
+      "given_name": "Technical",
+      "family_name": "Administrator",
+      "email": "noreply@example.com",
+      "ssh_public_keys": [
+        "sh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEr5uZiZaOeztaBs/9lyhQRmedjDILjxzITNC+RbWuSL technicaladmin@cluster"
+      ],
+      "password": {
+        "from_command": [ "/usr/bin/env", "cat", "/etc/secrets/technical-admin-password.txt" ]
+      },
+      "posix": {
+        "uid": 1001,
+        "gid": 101,
+        "home": "/var/empty",
+        "shell": "/usr/bin/nologin",
+        "gecos": ""
+      }
+    }
+  ]
+}
+```
+
+The following fields are supported:
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `groups` | list of objects | List of statically defined groups. |
+| `groups[].name` | string | *Required.* The unique identifying name of the group. |
+| `groups[].long_name` | string | *Required.* The human-readable descriptive name of the group. |
+| `groups[].members` | list of strings | The login names of all users that must be part of this group. The respective users must be defined statically. |
+| `groups[].permissions.portunus.is_admin` | bool | Whether members of this group have admin access to the Portunus UI. |
+| `groups[].permissions.ldap.can_read` | bool | Whether members of this group have read access to the LDAP directory. |
+| `groups[].posix_gid` | integer | If provided, the group is a POSIX group. |
+| `users` | list of objects | List of statically defined users. |
+| `users[].login_name` | string | *Required.* The unique identifying name of the user that is defined statically. |
+| `users[].given_name` | string | *Required.* The given name(s) of this user. |
+| `users[].family_name` | string | *Required.* The family name(s) of this user. |
+| `users[].email` | string | The primary email adress of this user. |
+| `users[].ssh_public_keys` | list of strings | The SSH public keys associated with this user. |
+| `users[].password` | string | The password of this user. |
+| `users[].posix` | object | If provided, the user is a POSIX user. |
+| `users[].posix.uid` | integer | *Required if `posix` section is included.* The numeric user ID for this user. |
+| `users[].posix.gid` | integer | *Required if `posix` section is included.* The numeric group ID for this user. |
+| `users[].posix.home` | string | *Required if `posix` section is included.* The path to the home directory of this user. |
+| `users[].posix.shell` | string | The shell command for this user. |
+| `users[].posix.gecos` | string | The GECOS string for this user. |
+
+Any attributes not listed as required are optional. If optional attributes are omitted, they will be
+initialized with an empty value (`[]` for lists, `""` for strings, `false` for boolean) when the
+respective users and groups are initially created. The value can then be overwritten manually;
+seeding will not overwrite those manual values unless the seed file is changed to include an
+attribute value later on.
+
+For each of the attributes above, values of type "string" or elements in a value of type "list of
+strings" can be given either as a plain JSON string, or as a JSON object with the single key
+`from_command`, like for the user password field in the example configuration shown above. Each such
+command substitution will be performed exactly once when the configuration file is read, with the
+permissions of the portunus-server process. A single trailing `\n` will be removed from the output
+if present, but otherwise all output including whitespaces is considered significant.

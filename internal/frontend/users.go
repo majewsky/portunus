@@ -160,9 +160,9 @@ func buildUserMasterdataFieldset(e core.Engine, u *core.User, state *h.FormState
 			Name:      "uid",
 			Label:     "Login name",
 			Rules: []h.ValidationRule{
-				h.MustNotBeEmpty,
-				h.MustNotHaveSurroundingSpaces,
-				h.MustBePosixAccountName,
+				core.MustNotBeEmpty,
+				core.MustNotHaveSurroundingSpaces,
+				core.MustBePosixAccountName,
 				mustNotBeInUse,
 			},
 		})
@@ -179,8 +179,8 @@ func buildUserMasterdataFieldset(e core.Engine, u *core.User, state *h.FormState
 			Name:      "given_name",
 			Label:     "Given name",
 			Rules: []h.ValidationRule{
-				h.MustNotBeEmpty,
-				h.MustNotHaveSurroundingSpaces,
+				core.MustNotBeEmpty,
+				core.MustNotHaveSurroundingSpaces,
 			},
 		},
 		h.InputFieldSpec{
@@ -188,8 +188,8 @@ func buildUserMasterdataFieldset(e core.Engine, u *core.User, state *h.FormState
 			Name:      "family_name",
 			Label:     "Family name",
 			Rules: []h.ValidationRule{
-				h.MustNotBeEmpty,
-				h.MustNotHaveSurroundingSpaces,
+				core.MustNotBeEmpty,
+				core.MustNotHaveSurroundingSpaces,
 			},
 		},
 		h.InputFieldSpec{
@@ -197,15 +197,15 @@ func buildUserMasterdataFieldset(e core.Engine, u *core.User, state *h.FormState
 			Name:      "email",
 			Label:     "Email address (optional in Portunus, but required by some services)",
 			Rules: []h.ValidationRule{
-				h.MustNotHaveSurroundingSpaces,
+				core.MustNotHaveSurroundingSpaces,
 			},
 		},
 		h.MultilineInputFieldSpec{
 			Name:  "ssh_public_keys",
 			Label: "SSH public key(s)",
 			Rules: []h.ValidationRule{
-				h.MustNotHaveSurroundingSpaces,
-				h.MustBeSSHPublicKeys,
+				core.MustNotHaveSurroundingSpaces,
+				core.MustBeSSHPublicKeys,
 			},
 		},
 	)
@@ -258,7 +258,7 @@ func buildUserPasswordFieldset(u *core.User) h.FormField {
 					Name:      "password",
 					Label:     "Password",
 					Rules: []h.ValidationRule{
-						h.MustNotBeEmpty,
+						core.MustNotBeEmpty,
 					},
 				},
 				h.InputFieldSpec{
@@ -266,7 +266,7 @@ func buildUserPasswordFieldset(u *core.User) h.FormField {
 					Name:      "repeat_password",
 					Label:     "Repeat password",
 					Rules: []h.ValidationRule{
-						h.MustNotBeEmpty,
+						core.MustNotBeEmpty,
 					},
 				},
 			},
@@ -282,7 +282,7 @@ func buildUserPasswordFieldset(u *core.User) h.FormField {
 				Name:      "password",
 				Label:     "New password",
 				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
+					core.MustNotBeEmpty,
 				},
 			},
 			h.InputFieldSpec{
@@ -290,7 +290,7 @@ func buildUserPasswordFieldset(u *core.User) h.FormField {
 				Name:      "repeat_password",
 				Label:     "Repeat password",
 				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
+					core.MustNotBeEmpty,
 				},
 			},
 		},
@@ -317,9 +317,9 @@ func buildUserPosixFieldset(u *core.User, state *h.FormState) h.FormField {
 				Label:     "User ID",
 				InputType: "text",
 				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
-					h.MustNotHaveSurroundingSpaces,
-					h.MustBePosixUIDorGID,
+					core.MustNotBeEmpty,
+					core.MustNotHaveSurroundingSpaces,
+					core.MustBePosixUIDorGID,
 				},
 			},
 			h.InputFieldSpec{
@@ -327,9 +327,9 @@ func buildUserPosixFieldset(u *core.User, state *h.FormState) h.FormField {
 				Label:     "Primary group ID",
 				InputType: "text",
 				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
-					h.MustNotHaveSurroundingSpaces,
-					h.MustBePosixUIDorGID,
+					core.MustNotBeEmpty,
+					core.MustNotHaveSurroundingSpaces,
+					core.MustBePosixUIDorGID,
 				},
 			},
 			h.InputFieldSpec{
@@ -337,9 +337,9 @@ func buildUserPosixFieldset(u *core.User, state *h.FormState) h.FormField {
 				Label:     "Home directory",
 				InputType: "text",
 				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
-					h.MustNotHaveSurroundingSpaces,
-					h.MustBeAbsolutePath,
+					core.MustNotBeEmpty,
+					core.MustNotHaveSurroundingSpaces,
+					core.MustBeAbsolutePath,
 				},
 			},
 			h.InputFieldSpec{
@@ -347,7 +347,7 @@ func buildUserPosixFieldset(u *core.User, state *h.FormState) h.FormField {
 				Label:     "Login shell (optional)",
 				InputType: "text",
 				Rules: []h.ValidationRule{
-					h.MustBeAbsolutePath,
+					core.MustBeAbsolutePath,
 				},
 			},
 			h.InputFieldSpec{
@@ -423,7 +423,7 @@ func executeEditUserForm(e core.Engine) HandlerStep {
 			u.GivenName = i.FormState.Fields["given_name"].Value
 			u.FamilyName = i.FormState.Fields["family_name"].Value
 			u.EMailAddress = i.FormState.Fields["email"].Value
-			u.SSHPublicKeys = h.SplitSSHPublicKeys(i.FormState.Fields["ssh_public_keys"].Value)
+			u.SSHPublicKeys = core.SplitSSHPublicKeys(i.FormState.Fields["ssh_public_keys"].Value)
 			if passwordHash != "" {
 				u.PasswordHash = passwordHash
 			}

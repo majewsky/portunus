@@ -97,8 +97,8 @@ func useSelfServiceForm(e core.Engine) HandlerStep {
 					Name:  "ssh_public_keys",
 					Label: "SSH public key(s)",
 					Rules: []h.ValidationRule{
-						h.MustNotHaveSurroundingSpaces,
-						h.MustBeSSHPublicKeys,
+						core.MustNotHaveSurroundingSpaces,
+						core.MustBeSSHPublicKeys,
 					},
 				},
 				h.FieldSet{
@@ -111,7 +111,7 @@ func useSelfServiceForm(e core.Engine) HandlerStep {
 							Name:      "old_password",
 							Label:     "Old password",
 							Rules: []h.ValidationRule{
-								h.MustNotBeEmpty,
+								core.MustNotBeEmpty,
 							},
 						},
 						h.InputFieldSpec{
@@ -119,7 +119,7 @@ func useSelfServiceForm(e core.Engine) HandlerStep {
 							Name:      "new_password",
 							Label:     "New password",
 							Rules: []h.ValidationRule{
-								h.MustNotBeEmpty,
+								core.MustNotBeEmpty,
 							},
 						},
 						h.InputFieldSpec{
@@ -127,7 +127,7 @@ func useSelfServiceForm(e core.Engine) HandlerStep {
 							Name:      "repeat_password",
 							Label:     "Repeat password",
 							Rules: []h.ValidationRule{
-								h.MustNotBeEmpty,
+								core.MustNotBeEmpty,
 							},
 						},
 					},
@@ -191,7 +191,7 @@ func executeSelfServiceForm(e core.Engine) HandlerStep {
 			if fs.Fields["change_password"].IsUnfolded {
 				u.PasswordHash = core.HashPasswordForLDAP(i.FormState.Fields["new_password"].Value)
 			}
-			u.SSHPublicKeys = h.SplitSSHPublicKeys(i.FormState.Fields["ssh_public_keys"].Value)
+			u.SSHPublicKeys = core.SplitSSHPublicKeys(i.FormState.Fields["ssh_public_keys"].Value)
 			return &u, nil
 		})
 

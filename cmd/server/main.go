@@ -35,13 +35,19 @@ func main() {
 	logg.ShowDebug = os.Getenv("PORTUNUS_DEBUG") == "true"
 	dropPrivileges()
 
+	seed, err := core.ReadDatabaseSeedFromEnvironment()
+	if err != nil {
+		logg.Fatal("while reading PORTUNUS_SEED_PATH: " + err.Error())
+	}
+
 	fs := core.FileStore{
-		Path: filepath.Join(os.Getenv("PORTUNUS_SERVER_STATE_DIR"), "database.json"),
+		Path:        filepath.Join(os.Getenv("PORTUNUS_SERVER_STATE_DIR"), "database.json"),
+		Initializer: core.DatabaseInitializer(seed),
 	}
 	fsAPI := fs.RunAsync()
 
 	ldapWorker := newLDAPWorker()
-	engine, ldapUpdatesChan := core.RunEngineAsync(fsAPI, ldapWorker.DNSuffix)
+	engine, ldapUpdatesChan := core.RunEngineAsync(fsAPI, ldapWorker.DNSuffix, seed)
 	go ldapWorker.processEvents(ldapUpdatesChan)
 
 	handler := frontend.HTTPHandler(engine, os.Getenv("PORTUNUS_SERVER_HTTP_SECURE") == "true")

@@ -156,9 +156,9 @@ func buildGroupMasterdataFieldset(e core.Engine, g *core.Group, state *h.FormSta
 			Name:      "name",
 			Label:     "Name",
 			Rules: []h.ValidationRule{
-				h.MustNotBeEmpty,
-				h.MustNotHaveSurroundingSpaces,
-				h.MustBePosixAccountName,
+				core.MustNotBeEmpty,
+				core.MustNotHaveSurroundingSpaces,
+				core.MustBePosixAccountName,
 				mustNotBeInUse,
 			},
 		}
@@ -180,8 +180,8 @@ func buildGroupMasterdataFieldset(e core.Engine, g *core.Group, state *h.FormSta
 				Name:      "long_name",
 				Label:     "Long name",
 				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
-					h.MustNotHaveSurroundingSpaces,
+					core.MustNotBeEmpty,
+					core.MustNotHaveSurroundingSpaces,
 				},
 			},
 		},
@@ -246,9 +246,9 @@ func buildGroupPosixFieldset(g *core.Group, state *h.FormState) h.FormField {
 				Label:     "Group ID",
 				InputType: "text",
 				Rules: []h.ValidationRule{
-					h.MustNotBeEmpty,
-					h.MustNotHaveSurroundingSpaces,
-					h.MustBePosixUIDorGID,
+					core.MustNotBeEmpty,
+					core.MustNotHaveSurroundingSpaces,
+					core.MustBePosixUIDorGID,
 				},
 			},
 		},
