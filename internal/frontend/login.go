@@ -20,6 +20,7 @@ package frontend
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
@@ -32,8 +33,8 @@ func useLoginForm(i *Interaction) {
 		Fields: []h.FormField{
 			h.InputFieldSpec{
 				InputType:        "text",
-				Name:             "uid",
-				Label:            "Login name",
+				Name:             "user_ident",
+				Label:            "Login name or email address",
 				AutoFocus:        true,
 				AutocompleteMode: "on",
 				Rules: []h.ValidationRule{
@@ -90,18 +91,22 @@ func postLoginHandler(e core.Engine) http.Handler {
 func checkLogin(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
 		fs := i.FormState
-		uid := fs.Fields["uid"].Value
+		userIdent := fs.Fields["user_ident"].Value //either uid or email address
 		pwd := fs.Fields["password"].Value
 
 		var user *core.UserWithPerms
 		if fs.IsValid() {
-			user = e.FindUser(uid)
+			if strings.Contains(userIdent, "@") {
+				user = e.FindUserByEMail(userIdent)
+			} else {
+				user = e.FindUser(userIdent)
+			}
 			passwordHash := ""
 			if user != nil {
 				passwordHash = user.PasswordHash
 			}
 			if core.CheckPasswordHash(pwd, passwordHash) {
-				i.Session.Values["uid"] = i.FormState.Fields["uid"].Value
+				i.Session.Values["uid"] = user.LoginName
 			} else {
 				fs.Fields["password"].ErrorMessage = "is not valid (or the user account does not exist)"
 			}

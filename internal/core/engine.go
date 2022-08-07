@@ -37,6 +37,7 @@ type LDAPObject struct {
 type Engine interface {
 	FindGroup(name string) *Group
 	FindUser(loginName string) *UserWithPerms
+	FindUserByEMail(emailAddress string) *UserWithPerms
 	ListGroups() []Group
 	ListUsers() []User
 	//The ChangeX() methods are used to create, modify and delete entities.
@@ -171,7 +172,25 @@ func (e *engine) FindUser(loginName string) *UserWithPerms {
 	if !exists {
 		return nil
 	}
+	return e.collectUserPerms(u)
+}
 
+//FindUserByEMail implements the Engine interface.
+func (e *engine) FindUserByEMail(emailAddress string) *UserWithPerms {
+	e.Mutex.RLock()
+	defer e.Mutex.RUnlock()
+
+	for _, u := range e.Users {
+		if u.EMailAddress != "" && u.EMailAddress == emailAddress {
+			return e.collectUserPerms(u)
+		}
+	}
+	return nil
+}
+
+func (e *engine) collectUserPerms(u User) *UserWithPerms {
+	//NOTE: This is always called from functions that have locked e.Mutex, so we
+	//don't need to do it ourselves.
 	user := UserWithPerms{User: u.Cloned()}
 	for _, group := range e.Groups {
 		if group.ContainsUser(u) {
