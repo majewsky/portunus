@@ -1,6 +1,10 @@
 This project follows [semantic versioning](https://semver.org/spec/v2.0.0.html). If you believe that
 SemVer was not adhered to in one of our releases, please open an issue.
 
+# v1.1.0 (2022-08-19)
+
+No changes since the last beta.
+
 # v1.1.0-beta.2 (2022-08-07)
 
 New features:
