@@ -129,6 +129,7 @@ func useGroupForm(e core.Engine) HandlerStep {
 				buildGroupMasterdataFieldset(e, i.TargetGroup, i.FormState),
 				buildGroupPermissionsFieldset(i.TargetGroup, i.FormState),
 				buildGroupPosixFieldset(i.TargetGroup, i.FormState),
+				buildGroupMemberFieldset(e, i.TargetGroup, i.FormState),
 			},
 		}
 
@@ -230,6 +231,39 @@ func buildGroupPermissionsFieldset(g *core.Group, state *h.FormState) h.FormFiel
 	}
 }
 
+func buildGroupMemberFieldset(e core.Engine, g *core.Group, state *h.FormState) h.FormField {
+	allUsers := e.ListUsers()
+	sort.Slice(allUsers, func(i, j int) bool {
+		return allUsers[i].LoginName < allUsers[j].LoginName
+	})
+	var memberOpts []h.SelectOptionSpec
+	isUserSelected := make(map[string]bool)
+	for _, user := range allUsers {
+		memberOpts = append(memberOpts, h.SelectOptionSpec{
+			Value: user.LoginName,
+			Label: user.LoginName,
+		})
+		if g != nil {
+			isUserSelected[user.LoginName] = g.ContainsUser(user)
+		}
+	}
+	if g != nil {
+		state.Fields["members"] = &h.FieldState{Selected: isUserSelected}
+	}
+
+	return h.FieldSet{
+		Label:      "Users",
+		IsFoldable: false,
+		Fields: []h.FormField{
+			h.SelectFieldSpec{
+				Name:    "members",
+				Label:   "Members of this Group",
+				Options: memberOpts,
+			},
+		},
+	}
+}
+
 func buildGroupPosixFieldset(g *core.Group, state *h.FormState) h.FormField {
 	if g != nil && g.PosixGID != nil {
 		state.Fields["posix"] = &h.FieldState{IsUnfolded: true}
@@ -308,6 +342,7 @@ func executeEditGroupForm(e core.Engine) HandlerStep {
 			} else {
 				g.PosixGID = nil
 			}
+			g.MemberLoginNames = i.FormState.Fields["members"].Selected
 			return &g, nil
 		})
 		if err != nil {
@@ -363,7 +398,8 @@ func executeCreateGroupForm(e core.Engine) HandlerStep {
 						CanRead: i.FormState.Fields["ldap_perms"].Selected["can_read"],
 					},
 				},
-				PosixGID: posixGID,
+				PosixGID:         posixGID,
+				MemberLoginNames: i.FormState.Fields["members"].Selected,
 			}, nil
 		})
 
