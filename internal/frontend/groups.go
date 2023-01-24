@@ -398,7 +398,8 @@ func executeCreateGroupForm(e core.Engine) HandlerStep {
 						CanRead: i.FormState.Fields["ldap_perms"].Selected["can_read"],
 					},
 				},
-				PosixGID: posixGID,
+				PosixGID:         posixGID,
+				MemberLoginNames: i.FormState.Fields["members"].Selected,
 			}, nil
 		})
 
