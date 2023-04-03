@@ -344,14 +344,19 @@ func (e *engine) persistDatabase() {
 func (e *engine) persistLDAP() {
 	//NOTE: This is always called from functions that have locked e.Mutex, so we
 	//don't need to do it ourselves.
-	ldapDB := make([]LDAPObject, 0, len(e.Users)+len(e.Groups)+1)
-	for _, user := range e.Users {
-		ldapDB = append(ldapDB, user.RenderToLDAP(e.LDAPSuffix, e.Groups))
-	}
+
+	// first persist groups otherwise we would loose the members of a newly created group
+	ldapDB := make([]LDAPObject, 0, len(e.Groups)+1)
 	for _, group := range e.Groups {
 		ldapDB = append(ldapDB, group.RenderToLDAP(e.LDAPSuffix)...)
 	}
 	ldapDB = append(ldapDB, e.renderVirtualGroups()...)
+	e.LDAPUpdates <- ldapDB
+
+	ldapDB = make([]LDAPObject, 0, len(e.Users)+1)
+	for _, user := range e.Users {
+		ldapDB = append(ldapDB, user.RenderToLDAP(e.LDAPSuffix, e.Groups))
+	}
 	e.LDAPUpdates <- ldapDB
 }
 
