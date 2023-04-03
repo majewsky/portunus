@@ -25,11 +25,10 @@ import (
 	"github.com/sapcc/go-bits/logg"
 	"github.com/tredoe/osutil/user/crypt"
 	"github.com/tredoe/osutil/user/crypt/sha256_crypt"
-	goldap "github.com/go-ldap/ldap/v3"
 )
 
-//HashPasswordForLDAP produces a password hash in the format expected by LDAP,
-//like the libc function crypt(3).
+// HashPasswordForLDAP produces a password hash in the format expected by LDAP,
+// like the libc function crypt(3).
 func HashPasswordForLDAP(password string) string {
 	//according to documentation, Crypter.Generate() will never return any errors
 	//when the second argument is nil
@@ -39,7 +38,7 @@ func HashPasswordForLDAP(password string) string {
 
 var bogusPasswordHash = HashPasswordForLDAP(string(securecookie.GenerateRandomKey(32)))
 
-//CheckPasswordHash verifies the given password in nearly constant time.
+// CheckPasswordHash verifies the given password in nearly constant time.
 func CheckPasswordHash(password, passwordHash string) bool {
 	//When this method is called on a non-existing user, i.e. the passwordHash is
 	//the empty string, do not leak this fact to unauthorized users through the
@@ -62,8 +61,4 @@ func CheckPasswordHash(password, passwordHash string) bool {
 		logg.Error("error in password verification: " + err.Error())
 		return false
 	}
-}
-
-func mkAttr(typeName string, values ...string) goldap.Attribute {
-	return goldap.Attribute{Type: typeName, Vals: values}
 }

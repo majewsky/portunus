@@ -24,12 +24,12 @@ import (
 	"strings"
 	"time"
 
+	goldap "github.com/go-ldap/ldap/v3"
 	"github.com/majewsky/portunus/internal/core"
 	"github.com/sapcc/go-bits/logg"
-	goldap "github.com/go-ldap/ldap/v3"
 )
 
-//LDAPWorker performs all the LDAP operations.
+// LDAPWorker performs all the LDAP operations.
 type LDAPWorker struct {
 	DNSuffix      string //e.g. "dc=example,dc=org"
 	UserDN        string //e.g. "cn=portunus,dc=example,dc=org"
@@ -116,7 +116,7 @@ func newLDAPWorker() *LDAPWorker {
 	return w
 }
 
-//Does not return. Call with `go`.
+// Does not return. Call with `go`.
 func (w *LDAPWorker) processEvents(ldapUpdates <-chan []core.LDAPObject) {
 	//process events (errors here are not fatal anymore; defects in single
 	//entries should not compromise the availability of the overall service)
@@ -184,10 +184,6 @@ func (w LDAPWorker) getConn(retryCounter int, sleepInterval time.Duration) *gold
 		return w.getConn(retryCounter+1, sleepInterval*2)
 	}
 	return conn
-}
-
-func mkAttr(typeName string, values ...string) goldap.Attribute {
-	return goldap.Attribute{Type: typeName, Vals: values}
 }
 
 func (w LDAPWorker) addObject(obj core.LDAPObject) error {

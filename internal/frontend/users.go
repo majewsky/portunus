@@ -86,7 +86,7 @@ var usersListSnippet = h.NewSnippet(`
 `)
 
 func usersList(e core.Engine) func(*Interaction) Page {
-	return func(i *Interaction) Page {
+	return func(_ *Interaction) Page {
 		groups := e.ListGroups()
 		sort.Slice(groups, func(i, j int) bool { return groups[i].Name < groups[j].Name })
 		users := e.ListUsers()
@@ -449,7 +449,7 @@ func executeEditUserForm(e core.Engine) HandlerStep {
 
 		isMemberOf := i.FormState.Fields["memberships"].Selected
 		for _, group := range e.ListGroups() {
-			e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
+			_ = e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
 				if g.Name == "" {
 					return nil, nil //if the group was deleted in parallel, no need to complain
 				}
@@ -513,7 +513,7 @@ func executeCreateUserForm(e core.Engine) HandlerStep {
 			}
 		}
 
-		e.ChangeUser(loginName, func(u core.User) (*core.User, error) {
+		_ = e.ChangeUser(loginName, func(u core.User) (*core.User, error) {
 			return &core.User{
 				LoginName:    loginName,
 				GivenName:    i.FormState.Fields["given_name"].Value,
@@ -529,7 +529,7 @@ func executeCreateUserForm(e core.Engine) HandlerStep {
 			if !isMemberOf[group.Name] {
 				continue
 			}
-			e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
+			_ = e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
 				if g.Name == "" {
 					return nil, nil //if the group was deleted in parallel, no need to complain
 				}
@@ -589,11 +589,11 @@ func postUserDeleteHandler(e core.Engine) http.Handler {
 func executeDeleteUser(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
 		userLoginName := i.TargetUser.LoginName
-		e.ChangeUser(userLoginName, func(core.User) (*core.User, error) {
+		_ = e.ChangeUser(userLoginName, func(core.User) (*core.User, error) {
 			return nil, nil
 		})
 		for _, group := range e.ListGroups() {
-			e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
+			_ = e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
 				if g.Name == "" {
 					return nil, nil //if the group was deleted in parallel, no need to complain
 				}

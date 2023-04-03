@@ -22,7 +22,7 @@ import (
 	"fmt"
 )
 
-//User represents a single user account.
+// User represents a single user account.
 type User struct {
 	LoginName     string   `json:"login_name"`
 	GivenName     string   `json:"given_name"`
@@ -34,7 +34,7 @@ type User struct {
 	POSIX        *UserPosixAttributes `json:"posix,omitempty"`
 }
 
-//UserPosixAttributes appears in type User.
+// UserPosixAttributes appears in type User.
 type UserPosixAttributes struct {
 	UID           PosixID `json:"uid"`
 	GID           PosixID `json:"gid"`
@@ -43,7 +43,7 @@ type UserPosixAttributes struct {
 	GECOS         string  `json:"gecos"` //optional
 }
 
-//Cloned returns a deep copy of this user.
+// Cloned returns a deep copy of this user.
 func (u User) Cloned() User {
 	if u.POSIX != nil {
 		val := *u.POSIX
@@ -55,12 +55,12 @@ func (u User) Cloned() User {
 	return u
 }
 
-//FullName returns the user's full name.
+// FullName returns the user's full name.
 func (u User) FullName() string {
 	return u.GivenName + " " + u.FamilyName //TODO: allow flipped order (family name first)
 }
 
-//RenderToLDAP produces the LDAPObject representing this group.
+// RenderToLDAP produces the LDAPObject representing this group.
 func (u User) RenderToLDAP(suffix string, allGroups map[string]Group) LDAPObject {
 	var memberOfGroupDNames []string
 	for _, group := range allGroups {
@@ -110,7 +110,7 @@ func (u User) RenderToLDAP(suffix string, allGroups map[string]Group) LDAPObject
 
 ////////////////////////////////////////////////////////////////////////////////
 
-//UserWithPerms is a User that carries its computed set of permissions.
+// UserWithPerms is a User that carries its computed set of permissions.
 type UserWithPerms struct {
 	User
 	Perms            Permissions

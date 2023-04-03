@@ -28,7 +28,7 @@ import (
 	h "github.com/majewsky/portunus/internal/html"
 )
 
-//TODO: allow flipped order (family name first)
+// TODO: allow flipped order (family name first)
 var userFullNameSnippet = h.NewSnippet(`
 	<span class="given-name">{{.GivenName}}</span> <span class="family-name">{{.FamilyName}}</span>
 `)
@@ -62,10 +62,10 @@ func useSelfServiceForm(e core.Engine) HandlerStep {
 
 		i.FormState = &h.FormState{
 			Fields: map[string]*h.FieldState{
-				"memberships": &h.FieldState{
+				"memberships": {
 					Selected: isSelected,
 				},
-				"ssh_public_keys": &h.FieldState{
+				"ssh_public_keys": {
 					Value: strings.Join(user.SSHPublicKeys, "\r\n"),
 				},
 			},

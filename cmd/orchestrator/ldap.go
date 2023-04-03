@@ -32,13 +32,14 @@ import (
 	"github.com/sapcc/go-bits/logg"
 )
 
-//Notes on this configuration template:
-//- Only Portunus' own technical user has any sort of write access.
-//- The cn=portunus-viewers virtual group corresponds to Portunus' `LDAP.CanRead` permission.
-//- Users can read their own object, so that applications not using a service
-//  user can discover group memberships of a logged-in user.
-//- TLSProtocolMin 3.3 means "TLS 1.2 or higher". (TODO select cipher suites according to recommendations)
-//TODO when TLS is configured, also listen on ldap:///, but require StartTLS through `security minssf=256`.
+// Notes on this configuration template:
+//   - Only Portunus' own technical user has any sort of write access.
+//   - The cn=portunus-viewers virtual group corresponds to Portunus' `LDAP.CanRead` permission.
+//   - Users can read their own object, so that applications not using a service
+//     user can discover group memberships of a logged-in user.
+//   - TLSProtocolMin 3.3 means "TLS 1.2 or higher". (TODO select cipher suites according to recommendations)
+//
+// TODO when TLS is configured, also listen on ldap:///, but require StartTLS through `security minssf=256`.
 var configTemplate = `
 include %PORTUNUS_SLAPD_SCHEMA_DIR%/core.schema
 include %PORTUNUS_SLAPD_SCHEMA_DIR%/cosine.schema
@@ -71,14 +72,14 @@ directory  "%PORTUNUS_SLAPD_STATE_DIR%/data"
 index objectClass eq
 `
 
-//We do not use the OLC machinery for the memberOf attribute because
-//portunus-server itself can do it much more easily. But that means we have to
-//define the memberOf attribute on the schema level.
+// We do not use the OLC machinery for the memberOf attribute because
+// portunus-server itself can do it much more easily. But that means we have to
+// define the memberOf attribute on the schema level.
 //
-//Also, in order to work in as many scenarios as possible, we do not use the
-//standard attribute name `memberOf`, but `isMemberOf` instead. (Some OpenLDAPs
-//define the `memberOf` attribute even if you don't enable the memberof
-//overlay.)
+// Also, in order to work in as many scenarios as possible, we do not use the
+// standard attribute name `memberOf`, but `isMemberOf` instead. (Some OpenLDAPs
+// define the `memberOf` attribute even if you don't enable the memberof
+// overlay.)
 var customSchema = `
 	attributetype ( 9999.1.1 NAME 'isMemberOf'
 		DESC 'back-reference to groups this user is a member of'
@@ -98,7 +99,7 @@ var customSchema = `
 //^ The trailing empty line is important, otherwise slapd cannot correctly
 //parse this file. ikr?
 
-func renderSlapdConfig(environment map[string]string, ids map[string]int) []byte {
+func renderSlapdConfig(environment map[string]string) []byte {
 	password := generateServiceUserPassword()
 	logg.Debug("password for cn=portunus,%s is %s",
 		environment["PORTUNUS_LDAP_SUFFIX"], password)
@@ -129,7 +130,7 @@ func generateServiceUserPassword() string {
 	return hex.EncodeToString(buf[:])
 }
 
-//Does not return. Call with `go`.
+// Does not return. Call with `go`.
 func runLDAPServer(environment map[string]string) {
 	debugLogFlags := uint64(0)
 	if logg.ShowDebug {

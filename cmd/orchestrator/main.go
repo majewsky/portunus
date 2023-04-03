@@ -49,7 +49,7 @@ func main() {
 	must(ioutil.WriteFile(customSchemaPath, []byte(customSchema), 0444))
 
 	slapdConfigPath := filepath.Join(slapdStatePath, "slapd.conf")
-	must(ioutil.WriteFile(slapdConfigPath, renderSlapdConfig(environment, ids), 0444))
+	must(ioutil.WriteFile(slapdConfigPath, renderSlapdConfig(environment), 0444))
 
 	//copy TLS cert and private key into a location where slapd can definitely read it
 	if certPath := environment["PORTUNUS_SLAPD_TLS_CERTIFICATE"]; certPath != "" {

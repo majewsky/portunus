@@ -32,27 +32,27 @@ import (
 	"github.com/sapcc/go-bits/logg"
 )
 
-//Database contains the contents of Portunus' database. This is what gets
-//persisted into the database file.
+// Database contains the contents of Portunus' database. This is what gets
+// persisted into the database file.
 type Database struct {
-	Users         []User  `json:"users,keepempty"`
-	Groups        []Group `json:"groups,keepempty"`
-	SchemaVersion uint    `json:"schema_version,keepempty"`
+	Users         []User  `json:"users"`
+	Groups        []Group `json:"groups"`
+	SchemaVersion uint    `json:"schema_version"`
 }
 
-//FileStore is responsible for loading Portunus' database from
-//PORTUNUS_SERVER_STATE_DIR, and persisting it when changes are made to it.
+// FileStore is responsible for loading Portunus' database from
+// PORTUNUS_SERVER_STATE_DIR, and persisting it when changes are made to it.
 //
-//The Initializer function is called at most once, only when there is no
-//existing database file at the given Path.
+// The Initializer function is called at most once, only when there is no
+// existing database file at the given Path.
 type FileStore struct {
 	Path        string
 	Initializer func() Database
 	running     bool
 }
 
-//FileStoreAPI is the interface that the engine uses to interact with the
-//FileStore.
+// FileStoreAPI is the interface that the engine uses to interact with the
+// FileStore.
 type FileStoreAPI struct {
 	//Whenever the FileStore reads an updated version of the config file, it
 	//sends the database contents into this channel.
@@ -62,8 +62,8 @@ type FileStoreAPI struct {
 	SaveRequests chan<- Database
 }
 
-//RunAsync spawns the goroutine for the FileStore, and returns the API that the
-//engine uses to interact with it.
+// RunAsync spawns the goroutine for the FileStore, and returns the API that the
+// engine uses to interact with it.
 func (s *FileStore) RunAsync() *FileStoreAPI {
 	if s.running {
 		panic("cannot call FileStore.Run() twice")
