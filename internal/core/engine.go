@@ -27,13 +27,13 @@ import (
 	"github.com/sapcc/go-bits/logg"
 )
 
-//LDAPObject describes an object that can be stored in the LDAP directory.
+// LDAPObject describes an object that can be stored in the LDAP directory.
 type LDAPObject struct {
 	DN         string
 	Attributes map[string][]string
 }
 
-//Engine is the core engine of portunus-server.
+// Engine is the core engine of portunus-server.
 type Engine interface {
 	FindGroup(name string) *Group
 	FindUser(loginName string) *UserWithPerms
@@ -49,7 +49,7 @@ type Engine interface {
 	ChangeGroup(name string, action func(Group) (*Group, error)) error
 }
 
-//engine implements the Engine interface.
+// engine implements the Engine interface.
 type engine struct {
 	FileStoreAPI *FileStoreAPI
 	Seed         *DatabaseSeed
@@ -60,9 +60,9 @@ type engine struct {
 	LDAPSuffix   string
 }
 
-//RunEngineAsync runs the main engine of portunus-server. It consumes the
-//FileStoreAPI and returns an Engine interface for the HTTP server to use, and
-//a stream of events for the LDAP worker.
+// RunEngineAsync runs the main engine of portunus-server. It consumes the
+// FileStoreAPI and returns an Engine interface for the HTTP server to use, and
+// a stream of events for the LDAP worker.
 func RunEngineAsync(fsAPI *FileStoreAPI, ldapSuffix string, seed *DatabaseSeed) (Engine, <-chan []LDAPObject) {
 	ldapUpdatesChan := make(chan []LDAPObject, 1)
 	e := engine{
@@ -150,7 +150,7 @@ func (e *engine) handleLoadEvent(db Database) {
 	e.persistLDAP()
 }
 
-//FindUser implements the Engine interface.
+// FindUser implements the Engine interface.
 func (e *engine) FindGroup(name string) *Group {
 	e.Mutex.RLock()
 	defer e.Mutex.RUnlock()
@@ -163,7 +163,7 @@ func (e *engine) FindGroup(name string) *Group {
 	return &g
 }
 
-//FindUser implements the Engine interface.
+// FindUser implements the Engine interface.
 func (e *engine) FindUser(loginName string) *UserWithPerms {
 	e.Mutex.RLock()
 	defer e.Mutex.RUnlock()
@@ -175,7 +175,7 @@ func (e *engine) FindUser(loginName string) *UserWithPerms {
 	return e.collectUserPerms(u)
 }
 
-//FindUserByEMail implements the Engine interface.
+// FindUserByEMail implements the Engine interface.
 func (e *engine) FindUserByEMail(emailAddress string) *UserWithPerms {
 	e.Mutex.RLock()
 	defer e.Mutex.RUnlock()
@@ -201,7 +201,7 @@ func (e *engine) collectUserPerms(u User) *UserWithPerms {
 	return &user
 }
 
-//ListGroups implements the Engine interface.
+// ListGroups implements the Engine interface.
 func (e *engine) ListGroups() []Group {
 	e.Mutex.RLock()
 	defer e.Mutex.RUnlock()
@@ -213,7 +213,7 @@ func (e *engine) ListGroups() []Group {
 	return result
 }
 
-//ListUsers implements the Engine interface.
+// ListUsers implements the Engine interface.
 func (e *engine) ListUsers() []User {
 	e.Mutex.RLock()
 	defer e.Mutex.RUnlock()
@@ -232,7 +232,7 @@ var (
 	errCannotOverwriteSeededUserAttrs  = errors.New("cannot overwrite user attributes that are statically configured in seed")
 )
 
-//ChangeUser implements the Engine interface.
+// ChangeUser implements the Engine interface.
 func (e *engine) ChangeUser(loginName string, action func(User) (*User, error)) error {
 	e.Mutex.Lock()
 	defer e.Mutex.Unlock()
@@ -280,7 +280,7 @@ func (e *engine) ChangeUser(loginName string, action func(User) (*User, error)) 
 	return nil
 }
 
-//ChangeGroup implements the Engine interface.
+// ChangeGroup implements the Engine interface.
 func (e *engine) ChangeGroup(name string, action func(Group) (*Group, error)) error {
 	e.Mutex.Lock()
 	defer e.Mutex.Unlock()

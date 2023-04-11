@@ -54,7 +54,7 @@ func useLoginForm(i *Interaction) {
 	}
 }
 
-//Handles GET /login.
+// Handles GET /login.
 func getLoginHandler(e core.Engine) http.Handler {
 	return Do(
 		LoadSession,
@@ -75,7 +75,7 @@ func skipLoginIfAlreadyLoggedIn(e core.Engine) HandlerStep {
 	}
 }
 
-//Handles POST /login.
+// Handles POST /login.
 func postLoginHandler(e core.Engine) http.Handler {
 	return Do(
 		LoadSession,
@@ -114,7 +114,7 @@ func checkLogin(e core.Engine) HandlerStep {
 	}
 }
 
-//Handles GET /logout.
+// Handles GET /logout.
 func getLogoutHandler(e core.Engine) http.Handler {
 	return Do(
 		LoadSession,

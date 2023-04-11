@@ -29,7 +29,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-//this regexp copied from useradd(8) manpage
+// this regexp copied from useradd(8) manpage
 const posixAccountNamePattern = `[a-z_][a-z0-9_-]*\$?`
 
 var (
@@ -44,7 +44,7 @@ var (
 	errNotAbsolutePath = errors.New("must be an absolute path, i.e. start with a /")
 )
 
-//MustNotBeEmpty is a h.ValidationRule.
+// MustNotBeEmpty is a h.ValidationRule.
 func MustNotBeEmpty(val string) error {
 	if strings.TrimSpace(val) == "" {
 		return errIsMissing
@@ -52,7 +52,7 @@ func MustNotBeEmpty(val string) error {
 	return nil
 }
 
-//MustNotHaveSurroundingSpaces is a h.ValidationRule.
+// MustNotHaveSurroundingSpaces is a h.ValidationRule.
 func MustNotHaveSurroundingSpaces(val string) error {
 	if val != "" {
 		if strings.TrimLeftFunc(val, unicode.IsSpace) != val {
@@ -65,7 +65,7 @@ func MustNotHaveSurroundingSpaces(val string) error {
 	return nil
 }
 
-//MustBePosixAccountName is a h.ValidationRule.
+// MustBePosixAccountName is a h.ValidationRule.
 func MustBePosixAccountName(val string) error {
 	if posixAccountNameRx.MatchString(val) {
 		return nil
@@ -73,7 +73,7 @@ func MustBePosixAccountName(val string) error {
 	return errNotPosixAccountName
 }
 
-//MustBePosixUIDorGID is a h.ValidationRule.
+// MustBePosixUIDorGID is a h.ValidationRule.
 func MustBePosixUIDorGID(val string) error {
 	if val != "" {
 		_, err := strconv.ParseUint(val, 10, 16)
@@ -84,7 +84,7 @@ func MustBePosixUIDorGID(val string) error {
 	return nil
 }
 
-//MustBeAbsolutePath is a h.ValidationRule.
+// MustBeAbsolutePath is a h.ValidationRule.
 func MustBeAbsolutePath(val string) error {
 	if val != "" && !strings.HasPrefix(val, "/") {
 		return errNotAbsolutePath
@@ -92,9 +92,9 @@ func MustBeAbsolutePath(val string) error {
 	return nil
 }
 
-//SplitSSHPublicKeys preprocesses the content of a submitted <textarea> where a
-//list of SSH public keys is expected. The result will have one public key per
-//array entry.
+// SplitSSHPublicKeys preprocesses the content of a submitted <textarea> where a
+// list of SSH public keys is expected. The result will have one public key per
+// array entry.
 func SplitSSHPublicKeys(val string) (result []string) {
 	for _, line := range strings.Split(val, "\n") {
 		line = strings.TrimSpace(line)
@@ -105,7 +105,7 @@ func SplitSSHPublicKeys(val string) (result []string) {
 	return result
 }
 
-//MustBeSSHPublicKeys is a h.ValidationRule.
+// MustBeSSHPublicKeys is a h.ValidationRule.
 func MustBeSSHPublicKeys(val string) error {
 	for idx, line := range SplitSSHPublicKeys(val) {
 		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(line))
@@ -116,7 +116,7 @@ func MustBeSSHPublicKeys(val string) error {
 	return nil
 }
 
-//MustBeSSHPublicKey is a h.ValidationRule.
+// MustBeSSHPublicKey is a h.ValidationRule.
 func MustBeSSHPublicKey(val string) error {
 	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(val))
 	if err != nil {

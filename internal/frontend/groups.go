@@ -78,7 +78,7 @@ var groupsListSnippet = h.NewSnippet(`
 `)
 
 func groupsList(e core.Engine) func(*Interaction) Page {
-	return func(i *Interaction) Page {
+	return func(_ *Interaction) Page {
 		groups := e.ListGroups()
 		sort.Slice(groups, func(i, j int) bool { return groups[i].Name < groups[j].Name })
 
@@ -380,7 +380,7 @@ func postGroupsNewHandler(e core.Engine) http.Handler {
 func executeCreateGroupForm(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
 		name := i.FormState.Fields["name"].Value
-		e.ChangeGroup(name, func(g core.Group) (*core.Group, error) {
+		_ = e.ChangeGroup(name, func(_ core.Group) (*core.Group, error) {
 			var posixGID *core.PosixID
 			if i.FormState.Fields["posix"].IsUnfolded {
 				gidAsUint64, _ := strconv.ParseUint(i.FormState.Fields["posix_gid"].Value, 10, 16)
@@ -449,7 +449,7 @@ func postGroupDeleteHandler(e core.Engine) http.Handler {
 func executeDeleteGroup(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
 		groupName := i.TargetGroup.Name
-		e.ChangeGroup(groupName, func(core.Group) (*core.Group, error) {
+		_ = e.ChangeGroup(groupName, func(core.Group) (*core.Group, error) {
 			return nil, nil
 		})
 

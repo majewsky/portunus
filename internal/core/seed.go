@@ -34,15 +34,15 @@ import (
 ////////////////////////////////////////////////////////////////////////////////
 // type DatabaseSeed
 
-//DatabaseSeed contains the contents of the seed file, if there is one.
+// DatabaseSeed contains the contents of the seed file, if there is one.
 type DatabaseSeed struct {
 	Groups []GroupSeed `json:"groups"`
 	Users  []UserSeed  `json:"users"`
 }
 
-//ReadDatabaseSeedFromEnvironment reads and validates the file at
-//PORTUNUS_SEED_PATH. If that environment variable was not provided, nil is
-//returned instead.
+// ReadDatabaseSeedFromEnvironment reads and validates the file at
+// PORTUNUS_SEED_PATH. If that environment variable was not provided, nil is
+// returned instead.
 func ReadDatabaseSeedFromEnvironment() (*DatabaseSeed, error) {
 	path := os.Getenv("PORTUNUS_SEED_PATH")
 	if path == "" {
@@ -60,7 +60,7 @@ func ReadDatabaseSeedFromEnvironment() (*DatabaseSeed, error) {
 	return &seed, seed.Validate()
 }
 
-//Validate returns an error if the seed contains any invalid or missing values.
+// Validate returns an error if the seed contains any invalid or missing values.
 func (d DatabaseSeed) Validate() error {
 	isUserLoginName := make(map[string]bool)
 	for idx, u := range d.Users {
@@ -81,9 +81,9 @@ func (d DatabaseSeed) Validate() error {
 	return nil
 }
 
-//DatabaseInitializer returns a function that initalizes the Database from the
-//given seed on first use. If the seed is nil, the default initialization
-//behavior is used.
+// DatabaseInitializer returns a function that initalizes the Database from the
+// given seed on first use. If the seed is nil, the default initialization
+// behavior is used.
 func DatabaseInitializer(d *DatabaseSeed) func() Database {
 	//if no seed has been given, create the "admin" user with access to the
 	//Portunus UI and log the password once
@@ -129,7 +129,7 @@ func DatabaseInitializer(d *DatabaseSeed) func() Database {
 ////////////////////////////////////////////////////////////////////////////////
 // type GroupSeed
 
-//GroupSeed contains the seeded configuration for a single group.
+// GroupSeed contains the seeded configuration for a single group.
 type GroupSeed struct {
 	Name             StringSeed   `json:"name"`
 	LongName         StringSeed   `json:"long_name"`
@@ -177,7 +177,7 @@ func (g GroupSeed) validate(isUserLoginName, isGroupName map[string]bool) error 
 	return nil
 }
 
-//ApplyTo changes the attributes of this group to conform to the given seed.
+// ApplyTo changes the attributes of this group to conform to the given seed.
 func (g GroupSeed) ApplyTo(target *Group) {
 	//consistency check (the caller must ensure that the seed matches the object)
 	if target.Name != string(g.Name) {
@@ -208,7 +208,7 @@ func (g GroupSeed) ApplyTo(target *Group) {
 ////////////////////////////////////////////////////////////////////////////////
 // type UserSeed
 
-//UserSeed contains the seeded configuration for a single user.
+// UserSeed contains the seeded configuration for a single user.
 type UserSeed struct {
 	LoginName     StringSeed   `json:"login_name"`
 	GivenName     StringSeed   `json:"given_name"`
@@ -301,7 +301,7 @@ func (u UserSeed) validate(isUserLoginName map[string]bool) error {
 	return nil
 }
 
-//ApplyTo changes the attributes of this group to conform to the given seed.
+// ApplyTo changes the attributes of this group to conform to the given seed.
 func (u UserSeed) ApplyTo(target *User) {
 	//consistency check (the caller must ensure that the seed matches the object)
 	if target.LoginName != string(u.LoginName) {
@@ -351,10 +351,10 @@ func (u UserSeed) ApplyTo(target *User) {
 ////////////////////////////////////////////////////////////////////////////////
 // type StringSeed
 
-//StringSeed contains a single string value coming from the seed file.
+// StringSeed contains a single string value coming from the seed file.
 type StringSeed string
 
-//UnmarshalJSON implements the json.Unmarshaler interface.
+// UnmarshalJSON implements the json.Unmarshaler interface.
 func (s *StringSeed) UnmarshalJSON(buf []byte) error {
 	//common case: unmarshal from string
 	var val string

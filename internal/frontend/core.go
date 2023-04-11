@@ -34,7 +34,7 @@ import (
 	"github.com/sapcc/go-bits/logg"
 )
 
-//HTTPHandler returns the main http.Handler.
+// HTTPHandler returns the main http.Handler.
 func HTTPHandler(engine core.Engine, isBehindTLSProxy bool) http.Handler {
 	r := mux.NewRouter()
 	r.Methods("GET").Path(`/`).Handler(getToplevelHandler(engine))
@@ -97,18 +97,18 @@ func getToplevelHandler(e core.Engine) http.Handler {
 ////////////////////////////////////////////////////////////////////////////////
 // type Handler
 
-//Handler allows to construct HTTP handlers by chained method calls describing
-//the sequence of actions taken.
+// Handler allows to construct HTTP handlers by chained method calls describing
+// the sequence of actions taken.
 type Handler struct {
 	steps []HandlerStep
 }
 
-//Do creates a Handler with the given steps.
+// Do creates a Handler with the given steps.
 func Do(steps ...HandlerStep) Handler {
 	return Handler{steps: steps}
 }
 
-//ServeHTTP implements the http.Handler interface.
+// ServeHTTP implements the http.Handler interface.
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	i := Interaction{
 		Req:    r,
@@ -122,12 +122,12 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//HandlerStep is a single step executed by a handler. When a handler step
-//renders a result, it shall set i.Writer = nil to ensure that the remaining
-//steps do not get executed.
+// HandlerStep is a single step executed by a handler. When a handler step
+// renders a result, it shall set i.Writer = nil to ensure that the remaining
+// steps do not get executed.
 type HandlerStep func(i *Interaction)
 
-//Interaction describes a single invocation of Handler.ServeHTTP().
+// Interaction describes a single invocation of Handler.ServeHTTP().
 type Interaction struct {
 	Req    *http.Request
 	writer http.ResponseWriter
@@ -141,19 +141,19 @@ type Interaction struct {
 	TargetGroup *core.Group //only used by CRUD views editing a single group
 }
 
-//WriteError wraps http.Error().
+// WriteError wraps http.Error().
 func (i *Interaction) WriteError(msg string, code int) {
 	http.Error(i.writer, msg, code)
 	i.writer = nil
 }
 
-//RedirectTo redirects to the given URL.
+// RedirectTo redirects to the given URL.
 func (i *Interaction) RedirectTo(url string) {
 	http.Redirect(i.writer, i.Req, url, http.StatusSeeOther)
 	i.writer = nil
 }
 
-//RedirectWithFlashTo is like RedirectTo, but stores a flash to show on the next page.
+// RedirectWithFlashTo is like RedirectTo, but stores a flash to show on the next page.
 func (i *Interaction) RedirectWithFlashTo(url string, f Flash) {
 	i.Session.AddFlash(f)
 	if i.SaveSession() {
@@ -161,8 +161,8 @@ func (i *Interaction) RedirectWithFlashTo(url string, f Flash) {
 	}
 }
 
-//SaveSession calls i.Session.Save(). When false is returned, a 500 error was
-//written and the calling handler step shall abort immediately.
+// SaveSession calls i.Session.Save(). When false is returned, a 500 error was
+// written and the calling handler step shall abort immediately.
 func (i *Interaction) SaveSession() bool {
 	err := i.Session.Save(i.Req, i.writer)
 	if err != nil {
@@ -175,8 +175,8 @@ func (i *Interaction) SaveSession() bool {
 ////////////////////////////////////////////////////////////////////////////////
 // standard handler steps
 
-//ShowView is a final handler step that uses a callback to render the requested
-//page.
+// ShowView is a final handler step that uses a callback to render the requested
+// page.
 func ShowView(view func(i *Interaction) Page) HandlerStep {
 	return func(i *Interaction) {
 		if i.Session == nil {
@@ -187,7 +187,7 @@ func ShowView(view func(i *Interaction) Page) HandlerStep {
 	}
 }
 
-//RedirectTo is a handler step that always redirects to the given URL.
+// RedirectTo is a handler step that always redirects to the given URL.
 func RedirectTo(url string) HandlerStep {
 	return func(i *Interaction) {
 		i.RedirectTo(url)
@@ -218,8 +218,8 @@ func init() {
 	sessionStore = sessions.NewCookieStore(keyBytes)
 }
 
-//LoadSession is a handler step that loads the session or starts a new one if
-//there is no valid session.
+// LoadSession is a handler step that loads the session or starts a new one if
+// there is no valid session.
 func LoadSession(i *Interaction) {
 	var err error
 	i.Session, err = sessionStore.Get(i.Req, "portunus-login")
@@ -238,13 +238,13 @@ func LoadSession(i *Interaction) {
 	}
 }
 
-//SaveSession is a handler step that calls Interaction.SaveSession.
+// SaveSession is a handler step that calls Interaction.SaveSession.
 func SaveSession(i *Interaction) {
 	i.SaveSession()
 }
 
-//VerifyLogin is a handler step that checks the current session for a valid
-//login, and redirects to /login if it cannot find one.
+// VerifyLogin is a handler step that checks the current session for a valid
+// login, and redirects to /login if it cannot find one.
 func VerifyLogin(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
 		if i.Session == nil {
@@ -263,8 +263,8 @@ func VerifyLogin(e core.Engine) HandlerStep {
 	}
 }
 
-//VerifyPermissions is a handler step that checks whether the current user has
-//at least the given permissions.
+// VerifyPermissions is a handler step that checks whether the current user has
+// at least the given permissions.
 func VerifyPermissions(perms core.Permissions) HandlerStep {
 	return func(i *Interaction) {
 		if i.CurrentUser == nil {
@@ -277,13 +277,13 @@ func VerifyPermissions(perms core.Permissions) HandlerStep {
 	}
 }
 
-//UseEmptyFormState is a handler step that initializes an empty i.FormState.
+// UseEmptyFormState is a handler step that initializes an empty i.FormState.
 func UseEmptyFormState(i *Interaction) {
 	i.FormState = &h.FormState{}
 }
 
-//ReadFormStateFromRequest is a handler step that initializes i.FormState from
-//the incoming request. This is only suitable for POST handlers.
+// ReadFormStateFromRequest is a handler step that initializes i.FormState from
+// the incoming request. This is only suitable for POST handlers.
 func ReadFormStateFromRequest(i *Interaction) {
 	if i.FormSpec == nil {
 		panic("ReadFormStateFromRequest requires a form to be selected")
@@ -294,7 +294,7 @@ func ReadFormStateFromRequest(i *Interaction) {
 	i.FormSpec.ReadState(i.Req, i.FormState)
 }
 
-//ShowForm is a final handler step that renders i.FormSpec with i.FormState.
+// ShowForm is a final handler step that renders i.FormSpec with i.FormState.
 func ShowForm(title string) HandlerStep {
 	return func(i *Interaction) {
 		if i.Session == nil {
@@ -315,8 +315,8 @@ func ShowForm(title string) HandlerStep {
 	}
 }
 
-//ShowFormIfErrors is like ShowForm, but only renders an output if i.FormState
-//is not valid.
+// ShowFormIfErrors is like ShowForm, but only renders an output if i.FormState
+// is not valid.
 func ShowFormIfErrors(title string) HandlerStep {
 	return func(i *Interaction) {
 		if i.FormState == nil {

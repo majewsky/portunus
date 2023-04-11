@@ -86,7 +86,7 @@ var mainSnippet = h.NewSnippet(`
 	</html>
 `)
 
-//Flash is a flash message.
+// Flash is a flash message.
 type Flash struct {
 	Type    string //either "danger" or "success"
 	Message string
@@ -96,7 +96,7 @@ func init() {
 	gob.Register(Flash{})
 }
 
-//Page describes a HTML page produced by Portunus.
+// Page describes a HTML page produced by Portunus.
 type Page struct {
 	Status   int
 	Title    string
@@ -104,7 +104,7 @@ type Page struct {
 	Wide     bool
 }
 
-//Render renders the given page.
+// Render renders the given page.
 func (p Page) Render(w http.ResponseWriter, r *http.Request, currentUser *core.UserWithPerms, s *sessions.Session) {
 	data := struct {
 		Page                Page
@@ -134,5 +134,5 @@ func (p Page) Render(w http.ResponseWriter, r *http.Request, currentUser *core.U
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(p.Status)
-	w.Write([]byte(mainSnippet.Render(data)))
+	_, _ = w.Write([]byte(mainSnippet.Render(data)))
 }
