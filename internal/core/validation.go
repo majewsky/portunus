@@ -25,20 +25,21 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+    "os"
 
 	"golang.org/x/crypto/ssh"
 )
 
 // this regexp copied from useradd(8) manpage
-const posixAccountNamePattern = `[a-z_][a-z0-9_-]*\$?`
+const defaultPosixAccountNamePattern = `[a-z_][a-z0-9_-]*\$?`
 
 var (
 	errIsMissing      = errors.New("is missing")
 	errLeadingSpaces  = errors.New("may not start with a space character")
 	errTrailingSpaces = errors.New("may not end with a space character")
 
-	errNotPosixAccountName = errors.New("is not an acceptable user/group name matching the pattern /" + posixAccountNamePattern + "/")
-	posixAccountNameRx     = regexp.MustCompile(`^` + posixAccountNamePattern + `$`)
+	errNotPosixAccountName = errors.New("is not an acceptable user/group name matching the pattern /" + defaultPosixAccountNamePattern + "/")
+	posixAccountNameRx     = regexp.MustCompile(`^` + defaultPosixAccountNamePattern + `$`)
 	errNotPosixUIDorGID    = errors.New("is not a number between 0 and 65535 inclusive")
 
 	errNotAbsolutePath = errors.New("must be an absolute path, i.e. start with a /")
@@ -67,7 +68,18 @@ func MustNotHaveSurroundingSpaces(val string) error {
 
 // MustBePosixAccountName is a h.ValidationRule.
 func MustBePosixAccountName(val string) error {
-	if posixAccountNameRx.MatchString(val) {
+    // fetch possible username regex from the environment
+    posixAccRxEnv := os.Getenv("PORTUNUS_POSIX_ACCOUNT_REGEX") 
+
+    // default regex is the minimally allowed unix username
+    var posix_regex *regexp.Regexp = posixAccountNameRx; 
+    
+    if posixAccRxEnv != "" {
+        // takes the fetched REGEX from the environment and builds it
+        posix_regex = regexp.MustCompile(`^` + posixAccRxEnv + `$`);
+    }
+
+	if posix_regex.MatchString(val) {
 		return nil
 	}
 	return errNotPosixAccountName
