@@ -61,6 +61,7 @@ following environment variables:
 | `PORTUNUS_SLAPD_TLS_CA_CERTIFICATE` | *(optional)* | *Required* when a TLS certificate is given. The full chain of CA certificates which has signed the TLS certificate, *including the root CA*. |
 | `PORTUNUS_SLAPD_TLS_DOMAIN_NAME` | *(optional)* | *Required* when a TLS certificate is given. The domain name for which the certificate is valid. `portunus-server` will use this domain name when connecting to the LDAP server. |
 | `PORTUNUS_SLAPD_TLS_PRIVATE_KEY` | *(optional)* | *Required* when a TLS certificate is given. The path to the private key belonging to the TLS certificate. |
+| `PORTUNUS_POSIX_ACCOUNT_REGEX` | *(optional)* | Configures a username regex. |
 
 Root privileges are required for the orchestrator because it needs to setup runtime directories and
 bind the LDAP port which is a privileged port (389 without TLS, 636 with TLS). No process managed by
