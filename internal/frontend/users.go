@@ -449,13 +449,17 @@ func executeEditUserForm(e core.Engine) HandlerStep {
 
 		isMemberOf := i.FormState.Fields["memberships"].Selected
 		for _, group := range e.ListGroups() {
-			_ = e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
+			err := e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
 				if g.Name == "" {
 					return nil, nil //if the group was deleted in parallel, no need to complain
 				}
 				g.MemberLoginNames[i.TargetUser.LoginName] = isMemberOf[group.Name]
 				return &g, nil
 			})
+			if err != nil {
+				i.RedirectWithFlashTo("/users", Flash{"danger", err.Error()})
+				return
+			}
 		}
 
 		msg := fmt.Sprintf("Updated user %q.", i.TargetUser.LoginName)
@@ -513,7 +517,7 @@ func executeCreateUserForm(e core.Engine) HandlerStep {
 			}
 		}
 
-		_ = e.ChangeUser(loginName, func(u core.User) (*core.User, error) {
+		err := e.ChangeUser(loginName, func(u core.User) (*core.User, error) {
 			return &core.User{
 				LoginName:    loginName,
 				GivenName:    i.FormState.Fields["given_name"].Value,
@@ -523,19 +527,27 @@ func executeCreateUserForm(e core.Engine) HandlerStep {
 				POSIX:        posixAttrs,
 			}, nil
 		})
+		if err != nil {
+			i.RedirectWithFlashTo("/users", Flash{"danger", err.Error()})
+			return
+		}
 
 		isMemberOf := i.FormState.Fields["memberships"].Selected
 		for _, group := range e.ListGroups() {
 			if !isMemberOf[group.Name] {
 				continue
 			}
-			_ = e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
+			err := e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
 				if g.Name == "" {
 					return nil, nil //if the group was deleted in parallel, no need to complain
 				}
 				g.MemberLoginNames[loginName] = true
 				return &g, nil
 			})
+			if err != nil {
+				i.RedirectWithFlashTo("/users", Flash{"danger", err.Error()})
+				return
+			}
 		}
 
 		msg := fmt.Sprintf("Created user %q.", loginName)
@@ -589,17 +601,26 @@ func postUserDeleteHandler(e core.Engine) http.Handler {
 func executeDeleteUser(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
 		userLoginName := i.TargetUser.LoginName
-		_ = e.ChangeUser(userLoginName, func(core.User) (*core.User, error) {
+		err := e.ChangeUser(userLoginName, func(core.User) (*core.User, error) {
 			return nil, nil
 		})
+		if err != nil {
+			i.RedirectWithFlashTo("/users", Flash{"danger", err.Error()})
+			return
+		}
+
 		for _, group := range e.ListGroups() {
-			_ = e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
+			err := e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
 				if g.Name == "" {
 					return nil, nil //if the group was deleted in parallel, no need to complain
 				}
 				g.MemberLoginNames[userLoginName] = false
 				return &g, nil
 			})
+			if err != nil {
+				i.RedirectWithFlashTo("/users", Flash{"danger", err.Error()})
+				return
+			}
 		}
 
 		msg := fmt.Sprintf("Deleted user %q.", userLoginName)
