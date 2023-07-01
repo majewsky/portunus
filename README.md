@@ -257,6 +257,13 @@ The contents of the seed file look like in this example:
         "ldap": { "can_read": true }
       },
       "posix_gid": 101
+    },
+    {
+      "name": "member-team",
+      "long_name": "Portunus Members",
+      "manage_members": false,
+      "permissions": { },
+      "posix_gid": 102
     }
   ],
   "users": [
@@ -290,6 +297,7 @@ The following fields are supported:
 | `groups` | list of objects | List of statically defined groups. |
 | `groups[].name` | string | *Required.* The unique identifying name of the group. |
 | `groups[].long_name` | string | *Required.* The human-readable descriptive name of the group. |
+| `groups[].manage_members` | bool | Actively set the members of this group to exactly those named in the seed. Defaults to `true`. Set this to `false` if you want to manage group membership interactively. |
 | `groups[].members` | list of strings | The login names of all users that must be part of this group. The respective users must be defined statically. |
 | `groups[].permissions.portunus.is_admin` | bool | Whether members of this group have admin access to the Portunus UI. |
 | `groups[].permissions.ldap.can_read` | bool | Whether members of this group have read access to the LDAP directory. |

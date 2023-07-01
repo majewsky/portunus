@@ -81,7 +81,7 @@ func (d DatabaseSeed) Validate() error {
 	return nil
 }
 
-// DatabaseInitializer returns a function that initalizes the Database from the
+// DatabaseInitializer returns a function that initializes the Database from the
 // given seed on first use. If the seed is nil, the default initialization
 // behavior is used.
 func DatabaseInitializer(d *DatabaseSeed) func() Database {
@@ -131,10 +131,11 @@ func DatabaseInitializer(d *DatabaseSeed) func() Database {
 
 // GroupSeed contains the seeded configuration for a single group.
 type GroupSeed struct {
-	Name             StringSeed   `json:"name"`
-	LongName         StringSeed   `json:"long_name"`
-	MemberLoginNames []StringSeed `json:"members"`
-	Permissions      struct {
+	Name              StringSeed   `json:"name"`
+	LongName          StringSeed   `json:"long_name"`
+	ManageMembers     *bool        `json:"manage_members"`
+	MemberLoginNames  []StringSeed `json:"members"`
+	Permissions       struct {
 		Portunus struct {
 			IsAdmin *bool `json:"is_admin"`
 		} `json:"portunus"`

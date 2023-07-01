@@ -301,11 +301,18 @@ func (e *engine) ChangeGroup(name string, action func(Group) (*Group, error)) er
 		if newState == nil {
 			return errCannotDeleteSeededGroup
 		}
-		newStateCloned := newState.Cloned()
-		groupSeed.ApplyTo(&newStateCloned)
-		if !reflect.DeepEqual(newStateCloned, *newState) {
-			logg.Debug("seed check failed: newState before seed = %#v", *newState)
-			logg.Debug("seed check failed: newState after seed  = %#v", newStateCloned)
+		newStateSeedApplied := newState.Cloned()
+		groupSeed.ApplyTo(&newStateSeedApplied)
+
+		newStateCleaned := newState.Cloned()
+		if groupSeed.ManageMembers != nil && !*groupSeed.ManageMembers {
+			newStateCleaned.MemberLoginNames = nil
+			newStateSeedApplied.MemberLoginNames = nil
+		}
+
+		if !reflect.DeepEqual(newStateSeedApplied, newStateCleaned) {
+			logg.Debug("seed check failed: newState before seed = %#v", newStateCleaned)
+			logg.Debug("seed check failed: newState after seed  = %#v", newStateSeedApplied)
 			return errCannotOverwriteSeededGroupAttrs
 		}
 	}
