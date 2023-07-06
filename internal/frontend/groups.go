@@ -380,7 +380,7 @@ func postGroupsNewHandler(e core.Engine) http.Handler {
 func executeCreateGroupForm(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
 		name := i.FormState.Fields["name"].Value
-		_ = e.ChangeGroup(name, func(_ core.Group) (*core.Group, error) {
+		err := e.ChangeGroup(name, func(_ core.Group) (*core.Group, error) {
 			var posixGID *core.PosixID
 			if i.FormState.Fields["posix"].IsUnfolded {
 				gidAsUint64, _ := strconv.ParseUint(i.FormState.Fields["posix_gid"].Value, 10, 16)
@@ -402,6 +402,10 @@ func executeCreateGroupForm(e core.Engine) HandlerStep {
 				MemberLoginNames: i.FormState.Fields["members"].Selected,
 			}, nil
 		})
+		if err != nil {
+			i.RedirectWithFlashTo("/groups", Flash{"danger", err.Error()})
+			return
+		}
 
 		msg := fmt.Sprintf("Created group %q.", name)
 		i.RedirectWithFlashTo("/groups", Flash{"success", msg})
@@ -449,9 +453,13 @@ func postGroupDeleteHandler(e core.Engine) http.Handler {
 func executeDeleteGroup(e core.Engine) HandlerStep {
 	return func(i *Interaction) {
 		groupName := i.TargetGroup.Name
-		_ = e.ChangeGroup(groupName, func(core.Group) (*core.Group, error) {
+		err := e.ChangeGroup(groupName, func(core.Group) (*core.Group, error) {
 			return nil, nil
 		})
+		if err != nil {
+			i.RedirectWithFlashTo("/groups", Flash{"danger", err.Error()})
+			return
+		}
 
 		msg := fmt.Sprintf("Deleted group %q.", groupName)
 		i.RedirectWithFlashTo("/groups", Flash{"success", msg})
