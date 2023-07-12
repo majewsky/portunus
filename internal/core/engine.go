@@ -302,10 +302,13 @@ func (e *engine) ChangeGroup(name string, action func(Group) (*Group, error)) er
 			return errCannotDeleteSeededGroup
 		}
 		newStateCloned := newState.Cloned()
-		groupSeed.ApplyTo(&newStateCloned)
-		if !reflect.DeepEqual(newStateCloned, *newState) {
-			logg.Debug("seed check failed: newState before seed = %#v", *newState)
-			logg.Debug("seed check failed: newState after seed  = %#v", newStateCloned)
+		newStateWithSeedApplied := newState.Cloned()
+		groupSeed.ApplyTo(&newStateWithSeedApplied)
+		if !reflect.DeepEqual(newStateCloned, newStateWithSeedApplied) {
+			// NOTE: This uses `newState.Cloned()` instead of `*newState` as the LHS
+			// to normalize MemberLoginNames.
+			logg.Debug("seed check failed: newState before seed = %#v", newStateCloned)
+			logg.Debug("seed check failed: newState after seed  = %#v", newStateWithSeedApplied)
 			return errCannotOverwriteSeededGroupAttrs
 		}
 	}
