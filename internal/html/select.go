@@ -7,15 +7,13 @@
 package h
 
 import (
-	"encoding/hex"
 	"fmt"
 	"html/template"
-	math_rand "math/rand"
 	"net/http"
 )
 
-//SelectFieldSpec is a FormField where values can be selected from a given set.
-//It's rendered as a series of checkboxes.
+// SelectFieldSpec is a FormField where values can be selected from a given set.
+// It's rendered as a series of checkboxes.
 type SelectFieldSpec struct {
 	Name     string
 	Label    string
@@ -23,7 +21,7 @@ type SelectFieldSpec struct {
 	ReadOnly bool
 }
 
-//ReadState implements the FormField interface.
+// ReadState implements the FormField interface.
 func (f SelectFieldSpec) ReadState(r *http.Request, formState *FormState) {
 	if f.ReadOnly {
 		return
@@ -67,7 +65,7 @@ var selectFieldSnippet = NewSnippet(`
 	</div>
 `)
 
-//RenderField implements the FormField interface.
+// RenderField implements the FormField interface.
 func (f SelectFieldSpec) RenderField(state FormState) template.HTML {
 	data := struct {
 		Spec  SelectFieldSpec
@@ -83,14 +81,8 @@ func (f SelectFieldSpec) RenderField(state FormState) template.HTML {
 	return selectFieldSnippet.Render(data)
 }
 
-//SelectOptionSpec describes an option that can be selected in a SelectFieldSpec.
+// SelectOptionSpec describes an option that can be selected in a SelectFieldSpec.
 type SelectOptionSpec struct {
 	Value string
 	Label string
-}
-
-func getRandomID() string {
-	var buf [10]byte
-	math_rand.Read(buf[:])
-	return hex.EncodeToString(buf[:])
 }

@@ -4,7 +4,7 @@
 * Refer to the file "LICENSE" for details.
 *******************************************************************************/
 
-//Package h provides utilties for rendering HTML forms.
+// Package h provides utilties for rendering HTML forms.
 package h
 
 import (
@@ -14,17 +14,17 @@ import (
 	"strings"
 )
 
-//Snippet provides a convenience API around html/template.Template.
+// Snippet provides a convenience API around html/template.Template.
 type Snippet struct {
 	T *template.Template
 }
 
-//NewSnippet parses html/template code into a Snippet.
+// NewSnippet parses html/template code into a Snippet.
 func NewSnippet(input string) Snippet {
 	return Snippet{template.Must(template.New("").Parse(strings.TrimSpace(input)))}
 }
 
-//Render renders the snippet with the given data.
+// Render renders the snippet with the given data.
 func (s Snippet) Render(data interface{}) template.HTML {
 	var buf bytes.Buffer
 	err := s.T.Execute(&buf, data)

@@ -16,12 +16,12 @@ import (
 ////////////////////////////////////////////////////////////////////////////////
 // state
 
-//FormState describes the state of an HTML form.
+// FormState describes the state of an HTML form.
 type FormState struct {
 	Fields map[string]*FieldState
 }
 
-//IsValid returns false if any field has a validation error.
+// IsValid returns false if any field has a validation error.
 func (s FormState) IsValid() bool {
 	for _, field := range s.Fields {
 		if field != nil && field.ErrorMessage != "" {
@@ -31,7 +31,7 @@ func (s FormState) IsValid() bool {
 	return true
 }
 
-//FieldState describes the state of an <input> field within type FormState.
+// FieldState describes the state of an <input> field within type FormState.
 type FieldState struct {
 	Value        string          //only used by InputFieldSpec
 	Selected     map[string]bool //only used by SelectFieldSpec
@@ -42,21 +42,21 @@ type FieldState struct {
 ////////////////////////////////////////////////////////////////////////////////
 // type FormSpec
 
-//FormField is something that can appear in an HTML form.
+// FormField is something that can appear in an HTML form.
 type FormField interface {
 	ReadState(*http.Request, *FormState)
 	RenderField(FormState) template.HTML
 }
 
-//FormSpec describes an HTML form that is submitted to a POST endpoint.
+// FormSpec describes an HTML form that is submitted to a POST endpoint.
 type FormSpec struct {
 	PostTarget  string
 	SubmitLabel string
 	Fields      []FormField
 }
 
-//ReadState reads and validates the field value from r.PostForm, and stores it
-//in the given FormState.
+// ReadState reads and validates the field value from r.PostForm, and stores it
+// in the given FormState.
 func (f FormSpec) ReadState(r *http.Request, s *FormState) {
 	if s.Fields == nil {
 		s.Fields = make(map[string]*FieldState)
@@ -75,7 +75,7 @@ var formSpecSnippet = NewSnippet(`
 	</form>
 `)
 
-//Render produces the HTML for this form.
+// Render produces the HTML for this form.
 func (f FormSpec) Render(r *http.Request, s FormState) template.HTML {
 	data := struct {
 		Spec   FormSpec
@@ -93,10 +93,10 @@ func (f FormSpec) Render(r *http.Request, s FormState) template.HTML {
 ////////////////////////////////////////////////////////////////////////////////
 // type InputFieldSpec
 
-//ValidationRule returns an error message if the given field value is invalid.
+// ValidationRule returns an error message if the given field value is invalid.
 type ValidationRule func(string) error
 
-//InputFieldSpec describes a single <input> field within type FormSpec.
+// InputFieldSpec describes a single <input> field within type FormSpec.
 type InputFieldSpec struct {
 	Name             string
 	Label            string
@@ -106,8 +106,8 @@ type InputFieldSpec struct {
 	Rules            []ValidationRule
 }
 
-//ReadState reads and validates the field value from r.PostForm, and stores it
-//in the given FormState.
+// ReadState reads and validates the field value from r.PostForm, and stores it
+// in the given FormState.
 func (f InputFieldSpec) ReadState(r *http.Request, formState *FormState) {
 	s := FieldState{Value: r.PostForm.Get(f.Name)}
 	for _, rule := range f.Rules {
@@ -138,7 +138,7 @@ var inputFieldSnippet = NewSnippet(`
 	</div>
 `)
 
-//RenderField produces the HTML for this field.
+// RenderField produces the HTML for this field.
 func (f InputFieldSpec) RenderField(state FormState) template.HTML {
 	data := struct {
 		Spec  InputFieldSpec
@@ -156,15 +156,15 @@ func (f InputFieldSpec) RenderField(state FormState) template.HTML {
 ////////////////////////////////////////////////////////////////////////////////
 // type MultilineInputFieldSpec
 
-//MultilineInputFieldSpec describes a single <input> field within type FormSpec.
+// MultilineInputFieldSpec describes a single <input> field within type FormSpec.
 type MultilineInputFieldSpec struct {
 	Name  string
 	Label string
 	Rules []ValidationRule
 }
 
-//ReadState reads and validates the field value from r.PostForm, and stores it
-//in the given FormState.
+// ReadState reads and validates the field value from r.PostForm, and stores it
+// in the given FormState.
 func (f MultilineInputFieldSpec) ReadState(r *http.Request, formState *FormState) {
 	s := FieldState{Value: r.PostForm.Get(f.Name)}
 	for _, rule := range f.Rules {
@@ -194,7 +194,7 @@ var multilineInputFieldSnippet = NewSnippet(`
 	</div>
 `)
 
-//RenderField produces the HTML for this field.
+// RenderField produces the HTML for this field.
 func (f MultilineInputFieldSpec) RenderField(state FormState) template.HTML {
 	data := struct {
 		Spec  MultilineInputFieldSpec
@@ -212,13 +212,13 @@ func (f MultilineInputFieldSpec) RenderField(state FormState) template.HTML {
 ////////////////////////////////////////////////////////////////////////////////
 // type StaticField
 
-//StaticField is a FormField with a static value.
+// StaticField is a FormField with a static value.
 type StaticField struct {
 	Label string
 	Value template.HTML
 }
 
-//ReadState implements the FormField interface.
+// ReadState implements the FormField interface.
 func (f StaticField) ReadState(*http.Request, *FormState) {
 }
 
@@ -229,7 +229,7 @@ var staticFieldSnippet = NewSnippet(`
 	</div>
 `)
 
-//RenderField implements the FormField interface.
+// RenderField implements the FormField interface.
 func (f StaticField) RenderField(FormState) template.HTML {
 	if f.Label == "" {
 		return f.Value
@@ -240,7 +240,7 @@ func (f StaticField) RenderField(FormState) template.HTML {
 ////////////////////////////////////////////////////////////////////////////////
 // type FieldSet
 
-//FieldSet is a FormField that groups multiple FormFields together.
+// FieldSet is a FormField that groups multiple FormFields together.
 type FieldSet struct {
 	Name       string
 	Label      string
@@ -248,7 +248,7 @@ type FieldSet struct {
 	IsFoldable bool
 }
 
-//ReadState implements the FormField interface.
+// ReadState implements the FormField interface.
 func (fs FieldSet) ReadState(r *http.Request, s *FormState) {
 	if fs.IsFoldable {
 		isUnfolded := r.PostForm.Get(fs.Name) == "1"
@@ -263,8 +263,8 @@ func (fs FieldSet) ReadState(r *http.Request, s *FormState) {
 	}
 }
 
-//NOTE: This does not use <legend> because <legend> inside <fieldset> applies
-//special layouting rules that make styling them with CSS unnecessarily hard.
+// NOTE: This does not use <legend> because <legend> inside <fieldset> applies
+// special layouting rules that make styling them with CSS unnecessarily hard.
 var fieldSetSnippet = NewSnippet(`
 	{{if .Spec.IsFoldable}}
 		<input type="checkbox" class="for-fieldset" id="{{.Spec.Name}}" name="{{.Spec.Name}}" value="1" {{if .State.IsUnfolded}}checked{{end}}>
@@ -275,7 +275,7 @@ var fieldSetSnippet = NewSnippet(`
 	</fieldset>
 `)
 
-//RenderField implements the FormField interface.
+// RenderField implements the FormField interface.
 func (fs FieldSet) RenderField(state FormState) template.HTML {
 	data := struct {
 		Spec   FieldSet
