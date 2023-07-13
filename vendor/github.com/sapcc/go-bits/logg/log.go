@@ -17,12 +17,11 @@
 *
 *******************************************************************************/
 
-//Package logg provides some convenience functions on top of the "log" package
-//from the stdlib. It always uses the stdlib's standard logger.
+// Package logg provides some convenience functions on top of the "log" package
+// from the stdlib. It always uses the stdlib's standard logger.
 //
-//The functions in this package work like log.Println() or like log.Printf()
-//depending on whether arguments are passed after the message string:
-//
+// The functions in this package work like log.Println() or like log.Printf()
+// depending on whether arguments are passed after the message string:
 //
 //	import (
 //		"log"
@@ -52,43 +51,43 @@ var (
 	mu        sync.Mutex
 )
 
-//SetLogger allows to define custom logger
+// SetLogger allows to define custom logger
 func SetLogger(l *stdlog.Logger) {
 	mu.Lock()
 	defer mu.Unlock()
 	log = l
 }
 
-//Fatal logs a fatal error and terminates the program.
-func Fatal(msg string, args ...interface{}) {
+// Fatal logs a fatal error and terminates the program.
+func Fatal(msg string, args ...any) {
 	doLog("FATAL: "+msg, args)
 	os.Exit(1)
 }
 
-//Error logs a non-fatal error.
-func Error(msg string, args ...interface{}) {
+// Error logs a non-fatal error.
+func Error(msg string, args ...any) {
 	doLog("ERROR: "+msg, args)
 }
 
-//Info logs an informational message.
-func Info(msg string, args ...interface{}) {
+// Info logs an informational message.
+func Info(msg string, args ...any) {
 	doLog("INFO: "+msg, args)
 }
 
-//Debug logs a debug message if debug logging is enabled.
-func Debug(msg string, args ...interface{}) {
+// Debug logs a debug message if debug logging is enabled.
+func Debug(msg string, args ...any) {
 	if ShowDebug {
 		doLog("DEBUG: "+msg, args)
 	}
 }
 
-//Other logs a message with a custom log level.
-func Other(level, msg string, args ...interface{}) {
+// Other logs a message with a custom log level.
+func Other(level, msg string, args ...any) {
 	doLog(level+": "+msg, args)
 }
 
-func doLog(msg string, args []interface{}) {
-	msg = strings.TrimPrefix(msg, "\n")
+func doLog(msg string, args []any) {
+	msg = strings.TrimSpace(msg)                //most importantly, skip trailing '\n'
 	msg = strings.Replace(msg, "\n", "\\n", -1) //avoid multiline log messages
 	if len(args) > 0 {
 		log.Printf(msg+"\n", args...)
