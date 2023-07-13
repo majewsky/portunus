@@ -19,7 +19,6 @@
 package frontend
 
 import (
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -198,7 +197,7 @@ var sessionStore *sessions.CookieStore
 
 func init() {
 	keyPath := filepath.Join(os.Getenv("PORTUNUS_SERVER_STATE_DIR"), "session-key.dat")
-	keyBytes, err := ioutil.ReadFile(keyPath)
+	keyBytes, err := os.ReadFile(keyPath)
 	if err != nil {
 		keyBytes = nil
 		if !os.IsNotExist(err) {
@@ -209,7 +208,7 @@ func init() {
 	if len(keyBytes) != 32 {
 		logg.Info("generating new session key")
 		keyBytes = securecookie.GenerateRandomKey(32)
-		err := ioutil.WriteFile(keyPath, keyBytes, 0600)
+		err := os.WriteFile(keyPath, keyBytes, 0600)
 		if err != nil {
 			logg.Error(err.Error())
 		}

@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -124,7 +123,7 @@ func (s *FileStore) makeWatcher() *fsnotify.Watcher {
 }
 
 func (s *FileStore) loadDB(allowEmpty bool) (db Database) {
-	dbContents, err := ioutil.ReadFile(s.Path)
+	dbContents, err := os.ReadFile(s.Path)
 	if err != nil {
 		//initialize empty DB on first run
 		if os.IsNotExist(err) && allowEmpty {
@@ -170,7 +169,7 @@ func (s *FileStore) saveDB(db Database) {
 		dbContents = buf.Bytes()
 	}
 	if err == nil {
-		err = ioutil.WriteFile(tmpPath, dbContents, 0644)
+		err = os.WriteFile(tmpPath, dbContents, 0644)
 	}
 	if err == nil {
 		err = os.Rename(tmpPath, s.Path)
