@@ -19,9 +19,15 @@ import (
 	"github.com/sapcc/go-bits/logg"
 )
 
-// Database contains the contents of Portunus' database. This is what gets
-// persisted into the database file.
+// Database contains the contents of Portunus' database.
 type Database struct {
+	Users  []User
+	Groups []Group
+}
+
+// persistedDatabase is a variant of type Database. This is what gets
+// persisted into the database file.
+type persistedDatabase struct {
 	Users         []User  `json:"users"`
 	Groups        []Group `json:"groups"`
 	SchemaVersion uint    `json:"schema_version"`
@@ -110,7 +116,7 @@ func (s *FileStore) makeWatcher() *fsnotify.Watcher {
 	return watcher
 }
 
-func (s *FileStore) loadDB(allowEmpty bool) (db Database) {
+func (s *FileStore) loadDB(allowEmpty bool) Database {
 	dbContents, err := os.ReadFile(s.Path)
 	if err != nil {
 		//initialize empty DB on first run
@@ -121,17 +127,21 @@ func (s *FileStore) loadDB(allowEmpty bool) (db Database) {
 		logg.Fatal(err.Error())
 	}
 
-	err = json.Unmarshal(dbContents, &db)
+	var pdb persistedDatabase
+	err = json.Unmarshal(dbContents, &pdb)
 	if err != nil {
 		logg.Fatal("cannot load main database: " + err.Error())
 	}
 
-	if db.SchemaVersion != 1 {
-		logg.Fatal("found DB with schema version %d, but this Portunus only understands schema version 1", db.SchemaVersion)
+	if pdb.SchemaVersion != 1 {
+		logg.Fatal("found DB with schema version %d, but this Portunus only understands schema version 1", pdb.SchemaVersion)
 	}
 
 	//TODO validate DB (e.g. groups should only contain users that actually exist)
-	return
+	return Database{
+		Users:  pdb.Users,
+		Groups: pdb.Groups,
+	}
 }
 
 func (s *FileStore) saveDB(db Database) {
@@ -148,9 +158,11 @@ func (s *FileStore) saveDB(db Database) {
 		return db.Users[i].LoginName < db.Users[j].LoginName
 	})
 
-	db.SchemaVersion = 1
-
-	dbContents, err := json.Marshal(db)
+	dbContents, err := json.Marshal(persistedDatabase{
+		Users:         db.Users,
+		Groups:        db.Groups,
+		SchemaVersion: 1,
+	})
 	if err == nil {
 		var buf bytes.Buffer
 		err = json.Indent(&buf, dbContents, "", "\t")
