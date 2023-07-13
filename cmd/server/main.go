@@ -15,8 +15,11 @@ import (
 
 	"github.com/majewsky/portunus/internal/core"
 	"github.com/majewsky/portunus/internal/frontend"
+	"github.com/majewsky/portunus/internal/ldap"
 	_ "github.com/majewsky/xyrillian.css"
 	"github.com/sapcc/go-bits/logg"
+	"github.com/sapcc/go-bits/must"
+	"github.com/sapcc/go-bits/osext"
 )
 
 func main() {
@@ -34,8 +37,14 @@ func main() {
 	}
 	fsAPI := fs.RunAsync()
 
-	ldapWorker := newLDAPWorker()
-	engine, ldapUpdatesChan := core.RunEngineAsync(fsAPI, ldapWorker.DNSuffix, seed)
+	ldapConn := must.Return(ldap.Connect(ldap.ConnectionOptions{
+		DNSuffix:      osext.MustGetenv("PORTUNUS_LDAP_SUFFIX"),
+		Password:      osext.MustGetenv("PORTUNUS_LDAP_PASSWORD"),
+		TLSDomainName: os.Getenv("PORTUNUS_SLAPD_TLS_DOMAIN_NAME"),
+	}))
+
+	ldapWorker := newLDAPWorker(ldapConn)
+	engine, ldapUpdatesChan := core.RunEngineAsync(fsAPI, ldapConn.DNSuffix(), seed)
 	go ldapWorker.processEvents(ldapUpdatesChan)
 
 	handler := frontend.HTTPHandler(engine, os.Getenv("PORTUNUS_SERVER_HTTP_SECURE") == "true")
