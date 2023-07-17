@@ -12,18 +12,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/sapcc/go-bits/logg"
 )
-
-// Database contains the contents of Portunus' database.
-type Database struct {
-	Users  []User
-	Groups []Group
-}
 
 // persistedDatabase is a variant of type Database. This is what gets
 // persisted into the database file.
@@ -151,12 +144,7 @@ func (s *FileStore) saveDB(db Database) {
 	)
 
 	//serialize with predictable order to minimize diffs
-	sort.Slice(db.Groups, func(i, j int) bool {
-		return db.Groups[i].Name < db.Groups[j].Name
-	})
-	sort.Slice(db.Users, func(i, j int) bool {
-		return db.Users[i].LoginName < db.Users[j].LoginName
-	})
+	db.Normalize()
 
 	dbContents, err := json.Marshal(persistedDatabase{
 		Users:         db.Users,

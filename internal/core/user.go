@@ -49,7 +49,7 @@ func (u User) FullName() string {
 }
 
 // RenderToLDAP produces the LDAPObject representing this group.
-func (u User) RenderToLDAP(suffix string, allGroups map[string]Group) LDAPObject {
+func (u User) RenderToLDAP(suffix string, allGroups []Group) LDAPObject {
 	var memberOfGroupDNames []string
 	for _, group := range allGroups {
 		if group.ContainsUser(u) {

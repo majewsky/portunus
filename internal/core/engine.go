@@ -8,7 +8,6 @@ package core
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"sync"
 
@@ -41,24 +40,20 @@ type Engine interface {
 type engine struct {
 	FileStoreAPI *FileStoreAPI
 	Seed         *DatabaseSeed
-	LDAPUpdates  chan<- []LDAPObject
+	Nexus        Nexus
 	Users        map[string]User
 	Groups       map[string]Group
 	Mutex        *sync.RWMutex
-	LDAPSuffix   string
 }
 
 // RunEngineAsync runs the main engine of portunus-server. It consumes the
-// FileStoreAPI and returns an Engine interface for the HTTP server to use, and
-// a stream of events for the LDAP worker.
-func RunEngineAsync(fsAPI *FileStoreAPI, ldapSuffix string, seed *DatabaseSeed) (Engine, <-chan []LDAPObject) {
-	ldapUpdatesChan := make(chan []LDAPObject, 1)
+// FileStoreAPI and returns an Engine interface for the HTTP server to use.
+func RunEngineAsync(fsAPI *FileStoreAPI, nexus Nexus, seed *DatabaseSeed) Engine {
 	e := engine{
 		FileStoreAPI: fsAPI,
 		Seed:         seed,
-		LDAPUpdates:  ldapUpdatesChan,
+		Nexus:        nexus,
 		Mutex:        &sync.RWMutex{},
-		LDAPSuffix:   ldapSuffix,
 	}
 
 	go func() {
@@ -67,7 +62,7 @@ func RunEngineAsync(fsAPI *FileStoreAPI, ldapSuffix string, seed *DatabaseSeed) 
 		}
 	}()
 
-	return &e, ldapUpdatesChan
+	return &e
 }
 
 func (e *engine) findGroupSeed(name string) *GroupSeed {
@@ -135,7 +130,7 @@ func (e *engine) handleLoadEvent(db Database) {
 	if seedApplied {
 		e.persistDatabase()
 	}
-	e.persistLDAP()
+	e.persistToNexus()
 }
 
 // FindUser implements the Engine interface.
@@ -264,7 +259,7 @@ func (e *engine) ChangeUser(loginName string, action func(User) (*User, error)) 
 	}
 
 	e.persistDatabase()
-	e.persistLDAP()
+	e.persistToNexus()
 	return nil
 }
 
@@ -315,7 +310,7 @@ func (e *engine) ChangeGroup(name string, action func(Group) (*Group, error)) er
 	}
 
 	e.persistDatabase()
-	e.persistLDAP()
+	e.persistToNexus()
 	return nil
 }
 
@@ -332,48 +327,19 @@ func (e *engine) persistDatabase() {
 	e.FileStoreAPI.SaveRequests <- db
 }
 
-func (e *engine) persistLDAP() {
-	//NOTE: This is always called from functions that have locked e.Mutex, so we
-	//don't need to do it ourselves.
-	ldapDB := make([]LDAPObject, 0, len(e.Users)+len(e.Groups)+1)
+func (e *engine) persistToNexus() {
+	var db Database
 	for _, user := range e.Users {
-		ldapDB = append(ldapDB, user.RenderToLDAP(e.LDAPSuffix, e.Groups))
+		db.Users = append(db.Users, user.Cloned())
 	}
 	for _, group := range e.Groups {
-		ldapDB = append(ldapDB, group.RenderToLDAP(e.LDAPSuffix)...)
+		db.Groups = append(db.Groups, group.Cloned())
 	}
-	ldapDB = append(ldapDB, e.renderVirtualGroups()...)
-	e.LDAPUpdates <- ldapDB
-}
-
-func (e *engine) renderVirtualGroups() []LDAPObject {
-	//NOTE: This is always called from functions that have locked e.Mutex, so we
-	//don't need to do it ourselves.
-	isLDAPViewerDN := make(map[string]bool)
-	for _, group := range e.Groups {
-		if group.Permissions.LDAP.CanRead {
-			for loginName, isMember := range group.MemberLoginNames {
-				if isMember {
-					dn := fmt.Sprintf("uid=%s,ou=users,%s", loginName, e.LDAPSuffix)
-					isLDAPViewerDN[dn] = true
-				}
-			}
-		}
+	db.Normalize()
+	errs := e.Nexus.Update(func(_ Database) (Database, error) {
+		return db, nil
+	}, nil)
+	for _, err := range errs {
+		logg.Error(err.Error())
 	}
-	ldapViewerDNames := make([]string, 0, len(isLDAPViewerDN))
-	for dn := range isLDAPViewerDN {
-		ldapViewerDNames = append(ldapViewerDNames, dn)
-	}
-	if len(ldapViewerDNames) == 0 {
-		ldapViewerDNames = append(ldapViewerDNames, "cn=nobody,"+e.LDAPSuffix)
-	}
-
-	return []LDAPObject{{
-		DN: fmt.Sprintf("cn=portunus-viewers,%s", e.LDAPSuffix),
-		Attributes: map[string][]string{
-			"cn":          {"portunus-viewers"},
-			"member":      ldapViewerDNames,
-			"objectClass": {"groupOfNames", "top"},
-		},
-	}}
 }

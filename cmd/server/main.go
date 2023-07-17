@@ -7,6 +7,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -31,6 +32,9 @@ func main() {
 		logg.Fatal("while reading PORTUNUS_SEED_PATH: " + err.Error())
 	}
 
+	ctx := context.TODO()
+	nexus := core.NewNexus()
+
 	fs := core.FileStore{
 		Path:        filepath.Join(os.Getenv("PORTUNUS_SERVER_STATE_DIR"), "database.json"),
 		Initializer: core.DatabaseInitializer(seed),
@@ -42,10 +46,12 @@ func main() {
 		Password:      osext.MustGetenv("PORTUNUS_LDAP_PASSWORD"),
 		TLSDomainName: os.Getenv("PORTUNUS_SLAPD_TLS_DOMAIN_NAME"),
 	}))
+	ldapAdapter := ldap.NewAdapter(nexus, ldapConn)
+	go func() {
+		must.Succeed(ldapAdapter.Run(ctx))
+	}()
 
-	ldapWorker := newLDAPWorker(ldapConn)
-	engine, ldapUpdatesChan := core.RunEngineAsync(fsAPI, ldapConn.DNSuffix(), seed)
-	go ldapWorker.processEvents(ldapUpdatesChan)
+	engine := core.RunEngineAsync(fsAPI, nexus, seed)
 
 	handler := frontend.HTTPHandler(engine, os.Getenv("PORTUNUS_SERVER_HTTP_SECURE") == "true")
 	logg.Fatal(http.ListenAndServe(os.Getenv("PORTUNUS_SERVER_HTTP_LISTEN"), handler).Error())
