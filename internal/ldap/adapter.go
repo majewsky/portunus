@@ -21,6 +21,7 @@ import (
 type Adapter struct {
 	nexus        core.Nexus
 	conn         Connection
+	init         sync.Once
 	objects      []core.LDAPObject //persisted objects, key = object DN
 	objectsMutex sync.Mutex
 }
@@ -35,11 +36,18 @@ func NewAdapter(nexus core.Nexus, conn Connection) *Adapter {
 func (a *Adapter) Run(ctx context.Context) error {
 	operationsChan := make(chan operation, 64)
 
-	//create main directory structure
-	for _, addReq := range makeStaticObjects(a.conn.DNSuffix()) {
-		err := a.conn.Add(addReq)
-		if err != nil {
-			return err
+	//create main directory structure, but only when Run() is called for the first time
+	//(this precaution is not relevant for regular execution because main() calls
+	//Run() exactly once anyway; however, unit tests call Run() multiple times to
+	//test LDAP activity with fine granularity)
+	isFirstRun := false
+	a.init.Do(func() { isFirstRun = true })
+	if isFirstRun {
+		for _, addReq := range makeStaticObjects(a.conn.DNSuffix()) {
+			err := a.conn.Add(addReq)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

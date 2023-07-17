@@ -79,6 +79,9 @@ func buildModifyRequest(dn string, oldAttrs, newAttrs map[string][]string, opera
 	keepAttribute := make(map[string]bool, len(newAttrs))
 
 	for key, newValues := range newAttrs {
+		if len(newValues) == 0 {
+			continue
+		}
 		keepAttribute[key] = true
 		oldValues := oldAttrs[key]
 		if !stringListsAreEqual(oldValues, newValues) {
@@ -86,7 +89,10 @@ func buildModifyRequest(dn string, oldAttrs, newAttrs map[string][]string, opera
 		}
 	}
 
-	for key := range oldAttrs {
+	for key, oldValues := range oldAttrs {
+		if len(oldValues) == 0 {
+			continue
+		}
 		if !keepAttribute[key] {
 			req.Delete(key, nil)
 		}
