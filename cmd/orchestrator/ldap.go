@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/majewsky/portunus/internal/core"
+	"github.com/majewsky/portunus/internal/shared"
 	"github.com/sapcc/go-bits/logg"
 )
 
@@ -92,7 +92,7 @@ func renderSlapdConfig(environment map[string]string) []byte {
 	logg.Debug("password for cn=portunus,%s is %s",
 		environment["PORTUNUS_LDAP_SUFFIX"], password)
 	environment["PORTUNUS_LDAP_PASSWORD"] = password
-	environment["PORTUNUS_LDAP_PASSWORD_HASH"] = core.HashPasswordForLDAP(password)
+	environment["PORTUNUS_LDAP_PASSWORD_HASH"] = shared.HashPasswordForLDAP(password)
 
 	config := configTemplate
 	if environment["PORTUNUS_SLAPD_TLS_CERTIFICATE"] == "" {

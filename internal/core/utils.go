@@ -10,21 +10,13 @@ import (
 	"strings"
 
 	"github.com/gorilla/securecookie"
+	"github.com/majewsky/portunus/internal/shared"
 	"github.com/sapcc/go-bits/logg"
 	"github.com/tredoe/osutil/user/crypt"
 	"github.com/tredoe/osutil/user/crypt/sha256_crypt"
 )
 
-// HashPasswordForLDAP produces a password hash in the format expected by LDAP,
-// like the libc function crypt(3).
-func HashPasswordForLDAP(password string) string {
-	//according to documentation, Crypter.Generate() will never return any errors
-	//when the second argument is nil
-	result, _ := sha256_crypt.New().Generate([]byte(password), nil)
-	return "{CRYPT}" + result
-}
-
-var bogusPasswordHash = HashPasswordForLDAP(string(securecookie.GenerateRandomKey(32)))
+var bogusPasswordHash = shared.HashPasswordForLDAP(string(securecookie.GenerateRandomKey(32)))
 
 // CheckPasswordHash verifies the given password in nearly constant time.
 func CheckPasswordHash(password, passwordHash string) bool {

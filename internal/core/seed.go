@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/securecookie"
+	"github.com/majewsky/portunus/internal/shared"
 	"github.com/sapcc/go-bits/logg"
 )
 
@@ -92,7 +93,7 @@ func DatabaseInitializer(d *DatabaseSeed) func() Database {
 					LoginName:    "admin",
 					GivenName:    "Initial",
 					FamilyName:   "Administrator",
-					PasswordHash: HashPasswordForLDAP(password),
+					PasswordHash: shared.HashPasswordForLDAP(password),
 				}},
 			}
 		}
@@ -315,7 +316,7 @@ func (u UserSeed) ApplyTo(target *User) {
 		//password mismatch, otherwise we avoid useless rehashing
 		pw := string(u.Password)
 		if target.PasswordHash == "" || !CheckPasswordHash(pw, target.PasswordHash) {
-			target.PasswordHash = HashPasswordForLDAP(pw)
+			target.PasswordHash = shared.HashPasswordForLDAP(pw)
 		}
 	}
 

@@ -14,6 +14,7 @@ import (
 
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
+	"github.com/majewsky/portunus/internal/shared"
 )
 
 // TODO: allow flipped order (family name first)
@@ -177,7 +178,7 @@ func executeSelfServiceForm(e core.Engine) HandlerStep {
 				return nil, fmt.Errorf("no such user")
 			}
 			if fs.Fields["change_password"].IsUnfolded {
-				u.PasswordHash = core.HashPasswordForLDAP(i.FormState.Fields["new_password"].Value)
+				u.PasswordHash = shared.HashPasswordForLDAP(i.FormState.Fields["new_password"].Value)
 			}
 			u.SSHPublicKeys = core.SplitSSHPublicKeys(i.FormState.Fields["ssh_public_keys"].Value)
 			return &u, nil
