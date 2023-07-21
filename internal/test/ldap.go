@@ -42,7 +42,7 @@ func (d *LDAPConnectionDouble) Add(req goldap.AddRequest) error {
 
 // Modify implements the ldap.Connection interface.
 func (d *LDAPConnectionDouble) Modify(req goldap.ModifyRequest) error {
-	return removeIfExpected[goldap.ModifyRequest](&d.expectedModifyRequests, req)
+	return removeIfExpected[goldap.ModifyRequest](&d.expectedModifyRequests, normalizeModifyRequest(req))
 }
 
 // Delete implements the ldap.Connection interface.
@@ -70,7 +70,7 @@ func (d *LDAPConnectionDouble) ExpectAdd(req goldap.AddRequest) {
 // ExpectModify records that we expect an ModifyRequest to be executed via this
 // double after this call returns.
 func (d *LDAPConnectionDouble) ExpectModify(req goldap.ModifyRequest) {
-	d.expectedModifyRequests = append(d.expectedModifyRequests, req)
+	d.expectedModifyRequests = append(d.expectedModifyRequests, normalizeModifyRequest(req))
 }
 
 // ExpectDelete records that we expect an DeleteRequest to be executed via this
@@ -102,5 +102,12 @@ func normalizeAddRequest(req goldap.AddRequest) goldap.AddRequest {
 	//normalize the request to enable deterministic matching
 	attrs := req.Attributes
 	sort.Slice(attrs, func(i, j int) bool { return attrs[i].Type < attrs[j].Type })
+	return req
+}
+
+func normalizeModifyRequest(req goldap.ModifyRequest) goldap.ModifyRequest {
+	//normalize the request to enable deterministic matching
+	changes := req.Changes
+	sort.Slice(changes, func(i, j int) bool { return changes[i].Modification.Type < changes[j].Modification.Type })
 	return req
 }

@@ -14,6 +14,10 @@ import (
 	"github.com/sapcc/go-bits/errext"
 )
 
+// Reducer is an action that modifies the contents of a Database. This type
+// appears in the Nexus.Update() interface method.
+type Reducer func(Database) (Database, error)
+
 // Nexus stores the contents of the Database. All other parts of the
 // application use a reference to the Nexus to read and update the Database.
 type Nexus interface {
@@ -31,7 +35,7 @@ type Nexus interface {
 	// State Reducer pattern: The reducer callback is invoked with the current
 	// Database, and is expected to return the updated Database. The updated
 	// Database is then validated and the database seed is enforced, if any.
-	Update(reducer func(Database) (Database, error), opts *UpdateOptions) errext.ErrorSet
+	Update(reducer Reducer, opts *UpdateOptions) errext.ErrorSet
 }
 
 // UpdateOptions controls optional behavior in Nexus.Update().
@@ -70,7 +74,7 @@ func (n *nexusImpl) AddListener(ctx context.Context, callback func(Database)) {
 }
 
 // Update implements the Nexus interface.
-func (n *nexusImpl) Update(reducer func(Database) (Database, error), opts *UpdateOptions) (errs errext.ErrorSet) {
+func (n *nexusImpl) Update(reducer Reducer, opts *UpdateOptions) (errs errext.ErrorSet) {
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 
