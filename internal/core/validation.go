@@ -17,6 +17,31 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// ValidationError is a structured error type that describes an unacceptable
+// field value in a User or Group. The generic type is either User or Group.
+type ValidationError struct {
+	ObjectType string //either "user" or "group"
+	ObjectName string //the LoginName for users or the Name for groups
+	FieldName  string //e.g. "surname" or "posix_gid", matches the input element name in the respective HTML forms
+	FieldError error  //sentence without subject, e.g. "may not be missing"
+}
+
+// Error implements the builtin/error interface.
+func (e ValidationError) Error() string {
+	return fmt.Sprintf("field %q in %s %q %s",
+		e.FieldName, e.ObjectType, e.ObjectName, e.FieldError.Error())
+}
+
+// Shorthand for building a ValidationError.
+func (g Group) wrong(fieldName string, err error) error {
+	return ValidationError{"group", g.Name, fieldName, err}
+}
+
+// Shorthand for building a ValidationError.
+func (u User) wrong(fieldName string, err error) error {
+	return ValidationError{"user", u.LoginName, fieldName, err}
+}
+
 // this regexp copied from useradd(8) manpage
 const posixAccountNamePattern = `[a-z_][a-z0-9_-]*\$?`
 

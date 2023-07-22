@@ -33,7 +33,7 @@ func main() {
 	}
 
 	ctx := context.TODO()
-	nexus := core.NewNexus()
+	nexus := core.NewNexus(seed)
 
 	fs := core.FileStore{
 		Path:        filepath.Join(os.Getenv("PORTUNUS_SERVER_STATE_DIR"), "database.json"),

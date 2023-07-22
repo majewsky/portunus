@@ -13,10 +13,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"reflect"
 	"strings"
 
 	"github.com/gorilla/securecookie"
 	"github.com/majewsky/portunus/internal/shared"
+	"github.com/sapcc/go-bits/errext"
 	"github.com/sapcc/go-bits/logg"
 )
 
@@ -70,6 +72,144 @@ func (d DatabaseSeed) Validate() error {
 	return nil
 }
 
+// ApplyTo changes the given database to conform to the seed.
+func (d DatabaseSeed) ApplyTo(db *Database) {
+	//for each group seed...
+	for _, groupSeed := range d.Groups {
+		//...either the group exists already...
+		hasGroup := false
+		for _, group := range db.Groups {
+			if group.Name == string(groupSeed.Name) {
+				groupSeed.ApplyTo(&group)
+				hasGroup = true
+				break
+			}
+		}
+
+		//...or it needs to be created
+		if !hasGroup {
+			group := Group{Name: string(groupSeed.Name)}
+			groupSeed.ApplyTo(&group)
+			db.Groups = append(db.Groups, group)
+		}
+	}
+
+	//same for the user seeds
+	for _, userSeed := range d.Users {
+		hasUser := false
+		for _, user := range db.Users {
+			if user.LoginName == string(userSeed.LoginName) {
+				userSeed.ApplyTo(&user)
+				hasUser = true
+				break
+			}
+		}
+		if !hasUser {
+			user := User{LoginName: string(userSeed.LoginName)}
+			userSeed.ApplyTo(&user)
+			db.Users = append(db.Users, user)
+		}
+	}
+
+	db.Normalize()
+}
+
+var errSeededField = errors.New("must be equal to the seeded value")
+
+// CheckConflicts returns errors for all ways in which the Database deviates
+// from the seed's expectation.
+func (d DatabaseSeed) CheckConflicts(db Database) (errs errext.ErrorSet) {
+	//if there are conflicts, then applying the seed to a copy of the DB will
+	//result in a different DB -- we will call the original DB "left-hand side"
+	//and its clone with the seed applied "right-hand side"
+	leftDB := db
+	rightDB := db.Cloned()
+	d.ApplyTo(&rightDB) //includes Normalize
+
+	//NOTE: We do not need to check for users/groups that exist on the left but
+	//not on the right, because seeding only ever creates and updates objects,
+	//but never deletes any objects.
+
+	for _, rightGroup := range rightDB.Groups {
+		leftGroup, exists := leftDB.FindGroup(func(g Group) bool { return g.Name == rightGroup.Name })
+		if !exists {
+			errs.Addf("group %q is statically configured in seed and cannot be deleted", rightGroup.Name)
+			continue
+		}
+
+		if leftGroup.LongName != rightGroup.LongName {
+			errs.Add(leftGroup.wrong("long_name", errSeededField))
+		}
+		if leftGroup.Permissions.Portunus.IsAdmin != rightGroup.Permissions.Portunus.IsAdmin {
+			errs.Add(leftGroup.wrong("portunus_perms", errSeededField))
+		}
+		if leftGroup.Permissions.LDAP.CanRead != rightGroup.Permissions.LDAP.CanRead {
+			errs.Add(leftGroup.wrong("ldap_perms", errSeededField))
+		}
+		if !reflect.DeepEqual(leftGroup.PosixGID, rightGroup.PosixGID) {
+			errs.Add(leftGroup.wrong("posix_gid", errSeededField))
+		}
+
+		//NOTE: Same logic as above. Seeds only ever add group memberships and
+		//never remove them, so we only need to check in one direction.
+		for loginName, isRightMember := range rightGroup.MemberLoginNames {
+			if isRightMember && !leftGroup.MemberLoginNames[loginName] {
+				err := fmt.Errorf("must contain user %q because of seeded group membership", loginName)
+				errs.Add(leftGroup.wrong("members", err))
+			}
+		}
+	}
+
+	for _, rightUser := range rightDB.Users {
+		leftUser, exists := leftDB.FindUser(func(u User) bool { return u.LoginName == rightUser.LoginName })
+		if !exists {
+			errs.Addf("user %q is statically configured in seed and cannot be deleted", rightUser.LoginName)
+			continue
+		}
+
+		if leftUser.GivenName != rightUser.GivenName {
+			errs.Add(leftUser.wrong("given_name", errSeededField))
+		}
+		if leftUser.FamilyName != rightUser.FamilyName {
+			errs.Add(leftUser.wrong("family_name", errSeededField))
+		}
+		if leftUser.EMailAddress != rightUser.EMailAddress {
+			errs.Add(leftUser.wrong("email", errSeededField))
+		}
+		if !reflect.DeepEqual(leftUser.SSHPublicKeys, rightUser.SSHPublicKeys) {
+			errs.Add(leftUser.wrong("ssh_public_keys", errSeededField))
+		}
+		if leftUser.PasswordHash != rightUser.PasswordHash {
+			errs.Add(leftUser.wrong("password", errSeededField))
+		}
+		if (leftUser.POSIX == nil) != (rightUser.POSIX == nil) {
+			errs.Add(leftUser.wrong("posix", errSeededField))
+		}
+
+		if rightUser.POSIX != nil {
+			leftPosix := *leftUser.POSIX
+			rightPosix := *rightUser.POSIX
+			if leftPosix.UID != rightPosix.UID {
+				errs.Add(leftUser.wrong("posix_uid", errSeededField))
+			}
+			if leftPosix.GID != rightPosix.GID {
+				errs.Add(leftUser.wrong("posix_gid", errSeededField))
+			}
+			if leftPosix.HomeDirectory != rightPosix.HomeDirectory {
+				errs.Add(leftUser.wrong("posix_home", errSeededField))
+			}
+			if leftPosix.LoginShell != rightPosix.LoginShell {
+				errs.Add(leftUser.wrong("posix_shell", errSeededField))
+			}
+			if leftPosix.GECOS != rightPosix.GECOS {
+				errs.Add(leftUser.wrong("posix_gecos", errSeededField))
+			}
+		}
+	}
+
+	return errs
+}
+
 // DatabaseInitializer returns a function that initalizes the Database from the
 // given seed on first use. If the seed is nil, the default initialization
 // behavior is used.
@@ -100,18 +240,10 @@ func DatabaseInitializer(d *DatabaseSeed) func() Database {
 	}
 
 	//otherwise, initialize the DB from the seed
-	return func() (db Database) {
-		for _, userSeed := range d.Users {
-			user := User{LoginName: string(userSeed.LoginName)}
-			userSeed.ApplyTo(&user)
-			db.Users = append(db.Users, user)
-		}
-		for _, groupSeed := range d.Groups {
-			group := Group{Name: string(groupSeed.Name)}
-			groupSeed.ApplyTo(&group)
-			db.Groups = append(db.Groups, group)
-		}
-		return
+	return func() Database {
+		var db Database
+		d.ApplyTo(&db)
+		return db
 	}
 }
 

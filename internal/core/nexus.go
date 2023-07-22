@@ -40,17 +40,20 @@ type Nexus interface {
 
 // UpdateOptions controls optional behavior in Nexus.Update().
 type UpdateOptions struct {
-	//TODO: ConflictWithSeedIsError
+	//If true, conflicts with the seed will be reported as validation errors.
+	//If false (default), conflicts with the seed will be corrected silently.
+	ConflictWithSeedIsError bool
 }
 
 // NewNexus instantiates the Nexus.
-func NewNexus() Nexus {
-	return &nexusImpl{}
+func NewNexus(d *DatabaseSeed) Nexus {
+	return &nexusImpl{seed: d}
 }
 
 type nexusImpl struct {
 	//The mutex guards access to all other fields in this struct.
 	mutex     sync.Mutex
+	seed      *DatabaseSeed
 	db        Database
 	listeners []listener
 }
@@ -74,7 +77,12 @@ func (n *nexusImpl) AddListener(ctx context.Context, callback func(Database)) {
 }
 
 // Update implements the Nexus interface.
-func (n *nexusImpl) Update(reducer Reducer, opts *UpdateOptions) (errs errext.ErrorSet) {
+func (n *nexusImpl) Update(reducer Reducer, optsPtr *UpdateOptions) (errs errext.ErrorSet) {
+	var opts UpdateOptions
+	if optsPtr != nil {
+		opts = *optsPtr
+	}
+
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 
@@ -84,13 +92,20 @@ func (n *nexusImpl) Update(reducer Reducer, opts *UpdateOptions) (errs errext.Er
 		errs.Add(err)
 		return
 	}
+	newDB.Normalize()
 
 	//TODO: perform validation of new state, use ErrorSet to return detailed validation errors
-	//TODO: enforce Seed
+	//enforce Seed
+	if n.seed != nil {
+		if opts.ConflictWithSeedIsError {
+			errs = n.seed.CheckConflicts(newDB)
+		} else {
+			n.seed.ApplyTo(&newDB)
+		}
+	}
 
 	//new DB looks good -> store it and inform our listeners *if* it actually
 	//represents a change
-	newDB.Normalize()
 	if reflect.DeepEqual(n.db, newDB) {
 		//This check is important to prevent infinite loops like this:
 		//DB update -> disk write -> fsnotify -> disk read -> DB update
