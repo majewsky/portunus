@@ -8,7 +8,6 @@ package core
 
 import (
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"sort"
 	"strconv"
@@ -48,45 +47,6 @@ func (g Group) ContainsUser(u User) bool {
 // IsEqualTo is a type-safe wrapper around reflect.DeepEqual().
 func (g Group) IsEqualTo(other Group) bool {
 	return reflect.DeepEqual(g, other)
-}
-
-// RenderToLDAP produces the LDAPObject representing this group.
-func (g Group) RenderToLDAP(suffix string) []LDAPObject {
-	memberDNames := make([]string, 0, len(g.MemberLoginNames))
-	memberLoginNames := make([]string, 0, len(g.MemberLoginNames))
-	for name, isMember := range g.MemberLoginNames {
-		if isMember {
-			memberDNames = append(memberDNames, fmt.Sprintf("uid=%s,ou=users,%s", name, suffix))
-			memberLoginNames = append(memberLoginNames, name)
-		}
-	}
-	if len(memberDNames) == 0 {
-		//The OpenLDAP core.schema requires that `groupOfNames` contain at least
-		//one `member` attribute. If the group does not have any proper members,
-		//add the dummy user account "nobody" to it.
-		memberDNames = append(memberDNames, "cn=nobody,"+suffix)
-	}
-
-	objs := []LDAPObject{{
-		DN: fmt.Sprintf("cn=%s,ou=groups,%s", g.Name, suffix),
-		Attributes: map[string][]string{
-			"cn":          {g.Name},
-			"member":      memberDNames,
-			"objectClass": {"groupOfNames", "top"},
-		},
-	}}
-	if g.PosixGID != nil {
-		objs = append(objs, LDAPObject{
-			DN: fmt.Sprintf("cn=%s,ou=posix-groups,%s", g.Name, suffix),
-			Attributes: map[string][]string{
-				"cn":          {g.Name},
-				"gidNumber":   {g.PosixGID.String()},
-				"memberUid":   memberLoginNames,
-				"objectClass": {"posixGroup", "top"},
-			},
-		})
-	}
-	return objs
 }
 
 // GroupMemberNames is the type of Group.MemberLoginNames.

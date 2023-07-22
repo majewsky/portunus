@@ -6,10 +6,6 @@
 
 package core
 
-import (
-	"fmt"
-)
-
 // User represents a single user account.
 type User struct {
 	LoginName     string   `json:"login_name"`
@@ -46,54 +42,6 @@ func (u User) Cloned() User {
 // FullName returns the user's full name.
 func (u User) FullName() string {
 	return u.GivenName + " " + u.FamilyName //TODO: allow flipped order (family name first)
-}
-
-// RenderToLDAP produces the LDAPObject representing this group.
-func (u User) RenderToLDAP(suffix string, allGroups []Group) LDAPObject {
-	var memberOfGroupDNames []string
-	for _, group := range allGroups {
-		if group.ContainsUser(u) {
-			dn := fmt.Sprintf("cn=%s,ou=groups,%s", group.Name, suffix)
-			memberOfGroupDNames = append(memberOfGroupDNames, dn)
-		}
-	}
-
-	obj := LDAPObject{
-		DN: fmt.Sprintf("uid=%s,ou=users,%s", u.LoginName, suffix),
-		Attributes: map[string][]string{
-			"uid":          {u.LoginName},
-			"cn":           {u.FullName()},
-			"sn":           {u.FamilyName},
-			"givenName":    {u.GivenName},
-			"userPassword": {u.PasswordHash},
-			"isMemberOf":   memberOfGroupDNames,
-			"objectClass":  {"portunusPerson", "inetOrgPerson", "organizationalPerson", "person", "top"},
-		},
-	}
-
-	if u.EMailAddress != "" {
-		obj.Attributes["mail"] = []string{u.EMailAddress}
-	}
-	if len(u.SSHPublicKeys) > 0 {
-		obj.Attributes["sshPublicKey"] = u.SSHPublicKeys
-	}
-
-	if u.POSIX != nil {
-		obj.Attributes["uidNumber"] = []string{u.POSIX.UID.String()}
-		obj.Attributes["gidNumber"] = []string{u.POSIX.GID.String()}
-		obj.Attributes["homeDirectory"] = []string{u.POSIX.HomeDirectory}
-		if u.POSIX.LoginShell != "" {
-			obj.Attributes["loginShell"] = []string{u.POSIX.LoginShell}
-		}
-		if u.POSIX.GECOS == "" {
-			obj.Attributes["gecos"] = []string{u.FullName()}
-		} else {
-			obj.Attributes["gecos"] = []string{u.POSIX.GECOS}
-		}
-		obj.Attributes["objectClass"] = append(obj.Attributes["objectClass"], "posixAccount")
-	}
-
-	return obj
 }
 
 ////////////////////////////////////////////////////////////////////////////////

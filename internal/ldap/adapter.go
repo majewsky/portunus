@@ -22,7 +22,7 @@ type Adapter struct {
 	nexus        core.Nexus
 	conn         Connection
 	init         sync.Once
-	objects      []core.LDAPObject //persisted objects, key = object DN
+	objects      []Object //persisted objects, key = object DN
 	objectsMutex sync.Mutex
 }
 
@@ -134,12 +134,12 @@ func makeStaticObjects(dnSuffix string) (result []goldap.AddRequest) {
 }
 
 // Converts a core.Database instance into a list of LDAP objects.
-func renderDBToLDAP(db core.Database, dnSuffix string) (result []core.LDAPObject) {
+func renderDBToLDAP(db core.Database, dnSuffix string) (result []Object) {
 	for _, u := range db.Users {
-		result = append(result, u.RenderToLDAP(dnSuffix, db.Groups))
+		result = append(result, renderUser(u, dnSuffix, db.Groups))
 	}
 	for _, g := range db.Groups {
-		result = append(result, g.RenderToLDAP(dnSuffix)...)
+		result = append(result, renderGroup(g, dnSuffix)...)
 	}
 
 	//render the virtual group that controls read access to the LDAP server (this
@@ -159,7 +159,7 @@ func renderDBToLDAP(db core.Database, dnSuffix string) (result []core.LDAPObject
 		//groups need to have at least one member
 		ldapViewerDNames = append(ldapViewerDNames, "cn=nobody,"+dnSuffix)
 	}
-	result = append(result, core.LDAPObject{
+	result = append(result, Object{
 		DN: fmt.Sprintf("cn=portunus-viewers,%s", dnSuffix),
 		Attributes: map[string][]string{
 			"cn":          {"portunus-viewers"},

@@ -14,12 +14,6 @@ import (
 	"github.com/sapcc/go-bits/logg"
 )
 
-// LDAPObject describes an object that can be stored in the LDAP directory.
-type LDAPObject struct {
-	DN         string
-	Attributes map[string][]string
-}
-
 // Engine is the core engine of portunus-server.
 type Engine interface {
 	FindGroup(name string) *Group

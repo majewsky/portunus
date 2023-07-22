@@ -6,10 +6,7 @@
 
 package ldap
 
-import (
-	goldap "github.com/go-ldap/ldap/v3"
-	"github.com/majewsky/portunus/internal/core"
-)
+import goldap "github.com/go-ldap/ldap/v3"
 
 // A sum type of all possible requests that we can send to the server.
 type operation struct {
@@ -35,8 +32,8 @@ func (op operation) ExecuteOn(conn Connection) error {
 
 // Computes a minimal changeset (i.e. a set of LDAP write operations) by
 // diffing two sets of LDAP objects.
-func computeUpdates(oldObjects, newObjects []core.LDAPObject, operations chan<- operation) {
-	oldObjectsByDN := make(map[string]core.LDAPObject, len(oldObjects))
+func computeUpdates(oldObjects, newObjects []Object, operations chan<- operation) {
+	oldObjectsByDN := make(map[string]Object, len(oldObjects))
 	for _, oldObj := range oldObjects {
 		oldObjectsByDN[oldObj.DN] = oldObj
 	}
@@ -60,7 +57,7 @@ func computeUpdates(oldObjects, newObjects []core.LDAPObject, operations chan<- 
 	}
 }
 
-func buildAddRequest(obj core.LDAPObject, operations chan<- operation) {
+func buildAddRequest(obj Object, operations chan<- operation) {
 	req := goldap.AddRequest{
 		DN:         obj.DN,
 		Attributes: make([]goldap.Attribute, 0, len(obj.Attributes)),
