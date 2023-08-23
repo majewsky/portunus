@@ -13,6 +13,7 @@ require (
 	github.com/sapcc/go-bits v0.0.0-20230706125105-e29c088132b0
 	github.com/tredoe/osutil v1.0.4
 	golang.org/x/crypto v0.11.0
+	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 )
 
 require (
@@ -20,5 +21,5 @@ require (
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/tredoe/goutil v0.0.0-20161130132832-0a73aea41b0b // indirect
-	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
 )

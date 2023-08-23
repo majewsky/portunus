@@ -13,6 +13,8 @@ import (
 	"sync"
 
 	"github.com/sapcc/go-bits/logg"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 )
 
 // LDAPObject describes an object that can be stored in the LDAP directory.
@@ -129,6 +131,32 @@ func (e *engine) handleLoadEvent(db Database) {
 				e.Users[user.LoginName] = userCloned
 				seedApplied = true
 			}
+		}
+	}
+
+	// create in db missing seeded users
+	knownUsers := maps.Keys(e.Users)
+	for _, userSeed := range e.Seed.Users {
+		if !slices.Contains(knownUsers, string(userSeed.LoginName)) {
+			user := User{
+				LoginName: string(userSeed.LoginName),
+			}
+			userSeed.ApplyTo(&user)
+			e.Users[string(userSeed.LoginName)] = user
+			seedApplied = true
+		}
+	}
+
+	// create in db missing seeded groups
+	knownGroups := maps.Keys(e.Groups)
+	for _, seedGroup := range e.Seed.Groups {
+		if !slices.Contains(knownGroups, string(seedGroup.Name)) {
+			group := Group{
+				Name: string(seedGroup.Name),
+			}
+			seedGroup.ApplyTo(&group)
+			e.Groups[string(seedGroup.Name)] = group
+			seedApplied = true
 		}
 	}
 
