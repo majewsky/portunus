@@ -4,7 +4,7 @@
 * Refer to the file "LICENSE" for details.
 *******************************************************************************/
 
-// Package h provides utilties for rendering HTML forms.
+// Package h provides utilities for rendering HTML forms.
 package h
 
 import (
