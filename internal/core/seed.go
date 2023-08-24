@@ -7,6 +7,7 @@
 package core
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -39,12 +40,19 @@ func ReadDatabaseSeedFromEnvironment() (*DatabaseSeed, error) {
 	if path == "" {
 		return nil, nil
 	}
+	return ReadDatabaseSeed(path)
+}
+
+// ReadDatabaseSeed reads and validates the seed file at the given path.
+func ReadDatabaseSeed(path string) (*DatabaseSeed, error) {
 	buf, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
+	dec := json.NewDecoder(bytes.NewReader(buf))
+	dec.DisallowUnknownFields()
 	var seed DatabaseSeed
-	err = json.Unmarshal(buf, &seed)
+	err = dec.Decode(&seed)
 	if err != nil {
 		return nil, err
 	}
@@ -78,9 +86,9 @@ func (d DatabaseSeed) ApplyTo(db *Database) {
 	for _, groupSeed := range d.Groups {
 		//...either the group exists already...
 		hasGroup := false
-		for _, group := range db.Groups {
+		for idx, group := range db.Groups {
 			if group.Name == string(groupSeed.Name) {
-				groupSeed.ApplyTo(&group)
+				groupSeed.ApplyTo(&db.Groups[idx])
 				hasGroup = true
 				break
 			}
@@ -97,9 +105,9 @@ func (d DatabaseSeed) ApplyTo(db *Database) {
 	//same for the user seeds
 	for _, userSeed := range d.Users {
 		hasUser := false
-		for _, user := range db.Users {
+		for idx, user := range db.Users {
 			if user.LoginName == string(userSeed.LoginName) {
-				userSeed.ApplyTo(&user)
+				userSeed.ApplyTo(&db.Users[idx])
 				hasUser = true
 				break
 			}
@@ -133,7 +141,7 @@ func (d DatabaseSeed) CheckConflicts(db Database) (errs errext.ErrorSet) {
 	for _, rightGroup := range rightDB.Groups {
 		leftGroup, exists := leftDB.FindGroup(func(g Group) bool { return g.Name == rightGroup.Name })
 		if !exists {
-			errs.Addf("group %q is statically configured in seed and cannot be deleted", rightGroup.Name)
+			errs.Addf("group %q is seeded and cannot be deleted", rightGroup.Name)
 			continue
 		}
 
@@ -163,7 +171,7 @@ func (d DatabaseSeed) CheckConflicts(db Database) (errs errext.ErrorSet) {
 	for _, rightUser := range rightDB.Users {
 		leftUser, exists := leftDB.FindUser(func(u User) bool { return u.LoginName == rightUser.LoginName })
 		if !exists {
-			errs.Addf("user %q is statically configured in seed and cannot be deleted", rightUser.LoginName)
+			errs.Addf("user %q is seeded and cannot be deleted", rightUser.LoginName)
 			continue
 		}
 
@@ -186,7 +194,7 @@ func (d DatabaseSeed) CheckConflicts(db Database) (errs errext.ErrorSet) {
 			errs.Add(leftUser.wrong("posix", errSeededField))
 		}
 
-		if rightUser.POSIX != nil {
+		if leftUser.POSIX != nil && rightUser.POSIX != nil {
 			leftPosix := *leftUser.POSIX
 			rightPosix := *rightUser.POSIX
 			if leftPosix.UID != rightPosix.UID {

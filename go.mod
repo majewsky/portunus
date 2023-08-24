@@ -19,6 +19,7 @@ require (
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/sergi/go-diff v1.3.1 // indirect
 	github.com/tredoe/goutil v0.0.0-20161130132832-0a73aea41b0b // indirect
 	golang.org/x/sys v0.10.0 // indirect
 )

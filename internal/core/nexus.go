@@ -98,10 +98,15 @@ func (n *nexusImpl) Update(reducer Reducer, optsPtr *UpdateOptions) (errs errext
 	//enforce Seed
 	if n.seed != nil {
 		if opts.ConflictWithSeedIsError {
-			errs = n.seed.CheckConflicts(newDB)
+			errs.Append(n.seed.CheckConflicts(newDB))
 		} else {
 			n.seed.ApplyTo(&newDB)
 		}
+	}
+
+	//abort the update if errors have been found
+	if !errs.IsEmpty() {
+		return errs
 	}
 
 	//new DB looks good -> store it and inform our listeners *if* it actually

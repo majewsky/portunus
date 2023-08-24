@@ -30,10 +30,14 @@ github.com/majewsky/xyrillian.css
 github.com/pkg/errors
 # github.com/sapcc/go-bits v0.0.0-20230706125105-e29c088132b0
 ## explicit; go 1.20
+github.com/sapcc/go-bits/assert
 github.com/sapcc/go-bits/errext
 github.com/sapcc/go-bits/logg
 github.com/sapcc/go-bits/must
 github.com/sapcc/go-bits/osext
+# github.com/sergi/go-diff v1.3.1
+## explicit; go 1.12
+github.com/sergi/go-diff/diffmatchpatch
 # github.com/tredoe/goutil v0.0.0-20161130132832-0a73aea41b0b
 ## explicit
 github.com/tredoe/goutil/reflectutil
