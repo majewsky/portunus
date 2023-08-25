@@ -27,10 +27,8 @@ func main() {
 	logg.ShowDebug = os.Getenv("PORTUNUS_DEBUG") == "true"
 	dropPrivileges()
 
-	seed, err := core.ReadDatabaseSeedFromEnvironment()
-	if err != nil {
-		logg.Fatal("while reading PORTUNUS_SEED_PATH: " + err.Error())
-	}
+	seed, errs := core.ReadDatabaseSeedFromEnvironment()
+	errs.LogFatalIfError()
 
 	ctx := context.TODO()
 	nexus := core.NewNexus(seed)

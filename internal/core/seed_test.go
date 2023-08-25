@@ -157,10 +157,8 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	seed, err := ReadDatabaseSeed("fixtures/seed-basic.json")
-	if err != nil {
-		t.Fatal(err)
-	}
+	seed, errs := ReadDatabaseSeed("fixtures/seed-basic.json")
+	expectNoErrors(t, errs)
 
 	//register a listener to observe the real DB changes
 	nexus := NewNexus(seed)
@@ -170,7 +168,7 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	})
 
 	//load an empty database (like on first startup) -> seed gets applied
-	errs := nexus.Update(reducerReturnEmpty, nil)
+	errs = nexus.Update(reducerReturnEmpty, nil)
 	expectNoErrors(t, errs)
 
 	expectedDB := dbWithBasicSeedApplied()
@@ -193,7 +191,7 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	errs = nexus.Update(reducerOverwriteMalleableAttributes, nil)
 	expectNoErrors(t, errs)
 
-	expectedDB, err = reducerOverwriteMalleableAttributes(expectedDB)
+	expectedDB, err := reducerOverwriteMalleableAttributes(expectedDB)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,10 +219,8 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	seed, err := ReadDatabaseSeed("fixtures/seed-basic.json")
-	if err != nil {
-		t.Fatal(err)
-	}
+	seed, errs := ReadDatabaseSeed("fixtures/seed-basic.json")
+	expectNoErrors(t, errs)
 
 	//register a listener to observe the real DB changes
 	nexus := NewNexus(seed)
@@ -236,7 +232,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	})
 
 	//load an empty database (like on first startup) -> seed gets applied
-	errs := nexus.Update(reducerReturnEmpty, nil)
+	errs = nexus.Update(reducerReturnEmpty, nil)
 	expectNoErrors(t, errs)
 
 	expectedDB := dbWithBasicSeedApplied()
@@ -284,7 +280,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	errs = nexus.Update(reducerOverwriteMalleableAttributes, &opts)
 	expectNoErrors(t, errs)
 
-	expectedDB, err = reducerOverwriteMalleableAttributes(expectedDB)
+	expectedDB, err := reducerOverwriteMalleableAttributes(expectedDB)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -307,7 +303,53 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	assert.DeepEqual(t, "update count", updateCount, 3)
 }
 
-//TODO: test invalid seed files
+func TestSeedParseAndValidationErrors(t *testing.T) {
+	//test a seed file with unknown attributes (we parse with strict rules)
+	_, errs := ReadDatabaseSeed("fixtures/seed-parse-error-1.json")
+	expectTheseErrors(t, errs,
+		`while parsing fixtures/seed-parse-error-1.json: json: unknown field "unknown_attribute"`,
+	)
+
+	//test a seed file with a malformatted command substitution
+	_, errs = ReadDatabaseSeed("fixtures/seed-parse-error-2.json")
+	expectTheseErrors(t, errs,
+		`while parsing fixtures/seed-parse-error-2.json: json: cannot unmarshal object into Go struct field UserSeed.users.password of type string`,
+	)
+
+	//NOTE: We trust all other parse-level errors (e.g. GIDs/UIDs longer than 16
+	//bit) to be caught by the JSON parser, since these constraints are all
+	//expressed in the type system.
+
+	//test a seed file with every possible validation error (each user and group
+	//has one validation error, as indicated in their name fields)
+	_, errs = ReadDatabaseSeed("fixtures/seed-validation-errors.json")
+	expectTheseErrors(t, errs,
+		`seeded user "" is invalid: login_name is missing`,
+		`seeded user " spaces-in-name " is invalid: login_name may not start with a space character`,
+		`seeded user "malformed+name" is invalid: login_name is not an acceptable user/group name matching the pattern /[a-z_][a-z0-9_-]*\$?/`,
+		`seeded user "duplicate-name" is invalid: duplicate login name`,
+		`seeded user "missing-given-name" is invalid: given_name is missing`,
+		`seeded user "spaces-in-given-name" is invalid: given_name may not start with a space character`,
+		`seeded user "missing-family-name" is invalid: family_name is missing`,
+		`seeded user "spaces-in-family-name" is invalid: family_name may not end with a space character`,
+		`seeded user "only-ssh-key-empty" is invalid: ssh_public_keys[0] is missing`,
+		`seeded user "some-ssh-key-empty" is invalid: ssh_public_keys[1] is missing`,
+		`seeded user "ssh-key-invalid" is invalid: ssh_public_keys[0] must be a valid SSH public key`,
+		`seeded user "posix-no-uid" is invalid: posix.uid is missing`,
+		`seeded user "posix-no-gid" is invalid: posix.gid is missing`,
+		`seeded user "posix-no-home" is invalid: posix.home is missing`,
+		`seeded user "posix-spaces-in-home" is invalid: posix.home may not end with a space character`,
+		`seeded user "posix-home-is-not-absolute" is invalid: posix.home must be an absolute path, i.e. start with a /`,
+		`seeded user "posix-shell-is-not-absolute" is invalid: posix.shell must be an absolute path, i.e. start with a /`,
+		`seeded group "" is invalid: name is missing`,
+		`seeded group " spaces-in-name " is invalid: name may not start with a space character`,
+		`seeded group "malformed+name" is invalid: name is not an acceptable user/group name matching the pattern /[a-z_][a-z0-9_-]*\$?/`,
+		`seeded group "duplicate-name" is invalid: duplicate name`,
+		`seeded group "missing-long-name" is invalid: long_name is missing`,
+		`seeded group "spaces-in-long-name" is invalid: long_name may not start with a space character`,
+		`seeded group "unknown-member" is invalid: group member "incognito" is not defined in the seed`,
+	)
+}
 
 func normalizeDBForComparison(db *Database) {
 	//We want to compare `db` using reflect.DeepEqual(), but the User.PasswordHash field cannot be trivially compared. This function prepares `db` for DeepEqual comparison by replacing all User.PasswordHash values with their original passwords.

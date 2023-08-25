@@ -35,7 +35,7 @@ type DatabaseSeed struct {
 // ReadDatabaseSeedFromEnvironment reads and validates the file at
 // PORTUNUS_SEED_PATH. If that environment variable was not provided, nil is
 // returned instead.
-func ReadDatabaseSeedFromEnvironment() (*DatabaseSeed, error) {
+func ReadDatabaseSeedFromEnvironment() (*DatabaseSeed, errext.ErrorSet) {
 	path := os.Getenv("PORTUNUS_SEED_PATH")
 	if path == "" {
 		return nil, nil
@@ -44,40 +44,42 @@ func ReadDatabaseSeedFromEnvironment() (*DatabaseSeed, error) {
 }
 
 // ReadDatabaseSeed reads and validates the seed file at the given path.
-func ReadDatabaseSeed(path string) (*DatabaseSeed, error) {
+func ReadDatabaseSeed(path string) (result *DatabaseSeed, errs errext.ErrorSet) {
 	buf, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		errs.Add(err)
+		return nil, errs
 	}
 	dec := json.NewDecoder(bytes.NewReader(buf))
 	dec.DisallowUnknownFields()
 	var seed DatabaseSeed
 	err = dec.Decode(&seed)
 	if err != nil {
-		return nil, err
+		errs.Addf("while parsing %s: %w", path, err)
+		return nil, errs
 	}
 	return &seed, seed.Validate()
 }
 
 // Validate returns an error if the seed contains any invalid or missing values.
-func (d DatabaseSeed) Validate() error {
+func (d DatabaseSeed) Validate() (errs errext.ErrorSet) {
 	isUserLoginName := make(map[string]bool)
-	for idx, u := range d.Users {
-		err := u.validate(isUserLoginName)
-		if err != nil {
-			return fmt.Errorf("seeded user #%d (%q) is invalid: %w", idx+1, u.LoginName, err)
+	for _, u := range d.Users {
+		suberrs := u.validate(isUserLoginName)
+		for _, err := range suberrs {
+			errs.Addf("seeded user %q is invalid: %w", u.LoginName, err)
 		}
 	}
 
 	isGroupName := make(map[string]bool)
-	for idx, g := range d.Groups {
-		err := g.validate(isUserLoginName, isGroupName)
-		if err != nil {
-			return fmt.Errorf("seeded group #%d (%q) is invalid: %w", idx+1, g.Name, err)
+	for _, g := range d.Groups {
+		suberrs := g.validate(isUserLoginName, isGroupName)
+		for _, err := range suberrs {
+			errs.Addf("seeded group %q is invalid: %w", g.Name, err)
 		}
 	}
 
-	return nil
+	return
 }
 
 // ApplyTo changes the given database to conform to the seed.
@@ -274,36 +276,30 @@ type GroupSeed struct {
 	PosixGID *PosixID `json:"posix_gid"`
 }
 
-func (g GroupSeed) validate(isUserLoginName, isGroupName map[string]bool) error {
-	err := g.Name.validate("name",
+func (g GroupSeed) validate(isUserLoginName, isGroupName map[string]bool) (errs errext.ErrorSet) {
+	errs.Add(g.Name.validate("name",
 		MustNotBeEmpty,
 		MustNotHaveSurroundingSpaces,
 		MustBePosixAccountName,
-	)
-	if err != nil {
-		return err
-	}
+	))
 
 	if isGroupName[string(g.Name)] {
-		return errors.New("duplicate name")
+		errs.Add(errors.New("duplicate name"))
 	}
 	isGroupName[string(g.Name)] = true
 
-	err = g.LongName.validate("long_name",
+	errs.Add(g.LongName.validate("long_name",
 		MustNotBeEmpty,
 		MustNotHaveSurroundingSpaces,
-	)
-	if err != nil {
-		return err
-	}
+	))
 
 	for _, loginName := range g.MemberLoginNames {
 		if !isUserLoginName[string(loginName)] {
-			return fmt.Errorf("group member %q is not defined in the seed", string(loginName))
+			errs.Addf("group member %q is not defined in the seed", string(loginName))
 		}
 	}
 
-	return nil
+	return
 }
 
 // ApplyTo changes the attributes of this group to conform to the given seed.
@@ -354,80 +350,56 @@ type UserSeed struct {
 	} `json:"posix"`
 }
 
-func (u UserSeed) validate(isUserLoginName map[string]bool) error {
-	err := u.LoginName.validate("login_name",
+func (u UserSeed) validate(isUserLoginName map[string]bool) (errs errext.ErrorSet) {
+	errs.Add(u.LoginName.validate("login_name",
 		MustNotBeEmpty,
 		MustNotHaveSurroundingSpaces,
 		MustBePosixAccountName,
-	)
-	if err != nil {
-		return err
-	}
+	))
 
 	if isUserLoginName[string(u.LoginName)] {
-		return errors.New("duplicate login name")
+		errs.Add(errors.New("duplicate login name"))
 	}
 	isUserLoginName[string(u.LoginName)] = true
 
-	err = u.GivenName.validate("given_name",
+	errs.Add(u.GivenName.validate("given_name",
 		MustNotBeEmpty,
 		MustNotHaveSurroundingSpaces,
-	)
-	if err != nil {
-		return err
-	}
-
-	err = u.FamilyName.validate("family_name",
+	))
+	errs.Add(u.FamilyName.validate("family_name",
 		MustNotBeEmpty,
 		MustNotHaveSurroundingSpaces,
-	)
-	if err != nil {
-		return err
-	}
-
-	err = u.EMailAddress.validate("email",
+	))
+	errs.Add(u.EMailAddress.validate("email",
 		MustNotHaveSurroundingSpaces,
-	)
-	if err != nil {
-		return err
-	}
+	))
 
 	for idx, sshPublicKey := range u.SSHPublicKeys {
-		err := sshPublicKey.validate(fmt.Sprintf("ssh_public_keys[%d]", idx),
+		errs.Add(sshPublicKey.validate(fmt.Sprintf("ssh_public_keys[%d]", idx),
 			MustNotBeEmpty,
 			MustBeSSHPublicKey,
-		)
-		if err != nil {
-			return err
-		}
+		))
 	}
 
 	if u.POSIX != nil {
 		if u.POSIX.UID == nil {
-			return fmt.Errorf("posix.uid is missing")
+			errs.Add(errors.New("posix.uid is missing"))
 		}
 		if u.POSIX.GID == nil {
-			return fmt.Errorf("posix.gid is missing")
+			errs.Add(errors.New("posix.gid is missing"))
 		}
 
-		err = u.POSIX.HomeDirectory.validate("posix.home",
+		errs.Add(u.POSIX.HomeDirectory.validate("posix.home",
 			MustNotBeEmpty,
 			MustNotHaveSurroundingSpaces,
 			MustBeAbsolutePath,
-		)
-		if err != nil {
-			return err
-		}
-
-		err = u.POSIX.LoginShell.validate("posix.shell",
+		))
+		errs.Add(u.POSIX.LoginShell.validate("posix.shell",
 			MustBeAbsolutePath,
-		)
-		if err != nil {
-			return err
-		}
+		))
 	}
 
-	return nil
+	return
 }
 
 // ApplyTo changes the attributes of this group to conform to the given seed.
