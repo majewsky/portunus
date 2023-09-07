@@ -6,7 +6,12 @@
 
 package core
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+
+	"github.com/sapcc/go-bits/errext"
+)
 
 // Database contains the contents of Portunus' database.
 type Database struct {
@@ -75,4 +80,46 @@ func (d *Database) Normalize() {
 	sort.Slice(d.Users, func(i, j int) bool {
 		return d.Users[i].LoginName < d.Users[j].LoginName
 	})
+}
+
+// Validate checks all users and groups in this Database for validity.
+func (d Database) Validate() (errs errext.ErrorSet) {
+	//check user attributes
+	userCount := make(map[string]uint)
+	for _, u := range d.Users {
+		errs.Append(u.validateLocal())
+		userCount[u.LoginName]++
+	}
+
+	//check group attributes and membership
+	groupCount := make(map[string]uint)
+	for _, g := range d.Groups {
+		errs.Append(g.validateLocal())
+		groupCount[g.Name]++
+
+		for loginName := range g.MemberLoginNames {
+			if userCount[loginName] == 0 {
+				err := fmt.Errorf("contains unknown user with login name %q", loginName)
+				errs.Add(ValidationError{g.FieldRef("members"), err})
+			}
+		}
+	}
+
+	//check user name uniqueness
+	for loginName, count := range userCount {
+		if count > 1 {
+			ref := User{LoginName: loginName}.FieldRef("login_name")
+			errs.Add(ref.Wrap(errIsDuplicate))
+		}
+	}
+
+	//check group name uniqueness
+	for name, count := range groupCount {
+		if count > 1 {
+			ref := Group{Name: name}.FieldRef("name")
+			errs.Add(ref.Wrap(errIsDuplicate))
+		}
+	}
+
+	return
 }

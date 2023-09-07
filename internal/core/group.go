@@ -11,6 +11,8 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+
+	"github.com/sapcc/go-bits/errext"
 )
 
 // Group represents a single group of users. Membership in a group implicitly
@@ -76,6 +78,34 @@ func (g *GroupMemberNames) UnmarshalJSON(data []byte) error {
 		(*g)[name] = true
 	}
 	return nil
+}
+
+// FieldRef returns a FieldRef that can be used to build validation errors.
+func (g Group) FieldRef(field string) FieldRef {
+	return FieldRef{
+		ObjectType: "group",
+		ObjectName: g.Name,
+		FieldName:  field,
+	}
+}
+
+// Checks the individual attributes of this Group. Relationships and uniqueness
+// are checked in Database.Validate().
+func (g Group) validateLocal() (errs errext.ErrorSet) {
+	ref := g.FieldRef("name")
+	errs.Add(ref.WrapFirst(
+		MustNotBeEmpty(g.Name),
+		MustNotHaveSurroundingSpaces(g.Name),
+		MustBePosixAccountName(g.Name),
+	))
+
+	ref = g.FieldRef("long_name")
+	errs.Add(ref.WrapFirst(
+		MustNotBeEmpty(g.LongName),
+		MustNotHaveSurroundingSpaces(g.LongName),
+	))
+
+	return
 }
 
 ////////////////////////////////////////////////////////////////////////////////

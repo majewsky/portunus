@@ -6,6 +6,13 @@
 
 package core
 
+import (
+	"fmt"
+
+	"github.com/sapcc/go-bits/errext"
+	"golang.org/x/crypto/ssh"
+)
+
 // User represents a single user account.
 type User struct {
 	LoginName     string   `json:"login_name"`
@@ -42,6 +49,67 @@ func (u User) Cloned() User {
 // FullName returns the user's full name.
 func (u User) FullName() string {
 	return u.GivenName + " " + u.FamilyName //TODO: allow flipped order (family name first)
+}
+
+// FieldRef returns a FieldRef that can be used to build validation errors.
+func (u User) FieldRef(field string) FieldRef {
+	return FieldRef{
+		ObjectType: "user",
+		ObjectName: u.LoginName,
+		FieldName:  field,
+	}
+}
+
+// Checks the individual attributes of this User. Relationships and uniqueness
+// are checked in Database.Validate().
+func (u User) validateLocal() (errs errext.ErrorSet) {
+	ref := u.FieldRef("login_name")
+	errs.Add(ref.WrapFirst(
+		MustNotBeEmpty(u.LoginName),
+		MustNotHaveSurroundingSpaces(u.LoginName),
+		MustBePosixAccountName(u.LoginName),
+	))
+
+	ref = u.FieldRef("given_name")
+	errs.Add(ref.WrapFirst(
+		MustNotBeEmpty(u.GivenName),
+		MustNotHaveSurroundingSpaces(u.GivenName),
+	))
+
+	ref = u.FieldRef("family_name")
+	errs.Add(ref.WrapFirst(
+		MustNotBeEmpty(u.FamilyName),
+		MustNotHaveSurroundingSpaces(u.FamilyName),
+	))
+
+	ref = u.FieldRef("email")
+	errs.Add(ref.Wrap(MustNotHaveSurroundingSpaces(u.EMailAddress)))
+
+	ref = u.FieldRef("ssh_public_keys")
+	for idx, key := range u.SSHPublicKeys {
+		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
+		if err != nil {
+			err = fmt.Errorf("must have a valid SSH public key on each line (parse error on line %d)", idx+1)
+			errs.Add(ref.Wrap(err))
+		}
+	}
+
+	if u.POSIX != nil {
+		ref = u.FieldRef("posix_home")
+		errs.Add(ref.WrapFirst(
+			MustNotBeEmpty(u.POSIX.HomeDirectory),
+			MustNotHaveSurroundingSpaces(u.POSIX.HomeDirectory),
+			MustBeAbsolutePath(u.POSIX.HomeDirectory),
+		))
+
+		ref = u.FieldRef("posix_shell")
+		errs.Add(ref.WrapFirst(
+			MustNotHaveSurroundingSpaces(u.POSIX.LoginShell),
+			MustBeAbsolutePath(u.POSIX.LoginShell),
+		))
+	}
+
+	return
 }
 
 ////////////////////////////////////////////////////////////////////////////////
