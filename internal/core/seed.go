@@ -70,7 +70,7 @@ func (d DatabaseSeed) Validate() error {
 	return nil
 }
 
-// DatabaseInitializer returns a function that initalizes the Database from the
+// DatabaseInitializer returns a function that initializes the Database from the
 // given seed on first use. If the seed is nil, the default initialization
 // behavior is used.
 func DatabaseInitializer(d *DatabaseSeed) func() Database {

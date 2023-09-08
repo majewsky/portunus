@@ -298,7 +298,7 @@ The following fields are supported:
 | `users[].login_name` | string | *Required.* The unique identifying name of the user that is defined statically. |
 | `users[].given_name` | string | *Required.* The given name(s) of this user. |
 | `users[].family_name` | string | *Required.* The family name(s) of this user. |
-| `users[].email` | string | The primary email adress of this user. |
+| `users[].email` | string | The primary email address of this user. |
 | `users[].ssh_public_keys` | list of strings | The SSH public keys associated with this user. |
 | `users[].password` | string | The password of this user. |
 | `users[].posix` | object | If provided, the user is a POSIX user. |
