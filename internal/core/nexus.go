@@ -8,11 +8,22 @@ package core
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"sync"
 
 	"github.com/sapcc/go-bits/errext"
 )
+
+//TODO: some things to clean up
+//
+// - What this calls "Reducer" is not a reducer. A reducer is the function
+// argument of a fold, with a signature of (State, Action) -> State. The
+// current Reducer type should be called "action" instead.
+// - AddListener does not really mesh well with the context argument since the
+// listener is going to have other resources, like channels, inside its
+// callback with shorter lifetimes. We should return a cancel function that the
+// caller can defer to match their channel lifetimes.
 
 // Reducer is an action that modifies the contents of a Database. This type
 // appears in the Nexus.Update() interface method.
@@ -44,6 +55,11 @@ type UpdateOptions struct {
 	//If false (default), conflicts with the seed will be corrected silently.
 	ConflictWithSeedIsError bool
 }
+
+// ErrDatabaseNeedsInitialization is used by the disk store connection to
+// signal to Nexus.Update() that no disk store exists yet. It will prompt the
+// nexus to perform first-time setup of the database contents.
+var ErrDatabaseNeedsInitialization = errors.New("ErrDatabaseNeedsInitialization")
 
 // NewNexus instantiates the Nexus.
 func NewNexus(d *DatabaseSeed) Nexus {
@@ -88,7 +104,9 @@ func (n *nexusImpl) Update(reducer Reducer, optsPtr *UpdateOptions) (errs errext
 
 	//compute new DB by applying the reducer to a clone of the old DB
 	newDB, err := reducer(n.db.Cloned())
-	if err != nil {
+	if err == ErrDatabaseNeedsInitialization {
+		newDB = DatabaseInitializer(n.seed)() //TODO: simplify this interface
+	} else if err != nil {
 		errs.Add(err)
 		return
 	}

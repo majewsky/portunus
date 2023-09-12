@@ -33,11 +33,13 @@ func main() {
 	ctx := context.TODO()
 	nexus := core.NewNexus(seed)
 
+	storePath := filepath.Join(os.Getenv("PORTUNUS_SERVER_STATE_DIR"), "database.json")
 	fs := core.FileStore{
-		Path:        filepath.Join(os.Getenv("PORTUNUS_SERVER_STATE_DIR"), "database.json"),
+		Path:        storePath,
 		Initializer: core.DatabaseInitializer(seed),
 	}
 	fsAPI := fs.RunAsync()
+	// TODO replace ^ with store.Attach(ctx, nexus, storePath)
 
 	ldapConn := must.Return(ldap.Connect(ldap.ConnectionOptions{
 		DNSuffix:      osext.MustGetenv("PORTUNUS_LDAP_SUFFIX"),
