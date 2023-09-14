@@ -96,7 +96,7 @@ func (n *nexusImpl) Update(action UpdateAction, optsPtr *UpdateOptions) (errs er
 	newDB := n.db.Cloned()
 	err := action(&newDB)
 	if err == ErrDatabaseNeedsInitialization {
-		newDB = DatabaseInitializer(n.seed)() //TODO: simplify this interface
+		newDB = initializeDatabase(n.seed)
 	} else if err != nil {
 		errs.Add(err)
 		return

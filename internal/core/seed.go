@@ -249,41 +249,36 @@ func (d DatabaseSeed) CheckConflicts(db Database) (errs errext.ErrorSet) {
 	return errs
 }
 
-// DatabaseInitializer returns a function that initalizes the Database from the
-// given seed on first use. If the seed is nil, the default initialization
-// behavior is used.
-func DatabaseInitializer(d *DatabaseSeed) func() Database {
+// Initializes the Database from the given seed on first use.
+// If the seed is nil, the default initialization behavior is used.
+func initializeDatabase(d *DatabaseSeed) Database {
 	//if no seed has been given, create the "admin" user with access to the
 	//Portunus UI and log the password once
 	if d == nil {
-		return func() Database {
-			password := hex.EncodeToString(securecookie.GenerateRandomKey(16))
-			logg.Info("first-time initialization: adding user %q with password %q",
-				"admin", password)
+		password := hex.EncodeToString(securecookie.GenerateRandomKey(16))
+		logg.Info("first-time initialization: adding user %q with password %q",
+			"admin", password)
 
-			return Database{
-				Groups: []Group{{
-					Name:             "admins",
-					LongName:         "Portunus Administrators",
-					MemberLoginNames: GroupMemberNames{"admin": true},
-					Permissions:      Permissions{Portunus: PortunusPermissions{IsAdmin: true}},
-				}},
-				Users: []User{{
-					LoginName:    "admin",
-					GivenName:    "Initial",
-					FamilyName:   "Administrator",
-					PasswordHash: shared.HashPasswordForLDAP(password),
-				}},
-			}
+		return Database{
+			Groups: []Group{{
+				Name:             "admins",
+				LongName:         "Portunus Administrators",
+				MemberLoginNames: GroupMemberNames{"admin": true},
+				Permissions:      Permissions{Portunus: PortunusPermissions{IsAdmin: true}},
+			}},
+			Users: []User{{
+				LoginName:    "admin",
+				GivenName:    "Initial",
+				FamilyName:   "Administrator",
+				PasswordHash: shared.HashPasswordForLDAP(password),
+			}},
 		}
 	}
 
 	//otherwise, initialize the DB from the seed
-	return func() Database {
-		var db Database
-		d.ApplyTo(&db)
-		return db
-	}
+	var db Database
+	d.ApplyTo(&db)
+	return db
 }
 
 ////////////////////////////////////////////////////////////////////////////////
