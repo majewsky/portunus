@@ -7,15 +7,14 @@
 package core
 
 import (
+	"context"
 	"errors"
-	"reflect"
+	"slices"
 	"sync"
-
-	"github.com/sapcc/go-bits/logg"
 )
 
 // Engine is the core engine of portunus-server.
-type Engine interface {
+type Engine interface { //TODO remove this type, fold Find/List methods into Nexus and have UI use it directly
 	FindGroup(name string) *Group
 	FindUser(loginName string) *UserWithPerms
 	FindUserByEMail(emailAddress string) *UserWithPerms
@@ -32,132 +31,55 @@ type Engine interface {
 
 // engine implements the Engine interface.
 type engine struct {
-	FileStoreAPI *FileStoreAPI
-	Seed         *DatabaseSeed
-	Nexus        Nexus
-	Users        map[string]User
-	Groups       map[string]Group
-	Mutex        *sync.RWMutex
+	DBMutex sync.RWMutex
+	DB      Database
+	Nexus   Nexus
 }
 
-// RunEngineAsync runs the main engine of portunus-server. It consumes the
-// FileStoreAPI and returns an Engine interface for the HTTP server to use.
-func RunEngineAsync(fsAPI *FileStoreAPI, nexus Nexus, seed *DatabaseSeed) Engine {
-	e := engine{
-		FileStoreAPI: fsAPI,
-		Seed:         seed,
-		Nexus:        nexus,
-		Mutex:        &sync.RWMutex{},
-	}
-
-	go func() {
-		for db := range e.FileStoreAPI.LoadEvents {
-			e.handleLoadEvent(db)
-		}
-	}()
-
-	return &e
+// NewEngine intializes an Engine connected to a nexus.
+func NewEngine(ctx context.Context, nexus Nexus) Engine {
+	e := &engine{Nexus: nexus}
+	nexus.AddListener(ctx, func(db Database) {
+		e.DBMutex.Lock()
+		defer e.DBMutex.Unlock()
+		e.DB = db
+	})
+	return e
 }
 
-func (e *engine) findGroupSeed(name string) *GroupSeed {
-	if e.Seed == nil {
-		return nil
-	}
-	for _, g := range e.Seed.Groups {
-		if string(g.Name) == name {
+// FindUser implements the Engine interface.
+func (e *engine) FindGroup(name string) *Group {
+	e.DBMutex.RLock()
+	defer e.DBMutex.RUnlock()
+
+	for _, g := range e.DB.Groups {
+		if g.Name == name {
+			g = g.Cloned()
 			return &g
 		}
 	}
 	return nil
 }
 
-func (e *engine) findUserSeed(loginName string) *UserSeed {
-	if e.Seed == nil {
-		return nil
-	}
-	for _, u := range e.Seed.Users {
-		if string(u.LoginName) == loginName {
-			return &u
+// FindUser implements the Engine interface.
+func (e *engine) FindUser(loginName string) *UserWithPerms {
+	e.DBMutex.RLock()
+	defer e.DBMutex.RUnlock()
+
+	for _, u := range e.DB.Users {
+		if u.LoginName == loginName {
+			return e.collectUserPerms(u)
 		}
 	}
 	return nil
 }
 
-func (e *engine) handleLoadEvent(db Database) {
-	e.Mutex.Lock()
-	defer e.Mutex.Unlock()
-
-	seedApplied := false
-
-	e.Groups = make(map[string]Group, len(db.Groups))
-	for _, group := range db.Groups {
-		e.Groups[group.Name] = group
-
-		//check if seed needs to be re-applied
-		groupSeed := e.findGroupSeed(group.Name)
-		if groupSeed != nil {
-			groupCloned := group.Cloned()
-			groupSeed.ApplyTo(&groupCloned)
-			if !reflect.DeepEqual(group, groupCloned) {
-				e.Groups[group.Name] = groupCloned
-				seedApplied = true
-			}
-		}
-	}
-
-	e.Users = make(map[string]User, len(db.Users))
-	for _, user := range db.Users {
-		e.Users[user.LoginName] = user
-
-		//check if seed needs to be re-applied
-		userSeed := e.findUserSeed(user.LoginName)
-		if userSeed != nil {
-			userCloned := user.Cloned()
-			userSeed.ApplyTo(&userCloned)
-			if !reflect.DeepEqual(user, userCloned) {
-				e.Users[user.LoginName] = userCloned
-				seedApplied = true
-			}
-		}
-	}
-
-	if seedApplied {
-		e.persistDatabase()
-	}
-	e.persistToNexus()
-}
-
-// FindUser implements the Engine interface.
-func (e *engine) FindGroup(name string) *Group {
-	e.Mutex.RLock()
-	defer e.Mutex.RUnlock()
-
-	g, exists := e.Groups[name]
-	if !exists {
-		return nil
-	}
-	g = g.Cloned()
-	return &g
-}
-
-// FindUser implements the Engine interface.
-func (e *engine) FindUser(loginName string) *UserWithPerms {
-	e.Mutex.RLock()
-	defer e.Mutex.RUnlock()
-
-	u, exists := e.Users[loginName]
-	if !exists {
-		return nil
-	}
-	return e.collectUserPerms(u)
-}
-
 // FindUserByEMail implements the Engine interface.
 func (e *engine) FindUserByEMail(emailAddress string) *UserWithPerms {
-	e.Mutex.RLock()
-	defer e.Mutex.RUnlock()
+	e.DBMutex.RLock()
+	defer e.DBMutex.RUnlock()
 
-	for _, u := range e.Users {
+	for _, u := range e.DB.Users {
 		if u.EMailAddress != "" && u.EMailAddress == emailAddress {
 			return e.collectUserPerms(u)
 		}
@@ -166,10 +88,10 @@ func (e *engine) FindUserByEMail(emailAddress string) *UserWithPerms {
 }
 
 func (e *engine) collectUserPerms(u User) *UserWithPerms {
-	//NOTE: This is always called from functions that have locked e.Mutex, so we
-	//don't need to do it ourselves.
+	//NOTE: This is always called from functions that have locked e.DBMutex,
+	//so we don't need to do it ourselves.
 	user := UserWithPerms{User: u.Cloned()}
-	for _, group := range e.Groups {
+	for _, group := range e.DB.Groups {
 		if group.ContainsUser(u) {
 			user.GroupMemberships = append(user.GroupMemberships, group.Cloned())
 			user.Perms = user.Perms.Union(group.Permissions)
@@ -180,11 +102,11 @@ func (e *engine) collectUserPerms(u User) *UserWithPerms {
 
 // ListGroups implements the Engine interface.
 func (e *engine) ListGroups() []Group {
-	e.Mutex.RLock()
-	defer e.Mutex.RUnlock()
+	e.DBMutex.RLock()
+	defer e.DBMutex.RUnlock()
 
-	result := make([]Group, 0, len(e.Groups))
-	for _, group := range e.Groups {
+	result := make([]Group, 0, len(e.DB.Groups))
+	for _, group := range e.DB.Groups {
 		result = append(result, group.Cloned())
 	}
 	return result
@@ -192,149 +114,74 @@ func (e *engine) ListGroups() []Group {
 
 // ListUsers implements the Engine interface.
 func (e *engine) ListUsers() []User {
-	e.Mutex.RLock()
-	defer e.Mutex.RUnlock()
+	e.DBMutex.RLock()
+	defer e.DBMutex.RUnlock()
 
-	result := make([]User, 0, len(e.Users))
-	for _, user := range e.Users {
+	result := make([]User, 0, len(e.DB.Users))
+	for _, user := range e.DB.Users {
 		result = append(result, user.Cloned())
 	}
 	return result
 }
 
-var (
-	errCannotDeleteSeededGroup         = errors.New("cannot delete group that is statically configured in seed")
-	errCannotOverwriteSeededGroupAttrs = errors.New("cannot overwrite group attributes that are statically configured in seed")
-	errCannotDeleteSeededUser          = errors.New("cannot delete user account that is statically configured in seed")
-	errCannotOverwriteSeededUserAttrs  = errors.New("cannot overwrite user attributes that are statically configured in seed")
-)
-
 // ChangeUser implements the Engine interface.
 func (e *engine) ChangeUser(loginName string, action func(User) (*User, error)) error {
-	e.Mutex.Lock()
-	defer e.Mutex.Unlock()
+	reducer := func(db *Database) error {
+		//update or delete existing user...
+		for idx, user := range db.Users {
+			if user.LoginName == loginName {
+				newUser, err := action(user)
+				if newUser == nil {
+					db.Users = slices.Delete(db.Users, idx, idx+1)
+				} else {
+					db.Users[idx] = *newUser
+				}
+				return err
+			}
+		}
 
-	oldState, exists := e.Users[loginName]
-	oldStatePtr := &oldState
-	if !exists {
-		oldStatePtr = nil
-	}
-	newState, err := action(oldState.Cloned())
-	if err != nil {
+		//...or create new user
+		newUser, err := action(User{})
+		if newUser != nil {
+			db.Users = append(db.Users, *newUser)
+		}
 		return err
 	}
 
-	//check that changed user still conforms with seed (if any)
-	userSeed := e.findUserSeed(loginName)
-	if userSeed != nil {
-		if newState == nil {
-			return errCannotDeleteSeededUser
-		}
-		newStateCloned := newState.Cloned()
-		userSeed.ApplyTo(&newStateCloned)
-		if !reflect.DeepEqual(newStateCloned, *newState) {
-			logg.Debug("seed check failed: newState before seed = %#v", *newState)
-			logg.Debug("seed check failed: newState after seed  = %#v", newStateCloned)
-			return errCannotOverwriteSeededUserAttrs
-		}
+	errs := e.Nexus.Update(reducer, &UpdateOptions{ConflictWithSeedIsError: true})
+	if errs.IsEmpty() {
+		return nil
 	}
-
-	//only change database if there are actual changes
-	if newState == nil {
-		if oldStatePtr == nil {
-			return nil
-		}
-		delete(e.Users, loginName)
-	} else {
-		if reflect.DeepEqual(oldState, *newState) {
-			return nil
-		}
-		e.Users[loginName] = *newState
-	}
-
-	e.persistDatabase()
-	e.persistToNexus()
-	return nil
+	return errors.New(errs.Join(", "))
 }
 
 // ChangeGroup implements the Engine interface.
 func (e *engine) ChangeGroup(name string, action func(Group) (*Group, error)) error {
-	e.Mutex.Lock()
-	defer e.Mutex.Unlock()
+	reducer := func(db *Database) error {
+		//update or delete existing group...
+		for idx, group := range db.Groups {
+			if group.Name == name {
+				newGroup, err := action(group)
+				if newGroup == nil {
+					db.Groups = slices.Delete(db.Groups, idx, idx+1)
+				} else {
+					db.Groups[idx] = *newGroup
+				}
+				return err
+			}
+		}
 
-	oldState, exists := e.Groups[name]
-	oldStatePtr := &oldState
-	if !exists {
-		oldStatePtr = nil
-	}
-	newState, err := action(oldState.Cloned())
-	if err != nil {
+		//...or create new group
+		newGroup, err := action(Group{})
+		if newGroup != nil {
+			db.Groups = append(db.Groups, *newGroup)
+		}
 		return err
 	}
 
-	//check that changed group still conforms with seed (if any)
-	groupSeed := e.findGroupSeed(name)
-	if groupSeed != nil {
-		if newState == nil {
-			return errCannotDeleteSeededGroup
-		}
-		newStateCloned := newState.Cloned()
-		newStateWithSeedApplied := newState.Cloned()
-		groupSeed.ApplyTo(&newStateWithSeedApplied)
-		if !reflect.DeepEqual(newStateCloned, newStateWithSeedApplied) {
-			// NOTE: This uses `newState.Cloned()` instead of `*newState` as the LHS
-			// to normalize MemberLoginNames.
-			logg.Debug("seed check failed: newState before seed = %#v", newStateCloned)
-			logg.Debug("seed check failed: newState after seed  = %#v", newStateWithSeedApplied)
-			return errCannotOverwriteSeededGroupAttrs
-		}
-	}
-
-	//only change database if there are actual changes
-	if newState == nil {
-		if oldStatePtr == nil {
-			return nil
-		}
-		delete(e.Groups, name)
-	} else {
-		if oldState.IsEqualTo(*newState) {
-			return nil
-		}
-		e.Groups[name] = *newState
-	}
-
-	e.persistDatabase()
-	e.persistToNexus()
-	return nil
-}
-
-func (e *engine) persistDatabase() {
-	//NOTE: This is always called from functions that have locked e.Mutex, so we
-	//don't need to do it ourselves.
-	var db Database
-	for _, user := range e.Users {
-		db.Users = append(db.Users, user.Cloned())
-	}
-	for _, group := range e.Groups {
-		db.Groups = append(db.Groups, group.Cloned())
-	}
-	e.FileStoreAPI.SaveRequests <- db
-}
-
-func (e *engine) persistToNexus() {
-	var db Database
-	for _, user := range e.Users {
-		db.Users = append(db.Users, user.Cloned())
-	}
-	for _, group := range e.Groups {
-		db.Groups = append(db.Groups, group.Cloned())
-	}
-	db.Normalize()
-	errs := e.Nexus.Update(func(target *Database) error {
-		*target = db
+	errs := e.Nexus.Update(reducer, &UpdateOptions{ConflictWithSeedIsError: true})
+	if errs.IsEmpty() {
 		return nil
-	}, nil)
-	for _, err := range errs {
-		logg.Error(err.Error())
 	}
+	return errors.New(errs.Join(", "))
 }

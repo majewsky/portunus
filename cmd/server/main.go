@@ -17,6 +17,7 @@ import (
 	"github.com/majewsky/portunus/internal/core"
 	"github.com/majewsky/portunus/internal/frontend"
 	"github.com/majewsky/portunus/internal/ldap"
+	"github.com/majewsky/portunus/internal/store"
 	_ "github.com/majewsky/xyrillian.css"
 	"github.com/sapcc/go-bits/logg"
 	"github.com/sapcc/go-bits/must"
@@ -32,14 +33,13 @@ func main() {
 
 	ctx := context.TODO()
 	nexus := core.NewNexus(seed)
+	engine := core.NewEngine(ctx, nexus)
 
 	storePath := filepath.Join(os.Getenv("PORTUNUS_SERVER_STATE_DIR"), "database.json")
-	fs := core.FileStore{
-		Path:        storePath,
-		Initializer: core.DatabaseInitializer(seed),
-	}
-	fsAPI := fs.RunAsync()
-	// TODO replace ^ with store.Attach(ctx, nexus, storePath)
+	storeAdapter := store.NewAdapter(nexus, storePath)
+	go func() {
+		must.Succeed(storeAdapter.Run(ctx))
+	}()
 
 	ldapConn := must.Return(ldap.Connect(ldap.ConnectionOptions{
 		DNSuffix:      osext.MustGetenv("PORTUNUS_LDAP_SUFFIX"),
@@ -50,8 +50,6 @@ func main() {
 	go func() {
 		must.Succeed(ldapAdapter.Run(ctx))
 	}()
-
-	engine := core.RunEngineAsync(fsAPI, nexus, seed)
 
 	handler := frontend.HTTPHandler(engine, os.Getenv("PORTUNUS_SERVER_HTTP_SECURE") == "true")
 	logg.Fatal(http.ListenAndServe(os.Getenv("PORTUNUS_SERVER_HTTP_LISTEN"), handler).Error())

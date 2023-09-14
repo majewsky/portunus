@@ -8,7 +8,6 @@ package core
 
 import (
 	"encoding/json"
-	"reflect"
 	"sort"
 	"strconv"
 
@@ -44,11 +43,6 @@ func (g Group) Cloned() Group {
 // ContainsUser checks whether this group contains the given user.
 func (g Group) ContainsUser(u User) bool {
 	return g.MemberLoginNames[u.LoginName]
-}
-
-// IsEqualTo is a type-safe wrapper around reflect.DeepEqual().
-func (g Group) IsEqualTo(other Group) bool {
-	return reflect.DeepEqual(g, other)
 }
 
 // GroupMemberNames is the type of Group.MemberLoginNames.
