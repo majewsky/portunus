@@ -51,12 +51,17 @@ func (a *Adapter) Run(ctx context.Context) error {
 		}
 	}
 
+	//we need to be able to explicitly cancel the nexus listener to avoid it
+	//deadlocking on `operationsChan` not being listened to anymore
+	ctxListen, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	//when the nexus informs us about a DB change, we compute the set of LDAP
 	//operations immediately; but then we send them back to this goroutine for
 	//execution to ensure proper serialization and to allow the nexus to proceed
 	//with the update before the LDAP server has finished ingesting our
 	//operations
-	a.nexus.AddListener(ctx, func(db core.Database) {
+	a.nexus.AddListener(ctxListen, func(db core.Database) {
 		newObjects := renderDBToLDAP(db, a.conn.DNSuffix())
 
 		a.objectsMutex.Lock()

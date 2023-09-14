@@ -15,13 +15,6 @@ import (
 	"github.com/sapcc/go-bits/errext"
 )
 
-//TODO: some things to clean up
-//
-// - AddListener does not really mesh well with the context argument since the
-// listener is going to have other resources, like channels, inside its
-// callback with shorter lifetimes. We should return a cancel function that the
-// caller can defer to match their channel lifetimes.
-
 // UpdateAction is an action that modifies the contents of the Database.
 // This type appears in the Nexus.Update() interface method.
 type UpdateAction func(*Database) error

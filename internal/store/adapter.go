@@ -48,9 +48,14 @@ func (a *Adapter) Run(ctx context.Context) error {
 		return fmt.Errorf("while loading database from disk store: %s", errs.Join(", "))
 	}
 
+	//we need to be able to explicitly cancel the nexus listener to avoid it
+	//deadlocking on `writeChan` not being listened to anymore
+	ctxListen, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	//writes get sent to us from whatever goroutine the nexus update is running on
 	writeChan := make(chan core.Database, 1)
-	a.nexus.AddListener(ctx, func(db core.Database) {
+	a.nexus.AddListener(ctxListen, func(db core.Database) {
 		writeChan <- db
 	})
 
