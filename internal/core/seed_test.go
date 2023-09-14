@@ -70,14 +70,15 @@ func dbWithBasicSeedApplied() Database {
 	}
 }
 
-func reducerReturnEmpty(_ Database) (Database, error) {
-	return Database{}, nil
+func reducerReturnEmpty(db *Database) error {
+	*db = Database{}
+	return nil
 }
 
 // Reducer: Given the DB from dbWithBasicSeedApplied(), overwrite all seeded
 // attributes on "maxuser" and "maxgroup". (They are both at index 0 because
 // the normalization sorts by identifier.)
-func reducerOverwriteSeededAttrs1(db Database) (Database, error) {
+func reducerOverwriteSeededAttrs1(db *Database) error {
 	db.Groups[0].LongName += "-changed"
 	db.Groups[0].MemberLoginNames = GroupMemberNames{} //removing seeded members is not allowed
 	db.Groups[0].Permissions.Portunus.IsAdmin = true
@@ -93,23 +94,28 @@ func reducerOverwriteSeededAttrs1(db Database) (Database, error) {
 	db.Users[0].POSIX.HomeDirectory += "-changed"
 	db.Users[0].POSIX.LoginShell += "-changed"
 	db.Users[0].POSIX.GECOS += "-changed"
-	return db, nil
+	return nil
 }
 
 // Reducer: Like reducerOverwriteSeededAttrs1, but this one contains some edits
 // that conflicts with the edits in that reducer.
-func reducerOverwriteSeededAttrs2(db Database) (Database, error) {
+func reducerOverwriteSeededAttrs2(db *Database) error {
 	db.Users[0].POSIX = nil
-	return db, nil
+	return nil
 }
 
 // Reducer: Given the DB from dbWithBasicSeedApplied(), rename "maxuser" and
 // "maxgroup". (They are both at index 0 because the normalization sorts by
 // identifier.)
-func reducerOverwriteSeededIdentifiers(db Database) (Database, error) {
+func reducerOverwriteSeededIdentifiers(db *Database) error {
+	previousUserName := db.Users[0].LoginName
 	db.Groups[0].Name += "-renamed"
 	db.Users[0].LoginName += "-renamed"
-	return db, nil
+
+	//avoid complaints about an invalid group membership (that's not what we're testing here)
+	db.Groups[0].MemberLoginNames[previousUserName] = false
+
+	return nil
 }
 
 // Reducer: Given the DB from dbWithBasicSeedApplied(), overwrite seeded that
@@ -122,16 +128,16 @@ func reducerOverwriteSeededIdentifiers(db Database) (Database, error) {
 //
 // These changes are permissible even though the respective attributes are
 // seeded, since the change does not conflict with the seed.
-func reducerOverwriteMalleableAttributes(db Database) (Database, error) {
+func reducerOverwriteMalleableAttributes(db *Database) error {
 	db.Users[0].PasswordHash = shared.HashPasswordForLDAP("swordfish")
 	db.Groups[0].MemberLoginNames["minuser"] = true
-	return db, nil
+	return nil
 }
 
 // Reducer: Given the DB from dbWithBasicSeedApplied(), overwrite all unseeded
 // attributes on "minuser" and "mingroup". (They are both at index 1 because
 // the normalization sorts by identifier.)
-func reducerOverwriteUnseededAttributes(db Database) (Database, error) {
+func reducerOverwriteUnseededAttributes(db *Database) error {
 	db.Groups[1].MemberLoginNames = GroupMemberNames{"minuser": true} //removing seeded members is not allowed
 	db.Groups[1].Permissions.Portunus.IsAdmin = true
 	db.Groups[1].Permissions.LDAP.CanRead = true
@@ -146,7 +152,7 @@ func reducerOverwriteUnseededAttributes(db Database) (Database, error) {
 		LoginShell:    "/bin/sh",
 		GECOS:         "Minimal User",
 	}
-	return db, nil
+	return nil
 }
 
 func TestSeedEnforcementRelaxed(t *testing.T) {
@@ -191,7 +197,7 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	errs = nexus.Update(reducerOverwriteMalleableAttributes, nil)
 	expectNoErrors(t, errs)
 
-	expectedDB, err := reducerOverwriteMalleableAttributes(expectedDB)
+	err := reducerOverwriteMalleableAttributes(&expectedDB)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +209,7 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	errs = nexus.Update(reducerOverwriteUnseededAttributes, nil)
 	expectNoErrors(t, errs)
 
-	expectedDB, err = reducerOverwriteUnseededAttributes(expectedDB)
+	err = reducerOverwriteUnseededAttributes(&expectedDB)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +286,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	errs = nexus.Update(reducerOverwriteMalleableAttributes, &opts)
 	expectNoErrors(t, errs)
 
-	expectedDB, err := reducerOverwriteMalleableAttributes(expectedDB)
+	err := reducerOverwriteMalleableAttributes(&expectedDB)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +299,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	errs = nexus.Update(reducerOverwriteUnseededAttributes, &opts)
 	expectNoErrors(t, errs)
 
-	expectedDB, err = reducerOverwriteUnseededAttributes(expectedDB)
+	err = reducerOverwriteUnseededAttributes(&expectedDB)
 	if err != nil {
 		t.Fatal(err)
 	}

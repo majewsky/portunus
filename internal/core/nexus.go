@@ -17,17 +17,14 @@ import (
 
 //TODO: some things to clean up
 //
-// - What this calls "Reducer" is not a reducer. A reducer is the function
-// argument of a fold, with a signature of (State, Action) -> State. The
-// current Reducer type should be called "action" instead.
 // - AddListener does not really mesh well with the context argument since the
 // listener is going to have other resources, like channels, inside its
 // callback with shorter lifetimes. We should return a cancel function that the
 // caller can defer to match their channel lifetimes.
 
-// Reducer is an action that modifies the contents of a Database. This type
-// appears in the Nexus.Update() interface method.
-type Reducer func(Database) (Database, error)
+// UpdateAction is an action that modifies the contents of the Database.
+// This type appears in the Nexus.Update() interface method.
+type UpdateAction func(*Database) error
 
 // Nexus stores the contents of the Database. All other parts of the
 // application use a reference to the Nexus to read and update the Database.
@@ -43,10 +40,10 @@ type Nexus interface {
 	AddListener(ctx context.Context, callback func(Database))
 
 	// Update changes the contents of the database. This interface follows the
-	// State Reducer pattern: The reducer callback is invoked with the current
+	// State Reducer pattern: The action callback is invoked with the current
 	// Database, and is expected to return the updated Database. The updated
 	// Database is then validated and the database seed is enforced, if any.
-	Update(reducer Reducer, opts *UpdateOptions) errext.ErrorSet
+	Update(action UpdateAction, opts *UpdateOptions) errext.ErrorSet
 }
 
 // UpdateOptions controls optional behavior in Nexus.Update().
@@ -93,7 +90,7 @@ func (n *nexusImpl) AddListener(ctx context.Context, callback func(Database)) {
 }
 
 // Update implements the Nexus interface.
-func (n *nexusImpl) Update(reducer Reducer, optsPtr *UpdateOptions) (errs errext.ErrorSet) {
+func (n *nexusImpl) Update(action UpdateAction, optsPtr *UpdateOptions) (errs errext.ErrorSet) {
 	var opts UpdateOptions
 	if optsPtr != nil {
 		opts = *optsPtr
@@ -103,17 +100,18 @@ func (n *nexusImpl) Update(reducer Reducer, optsPtr *UpdateOptions) (errs errext
 	defer n.mutex.Unlock()
 
 	//compute new DB by applying the reducer to a clone of the old DB
-	newDB, err := reducer(n.db.Cloned())
+	newDB := n.db.Cloned()
+	err := action(&newDB)
 	if err == ErrDatabaseNeedsInitialization {
 		newDB = DatabaseInitializer(n.seed)() //TODO: simplify this interface
 	} else if err != nil {
 		errs.Add(err)
 		return
 	}
-	newDB.Normalize()
 
-	//TODO: perform validation of new state, use ErrorSet to return detailed validation errors
-	//enforce Seed
+	//normalize the DB and validate it against common rules and the seed
+	newDB.Normalize()
+	errs = newDB.Validate()
 	if n.seed != nil {
 		if opts.ConflictWithSeedIsError {
 			errs.Append(n.seed.CheckConflicts(newDB))
@@ -130,8 +128,6 @@ func (n *nexusImpl) Update(reducer Reducer, optsPtr *UpdateOptions) (errs errext
 	//new DB looks good -> store it and inform our listeners *if* it actually
 	//represents a change
 	if reflect.DeepEqual(n.db, newDB) {
-		//This check is important to prevent infinite loops like this:
-		//DB update -> disk write -> fsnotify -> disk read -> DB update
 		return nil
 	}
 	n.db = newDB

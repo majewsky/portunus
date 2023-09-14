@@ -330,8 +330,9 @@ func (e *engine) persistToNexus() {
 		db.Groups = append(db.Groups, group.Cloned())
 	}
 	db.Normalize()
-	errs := e.Nexus.Update(func(_ Database) (Database, error) {
-		return db, nil
+	errs := e.Nexus.Update(func(target *Database) error {
+		*target = db
+		return nil
 	}, nil)
 	for _, err := range errs {
 		logg.Error(err.Error())

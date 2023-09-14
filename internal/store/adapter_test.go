@@ -170,10 +170,11 @@ func TestWriteStore(t *testing.T) {
 	//after the adapter has set up its listener...
 	time.Sleep(25 * time.Millisecond)
 	//...we update the database
-	reducer := func(previousDB core.Database) (core.Database, error) {
-		return db2Contents.Cloned(), nil
+	action := func(db *core.Database) error {
+		*db = db2Contents.Cloned()
+		return nil
 	}
-	errs := nexus.Update(reducer, nil)
+	errs := nexus.Update(action, nil)
 	for _, err := range errs {
 		test.ExpectNoError(t, err)
 	}

@@ -120,31 +120,30 @@ type persistedDatabase struct {
 	SchemaVersion uint         `json:"schema_version"`
 }
 
-func (a *Adapter) updateNexusByLoadingFromDisk(_ core.Database) (core.Database, error) {
+func (a *Adapter) updateNexusByLoadingFromDisk(db *core.Database) error {
 	a.initPending = false
 	buf, err := a.readStoreFile()
 	if err != nil {
 		if os.IsNotExist(err) {
 			a.initPending = true
-			return core.Database{}, core.ErrDatabaseNeedsInitialization
+			return core.ErrDatabaseNeedsInitialization
 		}
-		return core.Database{}, err
+		return err
 	}
 
 	var pdb persistedDatabase
 	err = json.Unmarshal(buf, &pdb)
 	if err != nil {
-		return core.Database{}, fmt.Errorf("cannot parse DB: %w", err)
+		return fmt.Errorf("cannot parse DB: %w", err)
 	}
 
 	if pdb.SchemaVersion != 1 {
-		return core.Database{}, fmt.Errorf("found DB with schema version %d, but this Portunus only understands schema version 1", pdb.SchemaVersion)
+		return fmt.Errorf("found DB with schema version %d, but this Portunus only understands schema version 1", pdb.SchemaVersion)
 	}
 
-	return core.Database{
-		Users:  pdb.Users,
-		Groups: pdb.Groups,
-	}, nil
+	db.Users = pdb.Users
+	db.Groups = pdb.Groups
+	return nil
 }
 
 func (a *Adapter) writeDatabase(db core.Database) error {

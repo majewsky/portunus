@@ -18,7 +18,7 @@ import (
 	"github.com/sapcc/go-bits/errext"
 )
 
-func setupAdapterTest(t *testing.T) (conn *test.LDAPConnectionDouble, updateDBWithRunningAdapter func(core.Reducer) errext.ErrorSet) {
+func setupAdapterTest(t *testing.T) (conn *test.LDAPConnectionDouble, updateDBWithRunningAdapter func(core.UpdateAction) errext.ErrorSet) {
 	nexus := core.NewNexus(nil)
 	conn = test.NewLDAPConnectionDouble("dc=example,dc=org")
 	adapter := NewAdapter(nexus, conn)
@@ -27,7 +27,7 @@ func setupAdapterTest(t *testing.T) (conn *test.LDAPConnectionDouble, updateDBWi
 	//running in a separate goroutine. This function takes care to shutdown
 	//adapter.Run() before it returns, thus ensuring that all effects of the
 	//action on the LDAPConnectionDouble have been observed.
-	updateDBWithRunningAdapter = func(reducer core.Reducer) errext.ErrorSet {
+	updateDBWithRunningAdapter = func(action core.UpdateAction) errext.ErrorSet {
 		//This log is a breadcrumb for associating a failed adapter.Run() with the
 		//respective updateDBWithRunningAdapter() callsite. We cannot use the
 		//default callsite attribution through a goroutine boundary.
@@ -44,7 +44,7 @@ func setupAdapterTest(t *testing.T) (conn *test.LDAPConnectionDouble, updateDBWi
 			test.ExpectNoError(t, adapter.Run(ctx))
 		}()
 
-		errs := nexus.Update(reducer, nil)
+		errs := nexus.Update(action, nil)
 		time.Sleep(10 * time.Millisecond) //give the Adapter some time to complete outstanding actions
 		cancel()
 		wg.Wait()
@@ -109,7 +109,7 @@ func TestBasicOperations(t *testing.T) {
 	conn, updateDBWithRunningAdapter := setupAdapterTest(t)
 
 	//when we add a user and group...
-	action := func(db core.Database) (core.Database, error) {
+	action := func(db *core.Database) error {
 		db.Users = []core.User{{
 			LoginName:    "alice",
 			GivenName:    "Alice",
@@ -120,7 +120,7 @@ func TestBasicOperations(t *testing.T) {
 			Name:     "grafana-users",
 			LongName: "We monitor the monitoring.",
 		}}
-		return db, nil
+		return nil
 	}
 
 	//...one LDAP object should be created for both of them (also, since this is
@@ -156,9 +156,9 @@ func TestBasicOperations(t *testing.T) {
 	conn.CheckAllExecuted(t)
 
 	//there is no rename operation: when we change the RDN of an object...
-	action = func(db core.Database) (core.Database, error) {
+	action = func(db *core.Database) error {
 		db.Groups[0].Name = "grafana-admins"
-		return db, nil
+		return nil
 	}
 
 	//...the old object is deleted and a new object is created
@@ -177,9 +177,9 @@ func TestBasicOperations(t *testing.T) {
 	conn.CheckAllExecuted(t)
 
 	//we can test object updates by adding the user to the group...
-	action = func(db core.Database) (core.Database, error) {
+	action = func(db *core.Database) error {
 		db.Groups[0].MemberLoginNames = core.GroupMemberNames{db.Users[0].LoginName: true}
-		return db, nil
+		return nil
 	}
 
 	//...this should modify the member references on both the user and the group
@@ -201,9 +201,9 @@ func TestBasicOperations(t *testing.T) {
 	conn.CheckAllExecuted(t)
 
 	//by deleting the group...
-	action = func(db core.Database) (core.Database, error) {
+	action = func(db *core.Database) error {
 		db.Groups = nil
-		return db, nil
+		return nil
 	}
 
 	//...we can test both object deletion (on the group) and attribute deletion (on the user)
@@ -232,7 +232,7 @@ func TestAllFieldsFilled(t *testing.T) {
 	conn, updateDBWithRunningAdapter := setupAdapterTest(t)
 
 	//put one user and one group in the database
-	action := func(db core.Database) (core.Database, error) {
+	action := func(db *core.Database) error {
 		db.Users = []core.User{{
 			LoginName:     "alice",
 			GivenName:     "Alice",
@@ -259,7 +259,7 @@ func TestAllFieldsFilled(t *testing.T) {
 			},
 			PosixGID: &gid,
 		}}
-		return db, nil
+		return nil
 	}
 
 	//check their rendering (because "all fields" includes
@@ -319,7 +319,7 @@ func TestTypeChanges(t *testing.T) {
 	conn, updateDBWithRunningAdapter := setupAdapterTest(t)
 
 	//first we set up a regular user and group...
-	action := func(db core.Database) (core.Database, error) {
+	action := func(db *core.Database) error {
 		db.Users = []core.User{{
 			LoginName:    "alice",
 			GivenName:    "Alice",
@@ -331,7 +331,7 @@ func TestTypeChanges(t *testing.T) {
 			LongName:         "Administrators",
 			MemberLoginNames: core.GroupMemberNames{"alice": true},
 		}}
-		return db, nil
+		return nil
 	}
 
 	//...so these objects should only be created with the default sets of object
@@ -369,10 +369,10 @@ func TestTypeChanges(t *testing.T) {
 	conn.CheckAllExecuted(t)
 
 	//changing the regular group into a POSIX group...
-	action = func(db core.Database) (core.Database, error) {
+	action = func(db *core.Database) error {
 		gid := core.PosixID(100)
 		db.Groups[0].PosixGID = &gid
-		return db, nil
+		return nil
 	}
 
 	//...creates an alternate representation of this group in ou=posix-groups
@@ -389,13 +389,13 @@ func TestTypeChanges(t *testing.T) {
 	conn.CheckAllExecuted(t)
 
 	//changing the regular user into a POSIX user...
-	action = func(db core.Database) (core.Database, error) {
+	action = func(db *core.Database) error {
 		db.Users[0].POSIX = &core.UserPosixAttributes{
 			UID:           1000,
 			GID:           100,
 			HomeDirectory: "/home/alice",
 		}
-		return db, nil
+		return nil
 	}
 
 	//...adds the objectClass "posixAccount" and the respective attributes
@@ -432,9 +432,9 @@ func TestTypeChanges(t *testing.T) {
 	//we are going to change the group back first in order to cover every pairing
 	//of user type and group type -- changing the POSIX group back into a regular
 	//group...
-	action = func(db core.Database) (core.Database, error) {
+	action = func(db *core.Database) error {
 		db.Groups[0].PosixGID = nil
-		return db, nil
+		return nil
 	}
 
 	//...removes the alternate representation in ou=posix-groups, keeping only the default representation in ou=groups
@@ -445,9 +445,9 @@ func TestTypeChanges(t *testing.T) {
 	conn.CheckAllExecuted(t)
 
 	//changing the POSIX user back into a regular user...
-	action = func(db core.Database) (core.Database, error) {
+	action = func(db *core.Database) error {
 		db.Users[0].POSIX = nil
-		return db, nil
+		return nil
 	}
 
 	//...removes that objectClass and its attributes again
@@ -476,7 +476,7 @@ func TestLDAPViewerPermission(t *testing.T) {
 	conn, updateDBWithRunningAdapter := setupAdapterTest(t)
 
 	//first we set up a user and group without LDAP permissions...
-	action := func(db core.Database) (core.Database, error) {
+	action := func(db *core.Database) error {
 		db.Users = []core.User{{
 			LoginName:    "alice",
 			GivenName:    "Alice",
@@ -488,7 +488,7 @@ func TestLDAPViewerPermission(t *testing.T) {
 			LongName:         "Administrators",
 			MemberLoginNames: core.GroupMemberNames{"alice": true},
 		}}
-		return db, nil
+		return nil
 	}
 
 	//...so the "portunus-viewers" group will be empty
@@ -524,9 +524,9 @@ func TestLDAPViewerPermission(t *testing.T) {
 	conn.CheckAllExecuted(t)
 
 	//adding the LDAP permission on the group...
-	action = func(db core.Database) (core.Database, error) {
+	action = func(db *core.Database) error {
 		db.Groups[0].Permissions.LDAP.CanRead = true
-		return db, nil
+		return nil
 	}
 
 	//...should add the user in that group to the "portunus-viewers" group
