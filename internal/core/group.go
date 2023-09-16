@@ -24,7 +24,12 @@ type Group struct {
 	PosixGID         *PosixID         `json:"posix_gid,omitempty"`
 }
 
-// Cloned returns a deep copy of this user.
+// Key implements the Object interface.
+func (g Group) Key() string {
+	return g.Name
+}
+
+// Cloned implements the Object interface.
 func (g Group) Cloned() Group {
 	logins := g.MemberLoginNames
 	g.MemberLoginNames = make(GroupMemberNames)

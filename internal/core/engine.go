@@ -9,7 +9,6 @@ package core
 import (
 	"context"
 	"errors"
-	"slices"
 	"sync"
 )
 
@@ -52,11 +51,10 @@ func (e *engine) FindGroup(name string) *Group {
 	e.DBMutex.RLock()
 	defer e.DBMutex.RUnlock()
 
-	for _, g := range e.DB.Groups {
-		if g.Name == name {
-			g = g.Cloned()
-			return &g
-		}
+	group, exists := e.DB.Groups.Find(func(g Group) bool { return g.Name == name })
+	if exists {
+		g := group.Cloned()
+		return &g
 	}
 	return nil
 }
@@ -66,10 +64,9 @@ func (e *engine) FindUser(loginName string) *UserWithPerms {
 	e.DBMutex.RLock()
 	defer e.DBMutex.RUnlock()
 
-	for _, u := range e.DB.Users {
-		if u.LoginName == loginName {
-			return e.collectUserPerms(u)
-		}
+	user, exists := e.DB.Users.Find(func(u User) bool { return u.LoginName == loginName })
+	if exists {
+		return e.collectUserPerms(user)
 	}
 	return nil
 }
@@ -79,10 +76,11 @@ func (e *engine) FindUserByEMail(emailAddress string) *UserWithPerms {
 	e.DBMutex.RLock()
 	defer e.DBMutex.RUnlock()
 
-	for _, u := range e.DB.Users {
-		if u.EMailAddress != "" && u.EMailAddress == emailAddress {
-			return e.collectUserPerms(u)
-		}
+	user, exists := e.DB.Users.Find(func(u User) bool {
+		return u.EMailAddress != "" && u.EMailAddress == emailAddress
+	})
+	if exists {
+		return e.collectUserPerms(user)
 	}
 	return nil
 }
@@ -127,23 +125,15 @@ func (e *engine) ListUsers() []User {
 // ChangeUser implements the Engine interface.
 func (e *engine) ChangeUser(loginName string, action func(User) (*User, error)) error {
 	reducer := func(db *Database) error {
-		//update or delete existing user...
-		for idx, user := range db.Users {
-			if user.LoginName == loginName {
-				newUser, err := action(user)
-				if newUser == nil {
-					db.Users = slices.Delete(db.Users, idx, idx+1)
-				} else {
-					db.Users[idx] = *newUser
-				}
-				return err
-			}
+		oldUser, exists := db.Users.Find(func(u User) bool { return u.LoginName == loginName })
+		if !exists {
+			oldUser = User{}
 		}
-
-		//...or create new user
-		newUser, err := action(User{})
-		if newUser != nil {
-			db.Users = append(db.Users, *newUser)
+		newUser, err := action(oldUser)
+		if newUser == nil {
+			db.Users.Delete(loginName)
+		} else {
+			db.Users.InsertOrUpdate(*newUser)
 		}
 		return err
 	}
@@ -158,23 +148,15 @@ func (e *engine) ChangeUser(loginName string, action func(User) (*User, error)) 
 // ChangeGroup implements the Engine interface.
 func (e *engine) ChangeGroup(name string, action func(Group) (*Group, error)) error {
 	reducer := func(db *Database) error {
-		//update or delete existing group...
-		for idx, group := range db.Groups {
-			if group.Name == name {
-				newGroup, err := action(group)
-				if newGroup == nil {
-					db.Groups = slices.Delete(db.Groups, idx, idx+1)
-				} else {
-					db.Groups[idx] = *newGroup
-				}
-				return err
-			}
+		oldGroup, exists := db.Groups.Find(func(g Group) bool { return g.Name == name })
+		if !exists {
+			oldGroup = Group{}
 		}
-
-		//...or create new group
-		newGroup, err := action(Group{})
-		if newGroup != nil {
-			db.Groups = append(db.Groups, *newGroup)
+		newGroup, err := action(oldGroup)
+		if newGroup == nil {
+			db.Groups.Delete(name)
+		} else {
+			db.Groups.InsertOrUpdate(*newGroup)
 		}
 		return err
 	}

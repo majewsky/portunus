@@ -170,7 +170,7 @@ func (d DatabaseSeed) CheckConflicts(db Database) (errs errext.ErrorSet) {
 	//but never deletes any objects.
 
 	for _, rightGroup := range rightDB.Groups {
-		leftGroup, exists := leftDB.FindGroup(func(g Group) bool { return g.Name == rightGroup.Name })
+		leftGroup, exists := leftDB.Groups.Find(func(g Group) bool { return g.Name == rightGroup.Name })
 		if !exists {
 			errs.Addf("group %q is seeded and cannot be deleted", rightGroup.Name)
 			continue
@@ -200,7 +200,7 @@ func (d DatabaseSeed) CheckConflicts(db Database) (errs errext.ErrorSet) {
 	}
 
 	for _, rightUser := range rightDB.Users {
-		leftUser, exists := leftDB.FindUser(func(u User) bool { return u.LoginName == rightUser.LoginName })
+		leftUser, exists := leftDB.Users.Find(func(u User) bool { return u.LoginName == rightUser.LoginName })
 		if !exists {
 			errs.Addf("user %q is seeded and cannot be deleted", rightUser.LoginName)
 			continue

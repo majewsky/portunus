@@ -15,47 +15,16 @@ import (
 
 // Database contains the contents of Portunus' database.
 type Database struct {
-	Users  []User
-	Groups []Group
+	Users  ObjectList[User]
+	Groups ObjectList[Group]
 }
 
 // Cloned returns a deep copy of this database.
 func (d Database) Cloned() Database {
-	result := Database{
-		Users:  make([]User, len(d.Users)),
-		Groups: make([]Group, len(d.Groups)),
+	return Database{
+		Users:  d.Users.Cloned(),
+		Groups: d.Groups.Cloned(),
 	}
-	for idx, u := range d.Users {
-		result.Users[idx] = u.Cloned()
-	}
-	for idx, g := range d.Groups {
-		result.Groups[idx] = g.Cloned()
-	}
-	return result
-}
-
-// FindGroup returns a copy of the first group matching the given predicate. If
-// no matching group is found, false is returned in the second return value
-// (like for a two-valued map lookup).
-func (d Database) FindGroup(predicate func(Group) bool) (Group, bool) {
-	for _, g := range d.Groups {
-		if predicate(g) {
-			return g.Cloned(), true
-		}
-	}
-	return Group{}, false
-}
-
-// FindUser returns a copy of the first user matching the given predicate. If
-// no matching user is found, false is returned in the second return value
-// (like for a two-valued map lookup).
-func (d Database) FindUser(predicate func(User) bool) (User, bool) {
-	for _, u := range d.Users {
-		if predicate(u) {
-			return u.Cloned(), true
-		}
-	}
-	return User{}, false
 }
 
 // IsEmpty returns whether this Database is zero-initialized.

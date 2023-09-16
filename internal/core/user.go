@@ -34,7 +34,12 @@ type UserPosixAttributes struct {
 	GECOS         string  `json:"gecos"` //optional
 }
 
-// Cloned returns a deep copy of this user.
+// Key implements the Object interface.
+func (u User) Key() string {
+	return u.LoginName
+}
+
+// Cloned implements the Object interface.
 func (u User) Cloned() User {
 	if u.POSIX != nil {
 		val := *u.POSIX
