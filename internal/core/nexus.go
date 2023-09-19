@@ -37,6 +37,13 @@ type Nexus interface {
 	// Database, and is expected to return the updated Database. The updated
 	// Database is then validated and the database seed is enforced, if any.
 	Update(action UpdateAction, opts *UpdateOptions) errext.ErrorSet
+
+	// Assorted querying functions. The return values are always deep clones
+	// of their respective database entries.
+	ListGroups() []Group
+	ListUsers() []User
+	FindGroup(predicate func(Group) bool) (Group, bool)
+	FindUser(predicate func(User) bool) (UserWithPerms, bool)
 }
 
 // UpdateOptions controls optional behavior in Nexus.Update().
@@ -58,7 +65,7 @@ func NewNexus(d *DatabaseSeed) Nexus {
 
 type nexusImpl struct {
 	//The mutex guards access to all other fields in this struct.
-	mutex     sync.Mutex
+	mutex     sync.RWMutex
 	seed      *DatabaseSeed
 	db        Database
 	listeners []listener
@@ -67,6 +74,39 @@ type nexusImpl struct {
 type listener struct {
 	ctx      context.Context
 	callback func(Database)
+}
+
+// ListGroups implements the Nexus interface.
+func (n *nexusImpl) ListGroups() []Group {
+	n.mutex.RLock()
+	defer n.mutex.RUnlock()
+	return n.db.Groups.Cloned()
+}
+
+// ListUsers implements the Nexus interface.
+func (n *nexusImpl) ListUsers() []User {
+	n.mutex.RLock()
+	defer n.mutex.RUnlock()
+	return n.db.Users.Cloned()
+}
+
+// FindGroup implements the Nexus interface.
+func (n *nexusImpl) FindGroup(predicate func(Group) bool) (Group, bool) {
+	n.mutex.RLock()
+	defer n.mutex.RUnlock()
+	return n.db.Groups.Find(predicate)
+}
+
+// FindUser implements the Nexus interface.
+func (n *nexusImpl) FindUser(predicate func(User) bool) (UserWithPerms, bool) {
+	n.mutex.RLock()
+	defer n.mutex.RUnlock()
+
+	user, exists := n.db.Users.Find(predicate)
+	if exists {
+		return n.db.collectUserPermissions(user), true
+	}
+	return UserWithPerms{}, false
 }
 
 // AddListener implements the Nexus interface.

@@ -33,7 +33,6 @@ func main() {
 
 	ctx := context.TODO()
 	nexus := core.NewNexus(seed)
-	engine := core.NewEngine(ctx, nexus)
 
 	storePath := filepath.Join(os.Getenv("PORTUNUS_SERVER_STATE_DIR"), "database.json")
 	storeAdapter := store.NewAdapter(nexus, storePath)
@@ -51,7 +50,7 @@ func main() {
 		must.Succeed(ldapAdapter.Run(ctx))
 	}()
 
-	handler := frontend.HTTPHandler(engine, os.Getenv("PORTUNUS_SERVER_HTTP_SECURE") == "true")
+	handler := frontend.HTTPHandler(nexus, os.Getenv("PORTUNUS_SERVER_HTTP_SECURE") == "true")
 	logg.Fatal(http.ListenAndServe(os.Getenv("PORTUNUS_SERVER_HTTP_LISTEN"), handler).Error())
 }
 

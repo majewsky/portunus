@@ -7,7 +7,7 @@
 package frontend
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"sort"
 	"strings"
@@ -25,14 +25,14 @@ var userEMailAddressSnippet = h.NewSnippet(`
 	{{if .EMailAddress}}{{.EMailAddress}}{{else}}<em>Not specified</em>{{end}}
 `)
 
-func useSelfServiceForm(e core.Engine) HandlerStep {
+func useSelfServiceForm(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		user := i.CurrentUser
 
 		isAdmin := user.Perms.Portunus.IsAdmin
 		visibleGroups := user.GroupMemberships
 		if isAdmin {
-			visibleGroups = e.ListGroups()
+			visibleGroups = n.ListGroups()
 		}
 		sort.Slice(visibleGroups, func(i, j int) bool {
 			return visibleGroups[i].LongName < visibleGroups[j].LongName
@@ -126,24 +126,24 @@ func useSelfServiceForm(e core.Engine) HandlerStep {
 	}
 }
 
-func getSelfHandler(e core.Engine) http.Handler {
+func getSelfHandler(n core.Nexus) http.Handler {
 	return Do(
 		LoadSession,
-		VerifyLogin(e),
-		useSelfServiceForm(e),
+		VerifyLogin(n),
+		useSelfServiceForm(n),
 		ShowForm("My profile"),
 	)
 }
 
-func postSelfHandler(e core.Engine) http.Handler {
+func postSelfHandler(n core.Nexus) http.Handler {
 	return Do(
 		LoadSession,
-		VerifyLogin(e),
-		useSelfServiceForm(e),
+		VerifyLogin(n),
+		useSelfServiceForm(n),
 		ReadFormStateFromRequest,
 		validateSelfServiceForm,
 		ShowFormIfErrors("My profile"),
-		executeSelfServiceForm(e),
+		executeSelfServiceForm(n),
 		ShowForm("My profile"),
 	)
 }
@@ -169,25 +169,26 @@ func validateSelfServiceForm(i *Interaction) {
 	}
 }
 
-func executeSelfServiceForm(e core.Engine) HandlerStep {
+func executeSelfServiceForm(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		fs := i.FormState
-
-		err := e.ChangeUser(i.CurrentUser.LoginName, func(u core.User) (*core.User, error) {
-			if u.LoginName == "" {
-				return nil, fmt.Errorf("no such user")
+		errs := n.Update(func(db *core.Database) error {
+			user, exists := db.Users.Find(func(u core.User) bool { return u.LoginName == i.CurrentUser.LoginName })
+			if !exists {
+				return errors.New("no such user")
 			}
+
 			if fs.Fields["change_password"].IsUnfolded {
-				u.PasswordHash = shared.HashPasswordForLDAP(i.FormState.Fields["new_password"].Value)
+				user.PasswordHash = shared.HashPasswordForLDAP(fs.Fields["new_password"].Value)
 			}
-			u.SSHPublicKeys = core.SplitSSHPublicKeys(i.FormState.Fields["ssh_public_keys"].Value)
-			return &u, nil
-		})
+			user.SSHPublicKeys = core.SplitSSHPublicKeys(fs.Fields["ssh_public_keys"].Value)
+			return db.Users.Update(user)
+		}, interactiveUpdate)
 
-		if err == nil {
+		if errs.IsEmpty() {
 			i.Session.AddFlash(Flash{"success", "Profile updated."})
 		} else {
-			i.Session.AddFlash(Flash{"danger", err.Error()})
+			i.Session.AddFlash(Flash{"danger", errs.Join(", ")})
 		}
 	}
 }

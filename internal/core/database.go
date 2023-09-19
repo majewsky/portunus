@@ -32,6 +32,19 @@ func (d Database) IsEmpty() bool {
 	return len(d.Users) == 0 && len(d.Groups) == 0
 }
 
+// collectUserPermissions assembles a UserWithPerms for the given User.
+// This function assumes that `user` has already been cloned.
+func (d Database) collectUserPermissions(user User) UserWithPerms {
+	result := UserWithPerms{User: user}
+	for _, group := range d.Groups {
+		if group.ContainsUser(user) {
+			result.GroupMemberships = append(result.GroupMemberships, group.Cloned())
+			result.Perms = result.Perms.Union(group.Permissions)
+		}
+	}
+	return result
+}
+
 // Normalize applies idempotent transformations to this database to ensure
 // stable comparison and serialization.
 func (d *Database) Normalize() {

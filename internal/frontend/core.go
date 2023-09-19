@@ -22,33 +22,33 @@ import (
 )
 
 // HTTPHandler returns the main http.Handler.
-func HTTPHandler(engine core.Engine, isBehindTLSProxy bool) http.Handler {
+func HTTPHandler(nexus core.Nexus, isBehindTLSProxy bool) http.Handler {
 	r := mux.NewRouter()
-	r.Methods("GET").Path(`/`).Handler(getToplevelHandler(engine))
+	r.Methods("GET").Path(`/`).Handler(getToplevelHandler(nexus))
 	r.Methods("GET").Path(`/static/{path:.+}`).Handler(http.StripPrefix("/static/", http.FileServer(http.FS(static.FS))))
 
-	r.Methods("GET").Path(`/login`).Handler(getLoginHandler(engine))
-	r.Methods("POST").Path(`/login`).Handler(postLoginHandler(engine))
-	r.Methods("GET").Path(`/logout`).Handler(getLogoutHandler(engine))
+	r.Methods("GET").Path(`/login`).Handler(getLoginHandler(nexus))
+	r.Methods("POST").Path(`/login`).Handler(postLoginHandler(nexus))
+	r.Methods("GET").Path(`/logout`).Handler(getLogoutHandler(nexus))
 
-	r.Methods("GET").Path(`/self`).Handler(getSelfHandler(engine))
-	r.Methods("POST").Path(`/self`).Handler(postSelfHandler(engine))
+	r.Methods("GET").Path(`/self`).Handler(getSelfHandler(nexus))
+	r.Methods("POST").Path(`/self`).Handler(postSelfHandler(nexus))
 
-	r.Methods("GET").Path(`/users`).Handler(getUsersHandler(engine))
-	r.Methods("GET").Path(`/users/new`).Handler(getUsersNewHandler(engine))
-	r.Methods("POST").Path(`/users/new`).Handler(postUsersNewHandler(engine))
-	r.Methods("GET").Path(`/users/{uid}/edit`).Handler(getUserEditHandler(engine))
-	r.Methods("POST").Path(`/users/{uid}/edit`).Handler(postUserEditHandler(engine))
-	r.Methods("GET").Path(`/users/{uid}/delete`).Handler(getUserDeleteHandler(engine))
-	r.Methods("POST").Path(`/users/{uid}/delete`).Handler(postUserDeleteHandler(engine))
+	r.Methods("GET").Path(`/users`).Handler(getUsersHandler(nexus))
+	r.Methods("GET").Path(`/users/new`).Handler(getUsersNewHandler(nexus))
+	r.Methods("POST").Path(`/users/new`).Handler(postUsersNewHandler(nexus))
+	r.Methods("GET").Path(`/users/{uid}/edit`).Handler(getUserEditHandler(nexus))
+	r.Methods("POST").Path(`/users/{uid}/edit`).Handler(postUserEditHandler(nexus))
+	r.Methods("GET").Path(`/users/{uid}/delete`).Handler(getUserDeleteHandler(nexus))
+	r.Methods("POST").Path(`/users/{uid}/delete`).Handler(postUserDeleteHandler(nexus))
 
-	r.Methods("GET").Path(`/groups`).Handler(getGroupsHandler(engine))
-	r.Methods("GET").Path(`/groups/new`).Handler(getGroupsNewHandler(engine))
-	r.Methods("POST").Path(`/groups/new`).Handler(postGroupsNewHandler(engine))
-	r.Methods("GET").Path(`/groups/{name}/edit`).Handler(getGroupEditHandler(engine))
-	r.Methods("POST").Path(`/groups/{name}/edit`).Handler(postGroupEditHandler(engine))
-	r.Methods("GET").Path(`/groups/{name}/delete`).Handler(getGroupDeleteHandler(engine))
-	r.Methods("POST").Path(`/groups/{name}/delete`).Handler(postGroupDeleteHandler(engine))
+	r.Methods("GET").Path(`/groups`).Handler(getGroupsHandler(nexus))
+	r.Methods("GET").Path(`/groups/new`).Handler(getGroupsNewHandler(nexus))
+	r.Methods("POST").Path(`/groups/new`).Handler(postGroupsNewHandler(nexus))
+	r.Methods("GET").Path(`/groups/{name}/edit`).Handler(getGroupEditHandler(nexus))
+	r.Methods("POST").Path(`/groups/{name}/edit`).Handler(postGroupEditHandler(nexus))
+	r.Methods("GET").Path(`/groups/{name}/delete`).Handler(getGroupDeleteHandler(nexus))
+	r.Methods("POST").Path(`/groups/{name}/delete`).Handler(postGroupDeleteHandler(nexus))
 
 	//setup CSRF with maxAge = 30 minutes
 	csrfKey := securecookie.GenerateRandomKey(32)
@@ -73,12 +73,16 @@ func securityHeadersMiddleware(inner http.Handler) http.Handler {
 	})
 }
 
-func getToplevelHandler(e core.Engine) http.Handler {
+func getToplevelHandler(n core.Nexus) http.Handler {
 	return Do(
 		LoadSession,
-		VerifyLogin(e),
+		VerifyLogin(n),
 		RedirectTo("/self"),
 	)
+}
+
+var interactiveUpdate = &core.UpdateOptions{
+	ConflictWithSeedIsError: true,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,7 +236,7 @@ func SaveSession(i *Interaction) {
 
 // VerifyLogin is a handler step that checks the current session for a valid
 // login, and redirects to /login if it cannot find one.
-func VerifyLogin(e core.Engine) HandlerStep {
+func VerifyLogin(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		if i.Session == nil {
 			panic("VerifyLogin must come after LoadSession")
@@ -242,10 +246,11 @@ func VerifyLogin(e core.Engine) HandlerStep {
 			i.RedirectTo("/login")
 			return
 		}
-		i.CurrentUser = e.FindUser(uid)
-		if i.CurrentUser == nil {
+		user, ok := n.FindUser(func(u core.User) bool { return u.LoginName == uid })
+		if ok {
+			i.CurrentUser = &user
+		} else {
 			i.RedirectTo("/login")
-			return
 		}
 	}
 }

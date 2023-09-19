@@ -43,20 +43,21 @@ func useLoginForm(i *Interaction) {
 }
 
 // Handles GET /login.
-func getLoginHandler(e core.Engine) http.Handler {
+func getLoginHandler(n core.Nexus) http.Handler {
 	return Do(
 		LoadSession,
-		skipLoginIfAlreadyLoggedIn(e),
+		skipLoginIfAlreadyLoggedIn(n),
 		useLoginForm,
 		UseEmptyFormState,
 		ShowForm("Login"),
 	)
 }
 
-func skipLoginIfAlreadyLoggedIn(e core.Engine) HandlerStep {
+func skipLoginIfAlreadyLoggedIn(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		if uid, ok := i.Session.Values["uid"].(string); ok {
-			if e.FindUser(uid) != nil {
+			_, exists := n.FindUser(func(u core.User) bool { return u.LoginName == uid })
+			if exists {
 				i.RedirectTo("/self")
 			}
 		}
@@ -64,33 +65,34 @@ func skipLoginIfAlreadyLoggedIn(e core.Engine) HandlerStep {
 }
 
 // Handles POST /login.
-func postLoginHandler(e core.Engine) http.Handler {
+func postLoginHandler(n core.Nexus) http.Handler {
 	return Do(
 		LoadSession,
 		useLoginForm,
 		ReadFormStateFromRequest,
-		checkLogin(e),
+		checkLogin(n),
 		ShowFormIfErrors("Login"),
 		SaveSession,
 		RedirectTo("/self"),
 	)
 }
 
-func checkLogin(e core.Engine) HandlerStep {
+func checkLogin(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		fs := i.FormState
 		userIdent := fs.Fields["user_ident"].Value //either uid or email address
 		pwd := fs.Fields["password"].Value
 
-		var user *core.UserWithPerms
 		if fs.IsValid() {
+			var predicate func(core.User) bool
 			if strings.Contains(userIdent, "@") {
-				user = e.FindUserByEMail(userIdent)
+				predicate = func(u core.User) bool { return u.EMailAddress == userIdent }
 			} else {
-				user = e.FindUser(userIdent)
+				predicate = func(u core.User) bool { return u.LoginName == userIdent }
 			}
+			user, exists := n.FindUser(predicate)
 			passwordHash := ""
-			if user != nil {
+			if exists {
 				passwordHash = user.PasswordHash
 			}
 			if core.CheckPasswordHash(pwd, passwordHash) {
@@ -103,7 +105,7 @@ func checkLogin(e core.Engine) HandlerStep {
 }
 
 // Handles GET /logout.
-func getLogoutHandler(e core.Engine) http.Handler {
+func getLogoutHandler(n core.Nexus) http.Handler {
 	return Do(
 		LoadSession,
 		clearLogin,

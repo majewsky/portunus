@@ -6,7 +6,10 @@
 
 package core
 
-import "slices"
+import (
+	"errors"
+	"slices"
+)
 
 // Object is a trait for types that can be stored in type List.
 type Object[Self any] interface {
@@ -38,38 +41,36 @@ func (list ObjectList[T]) Cloned() ObjectList[T] {
 func (list ObjectList[T]) Find(predicate func(T) bool) (T, bool) {
 	for _, obj := range list {
 		if predicate(obj) {
-			return obj, true
+			return obj.Cloned(), true
 		}
 	}
 	var empty T
 	return empty, false
 }
 
-// InsertOrUpdate adds the object to the list. If an object with the same key
-// already exists in the list, it will be replaced.
-func (list *ObjectList[T]) InsertOrUpdate(newObject T) {
-	key := newObject.Key()
+var errNoSuchObject = errors.New("no such object")
 
-	//try updating an existing object
+// Update replaces an existing object with the same key in the list.
+// If no such object exists, an error is returned.
+func (list *ObjectList[T]) Update(newObject T) error {
+	key := newObject.Key()
 	for idx, oldObject := range *list {
 		if oldObject.Key() == key {
-			(*list)[idx] = newObject
-			return
+			(*list)[idx] = newObject.Cloned()
+			return nil
 		}
 	}
-
-	//if no existing object found, insert a new one
-	*list = append(*list, newObject)
+	return errNoSuchObject
 }
 
 // Delete removes the object with the given key from the list.
-// If no such object exists, false is returned.
-func (list *ObjectList[T]) Delete(key string) bool {
+// If no such object exists, an error is returned.
+func (list *ObjectList[T]) Delete(key string) error {
 	for idx, obj := range *list {
 		if obj.Key() == key {
 			*list = slices.Delete(*list, idx, idx+1)
-			return true
+			return nil
 		}
 	}
-	return false
+	return errNoSuchObject
 }
