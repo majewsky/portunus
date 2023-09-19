@@ -1,0 +1,163 @@
+{
+	"groups": [
+		{
+			"long_name": "Missing name"
+		},
+		{
+			"name": " spaces-in-name ",
+			"long_name": "Surrounding spaces in name"
+		},
+		{
+			"name": "malformed+name",
+			"long_name": "Name is not a POSIX account name"
+		},
+		{
+			"name": "duplicate-name",
+			"long_name": "Duplicate name (this one is fine)"
+		},
+		{
+			"name": "duplicate-name",
+			"long_name": "Duplicate name (this one errors)"
+		},
+		{
+			"name": "missing-long-name"
+		},
+		{
+			"name": "spaces-in-long-name",
+			"long_name": "\tSurrounding spaces in long_name"
+		},
+		{
+			"name": "unknown-member",
+			"long_name": "Unknown member",
+			"members": [ "duplicate-name", "incognito" ]
+		}
+	],
+	"users": [
+		{
+			"login_name": "",
+			"given_name": "Problem is",
+			"family_name": "missing login name"
+		},
+		{
+			"login_name": " spaces-in-name ",
+			"given_name": "Problem is",
+			"family_name": "surrounding spaces in login name"
+		},
+		{
+			"login_name": "malformed+name",
+			"given_name": "Problem is",
+			"family_name": "login name is not a POSIX account name"
+		},
+		{
+			"login_name": "duplicate-name",
+			"given_name": "Problem is",
+			"family_name": "duplicate login name (this one is fine)"
+		},
+		{
+			"login_name": "duplicate-name",
+			"given_name": "Problem is",
+			"family_name": "duplicate login name (this one errors)"
+		},
+		{
+			"login_name": "missing-given-name",
+			"family_name": "Problem is missing given name"
+		},
+		{
+			"login_name": "spaces-in-given-name",
+			"given_name": "\nProblem is",
+			"family_name": "surrounding spaces in given name"
+		},
+		{
+			"login_name": "missing-family-name",
+			"given_name": "Problem is missing family name"
+		},
+		{
+			"login_name": "spaces-in-family-name",
+			"given_name": "Problem is",
+			"family_name": "surrounding spaces in family name   "
+		},
+		{
+			"login_name": "only-ssh-key-empty",
+			"given_name": "Problem is",
+			"family_name": "an empty SSH public key",
+			"ssh_public_keys": [
+				""
+			]
+		},
+		{
+			"login_name": "some-ssh-key-empty",
+			"given_name": "Problem is",
+			"family_name": "an empty SSH public key among valid keys",
+			"ssh_public_keys": [
+				"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGNvYUluYODNXoQKDGG+pTEigpsvJP2SHfMz0a+Hl2xO maxuser@example.org",
+				""
+			]
+		},
+		{
+			"login_name": "ssh-key-invalid",
+			"given_name": "Problem is",
+			"family_name": "malformed SSH public key",
+			"ssh_public_keys": [
+				"I would like to get in kthxbye"
+			]
+		},
+		{
+			"login_name": "posix-no-uid",
+			"given_name": "Problem is",
+			"family_name": "POSIX account without UID",
+			"posix": {
+				"gid": 23,
+				"home": "/var/empty"
+			}
+		},
+		{
+			"login_name": "posix-no-gid",
+			"given_name": "Problem is",
+			"family_name": "POSIX account without GID",
+			"posix": {
+				"uid": 42,
+				"home": "/var/empty"
+			}
+		},
+		{
+			"login_name": "posix-no-home",
+			"given_name": "Problem is",
+			"family_name": "POSIX account without home directory",
+			"posix": {
+				"uid": 42,
+				"gid": 23
+			}
+		},
+		{
+			"login_name": "posix-spaces-in-home",
+			"given_name": "Problem is",
+			"family_name": "POSIX account with surrounding spaces in home directory",
+			"posix": {
+				"uid": 42,
+				"gid": 23,
+				"home": "/var/empty\n"
+			}
+		},
+		{
+			"login_name": "posix-home-is-not-absolute",
+			"given_name": "Problem is",
+			"family_name": "POSIX account with non-absolute path in home directory",
+			"posix": {
+				"uid": 42,
+				"gid": 23,
+				"home": "./home"
+			}
+		},
+		{
+			"login_name": "posix-shell-is-not-absolute",
+			"given_name": "Problem is",
+			"family_name": "POSIX account with non-absolute path in login shell",
+			"posix": {
+				"uid": 42,
+				"gid": 23,
+				"home": "/var/empty",
+				"shell": "./bin/bash"
+			}
+		}
+	]
+}

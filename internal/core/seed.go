@@ -7,16 +7,19 @@
 package core
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"reflect"
 	"strings"
 
 	"github.com/gorilla/securecookie"
 	"github.com/majewsky/portunus/internal/shared"
+	"github.com/sapcc/go-bits/errext"
 	"github.com/sapcc/go-bits/logg"
 )
 
@@ -32,87 +35,250 @@ type DatabaseSeed struct {
 // ReadDatabaseSeedFromEnvironment reads and validates the file at
 // PORTUNUS_SEED_PATH. If that environment variable was not provided, nil is
 // returned instead.
-func ReadDatabaseSeedFromEnvironment() (*DatabaseSeed, error) {
+func ReadDatabaseSeedFromEnvironment() (*DatabaseSeed, errext.ErrorSet) {
 	path := os.Getenv("PORTUNUS_SEED_PATH")
 	if path == "" {
 		return nil, nil
 	}
+	return ReadDatabaseSeed(path)
+}
+
+// ReadDatabaseSeed reads and validates the seed file at the given path.
+func ReadDatabaseSeed(path string) (result *DatabaseSeed, errs errext.ErrorSet) {
 	buf, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		errs.Add(err)
+		return nil, errs
 	}
+	dec := json.NewDecoder(bytes.NewReader(buf))
+	dec.DisallowUnknownFields()
 	var seed DatabaseSeed
-	err = json.Unmarshal(buf, &seed)
+	err = dec.Decode(&seed)
 	if err != nil {
-		return nil, err
+		errs.Addf("while parsing %s: %w", path, err)
+		return nil, errs
 	}
 	return &seed, seed.Validate()
 }
 
 // Validate returns an error if the seed contains any invalid or missing values.
-func (d DatabaseSeed) Validate() error {
-	isUserLoginName := make(map[string]bool)
-	for idx, u := range d.Users {
-		err := u.validate(isUserLoginName)
-		if err != nil {
-			return fmt.Errorf("seeded user #%d (%q) is invalid: %w", idx+1, u.LoginName, err)
+func (d DatabaseSeed) Validate() (errs errext.ErrorSet) {
+	//most validation can be performed by Database.Validate() by applying the
+	//seed to a fresh database
+	var db Database
+	d.ApplyTo(&db)
+	errs = db.Validate()
+
+	//the duplicate checks must be done differently for seeds because ApplyTo()
+	//will not create duplicate users or groups
+	groupNameCounts := make(map[string]int)
+	for _, groupSeed := range d.Groups {
+		groupNameCounts[string(groupSeed.Name)]++
+	}
+	for name, count := range groupNameCounts {
+		if count > 1 {
+			ref := Group{Name: name}.FieldRef("name")
+			errs.Add(ref.Wrap(errIsDuplicateInSeed))
 		}
 	}
 
-	isGroupName := make(map[string]bool)
-	for idx, g := range d.Groups {
-		err := g.validate(isUserLoginName, isGroupName)
-		if err != nil {
-			return fmt.Errorf("seeded group #%d (%q) is invalid: %w", idx+1, g.Name, err)
+	userLoginNameCounts := make(map[string]int)
+	for _, userSeed := range d.Users {
+		userLoginNameCounts[string(userSeed.LoginName)]++
+	}
+	for loginName, count := range userLoginNameCounts {
+		if count > 1 {
+			ref := User{LoginName: loginName}.FieldRef("login_name")
+			errs.Add(ref.Wrap(errIsDuplicateInSeed))
 		}
 	}
 
-	return nil
-}
-
-// DatabaseInitializer returns a function that initializes the Database from the
-// given seed on first use. If the seed is nil, the default initialization
-// behavior is used.
-func DatabaseInitializer(d *DatabaseSeed) func() Database {
-	//if no seed has been given, create the "admin" user with access to the
-	//Portunus UI and log the password once
-	if d == nil {
-		return func() Database {
-			password := hex.EncodeToString(securecookie.GenerateRandomKey(16))
-			logg.Info("first-time initialization: adding user %q with password %q",
-				"admin", password)
-
-			return Database{
-				Groups: []Group{{
-					Name:             "admins",
-					LongName:         "Portunus Administrators",
-					MemberLoginNames: GroupMemberNames{"admin": true},
-					Permissions:      Permissions{Portunus: PortunusPermissions{IsAdmin: true}},
-				}},
-				Users: []User{{
-					LoginName:    "admin",
-					GivenName:    "Initial",
-					FamilyName:   "Administrator",
-					PasswordHash: shared.HashPasswordForLDAP(password),
-				}},
+	//non-nil-ness of posix.uid and posix.gid on UserSeeds cannot be checked in
+	//Database.Validate() because those fields are not pointers on type User
+	for _, userSeed := range d.Users {
+		if userSeed.POSIX != nil {
+			if userSeed.POSIX.UID == nil {
+				ref := User{LoginName: string(userSeed.LoginName)}.FieldRef("posix_uid")
+				errs.Add(ref.Wrap(errIsMissing))
+			}
+			if userSeed.POSIX.GID == nil {
+				ref := User{LoginName: string(userSeed.LoginName)}.FieldRef("posix_gid")
+				errs.Add(ref.Wrap(errIsMissing))
 			}
 		}
 	}
 
-	//otherwise, initialize the DB from the seed
-	return func() (db Database) {
-		for _, userSeed := range d.Users {
-			user := User{LoginName: string(userSeed.LoginName)}
-			userSeed.ApplyTo(&user)
-			db.Users = append(db.Users, user)
+	return errs
+}
+
+// ApplyTo changes the given database to conform to the seed.
+func (d DatabaseSeed) ApplyTo(db *Database) {
+	//for each group seed...
+	for _, groupSeed := range d.Groups {
+		//...either the group exists already...
+		hasGroup := false
+		for idx, group := range db.Groups {
+			if group.Name == string(groupSeed.Name) {
+				groupSeed.ApplyTo(&db.Groups[idx])
+				hasGroup = true
+				break
+			}
 		}
-		for _, groupSeed := range d.Groups {
+
+		//...or it needs to be created
+		if !hasGroup {
 			group := Group{Name: string(groupSeed.Name)}
 			groupSeed.ApplyTo(&group)
 			db.Groups = append(db.Groups, group)
 		}
-		return
 	}
+
+	//same for the user seeds
+	for _, userSeed := range d.Users {
+		hasUser := false
+		for idx, user := range db.Users {
+			if user.LoginName == string(userSeed.LoginName) {
+				userSeed.ApplyTo(&db.Users[idx])
+				hasUser = true
+				break
+			}
+		}
+		if !hasUser {
+			user := User{LoginName: string(userSeed.LoginName)}
+			userSeed.ApplyTo(&user)
+			db.Users = append(db.Users, user)
+		}
+	}
+
+	db.Normalize()
+}
+
+var errSeededField = errors.New("must be equal to the seeded value")
+
+// CheckConflicts returns errors for all ways in which the Database deviates
+// from the seed's expectation.
+func (d DatabaseSeed) CheckConflicts(db Database) (errs errext.ErrorSet) {
+	//if there are conflicts, then applying the seed to a copy of the DB will
+	//result in a different DB -- we will call the original DB "left-hand side"
+	//and its clone with the seed applied "right-hand side"
+	leftDB := db
+	rightDB := db.Cloned()
+	d.ApplyTo(&rightDB) //includes Normalize
+
+	//NOTE: We do not need to check for users/groups that exist on the left but
+	//not on the right, because seeding only ever creates and updates objects,
+	//but never deletes any objects.
+
+	for _, rightGroup := range rightDB.Groups {
+		leftGroup, exists := leftDB.Groups.Find(func(g Group) bool { return g.Name == rightGroup.Name })
+		if !exists {
+			errs.Addf("group %q is seeded and cannot be deleted", rightGroup.Name)
+			continue
+		}
+
+		if leftGroup.LongName != rightGroup.LongName {
+			errs.Add(leftGroup.FieldRef("long_name").Wrap(errSeededField))
+		}
+		if leftGroup.Permissions.Portunus.IsAdmin != rightGroup.Permissions.Portunus.IsAdmin {
+			errs.Add(leftGroup.FieldRef("portunus_perms").Wrap(errSeededField))
+		}
+		if leftGroup.Permissions.LDAP.CanRead != rightGroup.Permissions.LDAP.CanRead {
+			errs.Add(leftGroup.FieldRef("ldap_perms").Wrap(errSeededField))
+		}
+		if !reflect.DeepEqual(leftGroup.PosixGID, rightGroup.PosixGID) {
+			errs.Add(leftGroup.FieldRef("posix_gid").Wrap(errSeededField))
+		}
+
+		//NOTE: Same logic as above. Seeds only ever add group memberships and
+		//never remove them, so we only need to check in one direction.
+		for loginName, isRightMember := range rightGroup.MemberLoginNames {
+			if isRightMember && !leftGroup.MemberLoginNames[loginName] {
+				err := fmt.Errorf("must contain user %q because of seeded group membership", loginName)
+				errs.Add(leftGroup.FieldRef("members").Wrap(err))
+			}
+		}
+	}
+
+	for _, rightUser := range rightDB.Users {
+		leftUser, exists := leftDB.Users.Find(func(u User) bool { return u.LoginName == rightUser.LoginName })
+		if !exists {
+			errs.Addf("user %q is seeded and cannot be deleted", rightUser.LoginName)
+			continue
+		}
+
+		if leftUser.GivenName != rightUser.GivenName {
+			errs.Add(leftUser.FieldRef("given_name").Wrap(errSeededField))
+		}
+		if leftUser.FamilyName != rightUser.FamilyName {
+			errs.Add(leftUser.FieldRef("family_name").Wrap(errSeededField))
+		}
+		if leftUser.EMailAddress != rightUser.EMailAddress {
+			errs.Add(leftUser.FieldRef("email").Wrap(errSeededField))
+		}
+		if !reflect.DeepEqual(leftUser.SSHPublicKeys, rightUser.SSHPublicKeys) {
+			errs.Add(leftUser.FieldRef("ssh_public_keys").Wrap(errSeededField))
+		}
+		if leftUser.PasswordHash != rightUser.PasswordHash {
+			errs.Add(leftUser.FieldRef("password").Wrap(errSeededField))
+		}
+		if (leftUser.POSIX == nil) != (rightUser.POSIX == nil) {
+			errs.Add(leftUser.FieldRef("posix").Wrap(errSeededField))
+		}
+
+		if leftUser.POSIX != nil && rightUser.POSIX != nil {
+			leftPosix := *leftUser.POSIX
+			rightPosix := *rightUser.POSIX
+			if leftPosix.UID != rightPosix.UID {
+				errs.Add(leftUser.FieldRef("posix_uid").Wrap(errSeededField))
+			}
+			if leftPosix.GID != rightPosix.GID {
+				errs.Add(leftUser.FieldRef("posix_gid").Wrap(errSeededField))
+			}
+			if leftPosix.HomeDirectory != rightPosix.HomeDirectory {
+				errs.Add(leftUser.FieldRef("posix_home").Wrap(errSeededField))
+			}
+			if leftPosix.LoginShell != rightPosix.LoginShell {
+				errs.Add(leftUser.FieldRef("posix_shell").Wrap(errSeededField))
+			}
+			if leftPosix.GECOS != rightPosix.GECOS {
+				errs.Add(leftUser.FieldRef("posix_gecos").Wrap(errSeededField))
+			}
+		}
+	}
+
+	return errs
+}
+
+// Initializes the Database from the given seed on first use.
+// If the seed is nil, the default initialization behavior is used.
+func initializeDatabase(d *DatabaseSeed) Database {
+	//if no seed has been given, create the "admin" user with access to the
+	//Portunus UI and log the password once
+	if d == nil {
+		password := hex.EncodeToString(securecookie.GenerateRandomKey(16))
+		logg.Info("first-time initialization: adding user %q with password %q",
+			"admin", password)
+
+		return Database{
+			Groups: []Group{{
+				Name:             "admins",
+				LongName:         "Portunus Administrators",
+				MemberLoginNames: GroupMemberNames{"admin": true},
+				Permissions:      Permissions{Portunus: PortunusPermissions{IsAdmin: true}},
+			}},
+			Users: []User{{
+				LoginName:    "admin",
+				GivenName:    "Initial",
+				FamilyName:   "Administrator",
+				PasswordHash: shared.HashPasswordForLDAP(password),
+			}},
+		}
+	}
+
+	//otherwise, initialize the DB from the seed
+	var db Database
+	d.ApplyTo(&db)
+	return db
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,38 +298,6 @@ type GroupSeed struct {
 		} `json:"ldap"`
 	} `json:"permissions"`
 	PosixGID *PosixID `json:"posix_gid"`
-}
-
-func (g GroupSeed) validate(isUserLoginName, isGroupName map[string]bool) error {
-	err := g.Name.validate("name",
-		MustNotBeEmpty,
-		MustNotHaveSurroundingSpaces,
-		MustBePosixAccountName,
-	)
-	if err != nil {
-		return err
-	}
-
-	if isGroupName[string(g.Name)] {
-		return errors.New("duplicate name")
-	}
-	isGroupName[string(g.Name)] = true
-
-	err = g.LongName.validate("long_name",
-		MustNotBeEmpty,
-		MustNotHaveSurroundingSpaces,
-	)
-	if err != nil {
-		return err
-	}
-
-	for _, loginName := range g.MemberLoginNames {
-		if !isUserLoginName[string(loginName)] {
-			return fmt.Errorf("group member %q is not defined in the seed", string(loginName))
-		}
-	}
-
-	return nil
 }
 
 // ApplyTo changes the attributes of this group to conform to the given seed.
@@ -214,82 +348,6 @@ type UserSeed struct {
 	} `json:"posix"`
 }
 
-func (u UserSeed) validate(isUserLoginName map[string]bool) error {
-	err := u.LoginName.validate("login_name",
-		MustNotBeEmpty,
-		MustNotHaveSurroundingSpaces,
-		MustBePosixAccountName,
-	)
-	if err != nil {
-		return err
-	}
-
-	if isUserLoginName[string(u.LoginName)] {
-		return errors.New("duplicate login name")
-	}
-	isUserLoginName[string(u.LoginName)] = true
-
-	err = u.GivenName.validate("given_name",
-		MustNotBeEmpty,
-		MustNotHaveSurroundingSpaces,
-	)
-	if err != nil {
-		return err
-	}
-
-	err = u.FamilyName.validate("family_name",
-		MustNotBeEmpty,
-		MustNotHaveSurroundingSpaces,
-	)
-	if err != nil {
-		return err
-	}
-
-	err = u.EMailAddress.validate("email",
-		MustNotHaveSurroundingSpaces,
-	)
-	if err != nil {
-		return err
-	}
-
-	for idx, sshPublicKey := range u.SSHPublicKeys {
-		err := sshPublicKey.validate(fmt.Sprintf("ssh_public_keys[%d]", idx),
-			MustNotBeEmpty,
-			MustBeSSHPublicKey,
-		)
-		if err != nil {
-			return err
-		}
-	}
-
-	if u.POSIX != nil {
-		if u.POSIX.UID == nil {
-			return fmt.Errorf("posix.uid is missing")
-		}
-		if u.POSIX.GID == nil {
-			return fmt.Errorf("posix.gid is missing")
-		}
-
-		err = u.POSIX.HomeDirectory.validate("posix.home",
-			MustNotBeEmpty,
-			MustNotHaveSurroundingSpaces,
-			MustBeAbsolutePath,
-		)
-		if err != nil {
-			return err
-		}
-
-		err = u.POSIX.LoginShell.validate("posix.shell",
-			MustBeAbsolutePath,
-		)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // ApplyTo changes the attributes of this group to conform to the given seed.
 func (u UserSeed) ApplyTo(target *User) {
 	//consistency check (the caller must ensure that the seed matches the object)
@@ -325,8 +383,15 @@ func (u UserSeed) ApplyTo(target *User) {
 			target.POSIX = &UserPosixAttributes{}
 		}
 		p := *u.POSIX
-		target.POSIX.UID = *p.UID
-		target.POSIX.GID = *p.GID
+		//NOTE: The nil checks on p.UID and p.GID will never fire for valid
+		//UserSeed objects, but we need to do them because this method is also
+		//called during Validate() on possibly invalid UserSeed objects.
+		if p.UID != nil {
+			target.POSIX.UID = *p.UID
+		}
+		if p.GID != nil {
+			target.POSIX.GID = *p.GID
+		}
 		target.POSIX.HomeDirectory = string(p.HomeDirectory)
 		if p.LoginShell != "" {
 			target.POSIX.LoginShell = string(p.LoginShell)
@@ -375,15 +440,5 @@ func (s *StringSeed) UnmarshalJSON(buf []byte) error {
 		return err
 	}
 	*s = StringSeed(strings.TrimSuffix(string(out), "\n"))
-	return nil
-}
-
-func (s StringSeed) validate(field string, rules ...func(string) error) error {
-	for _, rule := range rules {
-		err := rule(string(s))
-		if err != nil {
-			return fmt.Errorf("%s %w", field, err)
-		}
-	}
 	return nil
 }

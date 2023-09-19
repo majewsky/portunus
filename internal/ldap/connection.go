@@ -88,8 +88,10 @@ func (c *connectionImpl) DNSuffix() string {
 // Add implements the Connection interface.
 func (c *connectionImpl) Add(req goldap.AddRequest) error {
 	err := c.conn.Add(&req)
-	if err != nil {
-		return fmt.Errorf("add %s: %w", req.DN, err)
+	if err == nil {
+		logg.Info("LDAP object %s created", req.DN)
+	} else {
+		return fmt.Errorf("cannot create LDAP object %s: %w", req.DN, err)
 	}
 	return nil
 }
@@ -97,8 +99,10 @@ func (c *connectionImpl) Add(req goldap.AddRequest) error {
 // Modify implements the Connection interface.
 func (c *connectionImpl) Modify(req goldap.ModifyRequest) error {
 	err := c.conn.Modify(&req)
-	if err != nil {
-		return fmt.Errorf("modify %s: %w", req.DN, err)
+	if err == nil {
+		logg.Info("LDAP object %s updated", req.DN)
+	} else {
+		return fmt.Errorf("cannot update LDAP object %s: %w", req.DN, err)
 	}
 	return nil
 }
@@ -106,8 +110,10 @@ func (c *connectionImpl) Modify(req goldap.ModifyRequest) error {
 // Delete implements the Connection interface.
 func (c *connectionImpl) Delete(req goldap.DelRequest) error {
 	err := c.conn.Del(&req)
-	if err != nil {
-		return fmt.Errorf("delete %s: %w", req.DN, err)
+	if err == nil {
+		logg.Info("LDAP object %s deleted", req.DN)
+	} else {
+		return fmt.Errorf("cannot delete LDAP object %s: %w", req.DN, err)
 	}
 	return nil
 }

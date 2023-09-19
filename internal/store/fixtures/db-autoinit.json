@@ -1,0 +1,28 @@
+{
+  "users": [
+    {
+      "login_name": "admin",
+      "given_name": "Initial",
+      "family_name": "Administrator",
+      "password": "<variable>"
+    }
+  ],
+  "groups": [
+    {
+      "name": "admins",
+      "long_name": "Portunus Administrators",
+      "members": [
+        "admin"
+      ],
+      "permissions": {
+        "portunus": {
+          "is_admin": true
+        },
+        "ldap": {
+          "can_read": false
+        }
+      }
+    }
+  ],
+  "schema_version": 1
+}

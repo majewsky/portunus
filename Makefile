@@ -17,6 +17,19 @@ install: FORCE all
 	install -D -m 0755 "build/server"       "$(DESTDIR)$(PREFIX)/bin/portunus-server"
 	install -D -m 0644 README.md            "$(DESTDIR)$(PREFIX)/share/doc/portunus/README.md"
 
+check: build/cover.html
+
+build/cover.out: FORCE | build
+	@printf "\e[1;36m>> go test\e[0m\n"
+	@go test $(GO_BUILDFLAGS) -ldflags '-s -w $(GO_LDFLAGS)' -shuffle=on -p 1 -coverprofile=$@ -covermode=count 'github.com/majewsky/portunus/...'
+
+build/cover.html: build/cover.out
+	@printf "\e[1;36m>> go tool cover > build/cover.html\e[0m\n"
+	@go tool cover -html $< -o $@
+
+build:
+	@mkdir $@
+
 vendor: FORCE
 	go mod tidy
 	go mod verify

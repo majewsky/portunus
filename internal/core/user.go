@@ -8,6 +8,9 @@ package core
 
 import (
 	"fmt"
+
+	"github.com/sapcc/go-bits/errext"
+	"golang.org/x/crypto/ssh"
 )
 
 // User represents a single user account.
@@ -31,7 +34,12 @@ type UserPosixAttributes struct {
 	GECOS         string  `json:"gecos"` //optional
 }
 
-// Cloned returns a deep copy of this user.
+// Key implements the Object interface.
+func (u User) Key() string {
+	return u.LoginName
+}
+
+// Cloned implements the Object interface.
 func (u User) Cloned() User {
 	if u.POSIX != nil {
 		val := *u.POSIX
@@ -48,52 +56,65 @@ func (u User) FullName() string {
 	return u.GivenName + " " + u.FamilyName //TODO: allow flipped order (family name first)
 }
 
-// RenderToLDAP produces the LDAPObject representing this group.
-func (u User) RenderToLDAP(suffix string, allGroups map[string]Group) LDAPObject {
-	var memberOfGroupDNames []string
-	for _, group := range allGroups {
-		if group.ContainsUser(u) {
-			dn := fmt.Sprintf("cn=%s,ou=groups,%s", group.Name, suffix)
-			memberOfGroupDNames = append(memberOfGroupDNames, dn)
+// FieldRef returns a FieldRef that can be used to build validation errors.
+func (u User) FieldRef(field string) FieldRef {
+	return FieldRef{
+		ObjectType: "user",
+		ObjectName: u.LoginName,
+		FieldName:  field,
+	}
+}
+
+// Checks the individual attributes of this User. Relationships and uniqueness
+// are checked in Database.Validate().
+func (u User) validateLocal() (errs errext.ErrorSet) {
+	ref := u.FieldRef("login_name")
+	errs.Add(ref.WrapFirst(
+		MustNotBeEmpty(u.LoginName),
+		MustNotHaveSurroundingSpaces(u.LoginName),
+		MustBePosixAccountName(u.LoginName),
+	))
+
+	ref = u.FieldRef("given_name")
+	errs.Add(ref.WrapFirst(
+		MustNotBeEmpty(u.GivenName),
+		MustNotHaveSurroundingSpaces(u.GivenName),
+	))
+
+	ref = u.FieldRef("family_name")
+	errs.Add(ref.WrapFirst(
+		MustNotBeEmpty(u.FamilyName),
+		MustNotHaveSurroundingSpaces(u.FamilyName),
+	))
+
+	ref = u.FieldRef("email")
+	errs.Add(ref.Wrap(MustNotHaveSurroundingSpaces(u.EMailAddress)))
+
+	ref = u.FieldRef("ssh_public_keys")
+	for idx, key := range u.SSHPublicKeys {
+		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
+		if err != nil {
+			err = fmt.Errorf("must have a valid SSH public key on each line (parse error on line %d)", idx+1)
+			errs.Add(ref.Wrap(err))
 		}
-	}
-
-	obj := LDAPObject{
-		DN: fmt.Sprintf("uid=%s,ou=users,%s", u.LoginName, suffix),
-		Attributes: map[string][]string{
-			"uid":          {u.LoginName},
-			"cn":           {u.FullName()},
-			"sn":           {u.FamilyName},
-			"givenName":    {u.GivenName},
-			"userPassword": {u.PasswordHash},
-			"isMemberOf":   memberOfGroupDNames,
-			"objectClass":  {"portunusPerson", "inetOrgPerson", "organizationalPerson", "person", "top"},
-		},
-	}
-
-	if u.EMailAddress != "" {
-		obj.Attributes["mail"] = []string{u.EMailAddress}
-	}
-	if len(u.SSHPublicKeys) > 0 {
-		obj.Attributes["sshPublicKey"] = u.SSHPublicKeys
 	}
 
 	if u.POSIX != nil {
-		obj.Attributes["uidNumber"] = []string{u.POSIX.UID.String()}
-		obj.Attributes["gidNumber"] = []string{u.POSIX.GID.String()}
-		obj.Attributes["homeDirectory"] = []string{u.POSIX.HomeDirectory}
-		if u.POSIX.LoginShell != "" {
-			obj.Attributes["loginShell"] = []string{u.POSIX.LoginShell}
-		}
-		if u.POSIX.GECOS == "" {
-			obj.Attributes["gecos"] = []string{u.FullName()}
-		} else {
-			obj.Attributes["gecos"] = []string{u.POSIX.GECOS}
-		}
-		obj.Attributes["objectClass"] = append(obj.Attributes["objectClass"], "posixAccount")
+		ref = u.FieldRef("posix_home")
+		errs.Add(ref.WrapFirst(
+			MustNotBeEmpty(u.POSIX.HomeDirectory),
+			MustNotHaveSurroundingSpaces(u.POSIX.HomeDirectory),
+			MustBeAbsolutePath(u.POSIX.HomeDirectory),
+		))
+
+		ref = u.FieldRef("posix_shell")
+		errs.Add(ref.WrapFirst(
+			MustNotHaveSurroundingSpaces(u.POSIX.LoginShell),
+			MustBeAbsolutePath(u.POSIX.LoginShell),
+		))
 	}
 
-	return obj
+	return
 }
 
 ////////////////////////////////////////////////////////////////////////////////

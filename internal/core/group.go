@@ -8,10 +8,10 @@ package core
 
 import (
 	"encoding/json"
-	"fmt"
-	"reflect"
 	"sort"
 	"strconv"
+
+	"github.com/sapcc/go-bits/errext"
 )
 
 // Group represents a single group of users. Membership in a group implicitly
@@ -24,7 +24,12 @@ type Group struct {
 	PosixGID         *PosixID         `json:"posix_gid,omitempty"`
 }
 
-// Cloned returns a deep copy of this group.
+// Key implements the Object interface.
+func (g Group) Key() string {
+	return g.Name
+}
+
+// Cloned implements the Object interface.
 func (g Group) Cloned() Group {
 	logins := g.MemberLoginNames
 	g.MemberLoginNames = make(GroupMemberNames)
@@ -43,50 +48,6 @@ func (g Group) Cloned() Group {
 // ContainsUser checks whether this group contains the given user.
 func (g Group) ContainsUser(u User) bool {
 	return g.MemberLoginNames[u.LoginName]
-}
-
-// IsEqualTo is a type-safe wrapper around reflect.DeepEqual().
-func (g Group) IsEqualTo(other Group) bool {
-	return reflect.DeepEqual(g, other)
-}
-
-// RenderToLDAP produces the LDAPObject representing this group.
-func (g Group) RenderToLDAP(suffix string) []LDAPObject {
-	memberDNames := make([]string, 0, len(g.MemberLoginNames))
-	memberLoginNames := make([]string, 0, len(g.MemberLoginNames))
-	for name, isMember := range g.MemberLoginNames {
-		if isMember {
-			memberDNames = append(memberDNames, fmt.Sprintf("uid=%s,ou=users,%s", name, suffix))
-			memberLoginNames = append(memberLoginNames, name)
-		}
-	}
-	if len(memberDNames) == 0 {
-		//The OpenLDAP core.schema requires that `groupOfNames` contain at least
-		//one `member` attribute. If the group does not have any proper members,
-		//add the dummy user account "nobody" to it.
-		memberDNames = append(memberDNames, "cn=nobody,"+suffix)
-	}
-
-	objs := []LDAPObject{{
-		DN: fmt.Sprintf("cn=%s,ou=groups,%s", g.Name, suffix),
-		Attributes: map[string][]string{
-			"cn":          {g.Name},
-			"member":      memberDNames,
-			"objectClass": {"groupOfNames", "top"},
-		},
-	}}
-	if g.PosixGID != nil {
-		objs = append(objs, LDAPObject{
-			DN: fmt.Sprintf("cn=%s,ou=posix-groups,%s", g.Name, suffix),
-			Attributes: map[string][]string{
-				"cn":          {g.Name},
-				"gidNumber":   {g.PosixGID.String()},
-				"memberUid":   memberLoginNames,
-				"objectClass": {"posixGroup", "top"},
-			},
-		})
-	}
-	return objs
 }
 
 // GroupMemberNames is the type of Group.MemberLoginNames.
@@ -116,6 +77,34 @@ func (g *GroupMemberNames) UnmarshalJSON(data []byte) error {
 		(*g)[name] = true
 	}
 	return nil
+}
+
+// FieldRef returns a FieldRef that can be used to build validation errors.
+func (g Group) FieldRef(field string) FieldRef {
+	return FieldRef{
+		ObjectType: "group",
+		ObjectName: g.Name,
+		FieldName:  field,
+	}
+}
+
+// Checks the individual attributes of this Group. Relationships and uniqueness
+// are checked in Database.Validate().
+func (g Group) validateLocal() (errs errext.ErrorSet) {
+	ref := g.FieldRef("name")
+	errs.Add(ref.WrapFirst(
+		MustNotBeEmpty(g.Name),
+		MustNotHaveSurroundingSpaces(g.Name),
+		MustBePosixAccountName(g.Name),
+	))
+
+	ref = g.FieldRef("long_name")
+	errs.Add(ref.WrapFirst(
+		MustNotBeEmpty(g.LongName),
+		MustNotHaveSurroundingSpaces(g.LongName),
+	))
+
+	return
 }
 
 ////////////////////////////////////////////////////////////////////////////////

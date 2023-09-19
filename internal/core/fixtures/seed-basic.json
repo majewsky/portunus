@@ -1,0 +1,53 @@
+{
+	"groups": [
+		{
+			"name": "mingroup",
+			"long_name": "Minimal Group"
+		},
+		{
+			"name": "maxgroup",
+			"long_name": "Maximal Group",
+			"members": [
+				"maxuser"
+			],
+			"permissions": {
+				"portunus": {
+					"is_admin": false
+				},
+				"ldap": {
+					"can_read": true
+				}
+			},
+			"posix_gid": 23
+		}
+	],
+	"users": [
+		{
+			"login_name": "minuser",
+			"given_name": "Minimal",
+			"family_name": "User"
+		},
+		{
+			"login_name": "maxuser",
+			"given_name": "Maximal",
+			"family_name": "User",
+			"email": "maxuser@example.org",
+			"ssh_public_keys": [
+				"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGNvYUluYODNXoQKDGG+pTEigpsvJP2SHfMz0a+Hl2xO maxuser@example.org"
+			],
+			"password": {
+				"from_command": [
+					"/bin/echo",
+					"swordfish"
+				]
+			},
+			"posix": {
+				"uid": 42,
+				"gid": 23,
+				"home": "/home/maxuser",
+				"shell": "/bin/bash",
+				"gecos": "Maximal User"
+			}
+		}
+	]
+}

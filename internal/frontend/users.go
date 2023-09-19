@@ -26,12 +26,12 @@ var adminPerms = core.Permissions{
 	},
 }
 
-func getUsersHandler(e core.Engine) http.Handler {
+func getUsersHandler(n core.Nexus) http.Handler {
 	return Do(
 		LoadSession,
-		VerifyLogin(e),
+		VerifyLogin(n),
 		VerifyPermissions(adminPerms),
-		ShowView(usersList(e)),
+		ShowView(usersList(n)),
 	)
 }
 
@@ -74,11 +74,11 @@ var usersListSnippet = h.NewSnippet(`
 	</table>
 `)
 
-func usersList(e core.Engine) func(*Interaction) Page {
+func usersList(n core.Nexus) func(*Interaction) Page {
 	return func(_ *Interaction) Page {
-		groups := e.ListGroups()
+		groups := n.ListGroups()
 		sort.Slice(groups, func(i, j int) bool { return groups[i].Name < groups[j].Name })
-		users := e.ListUsers()
+		users := n.ListUsers()
 		sort.Slice(users, func(i, j int) bool { return users[i].LoginName < users[j].LoginName })
 
 		type userItem struct {
@@ -111,7 +111,7 @@ func usersList(e core.Engine) func(*Interaction) Page {
 
 var codeTagSnippet = h.NewSnippet(`<code>{{.}}</code>`)
 
-func useUserForm(e core.Engine) HandlerStep {
+func useUserForm(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		i.FormSpec = &h.FormSpec{}
 		i.FormState = &h.FormState{
@@ -127,7 +127,7 @@ func useUserForm(e core.Engine) HandlerStep {
 		}
 
 		i.FormSpec.Fields = append(i.FormSpec.Fields,
-			buildUserMasterdataFieldset(e, i.TargetUser, i.FormState),
+			buildUserMasterdataFieldset(n, i.TargetUser, i.FormState),
 			buildUserPosixFieldset(i.TargetUser, i.FormState),
 			buildUserPasswordFieldset(i.TargetUser),
 		)
@@ -135,11 +135,12 @@ func useUserForm(e core.Engine) HandlerStep {
 	}
 }
 
-func buildUserMasterdataFieldset(e core.Engine, u *core.User, state *h.FormState) h.FormField {
+func buildUserMasterdataFieldset(n core.Nexus, u *core.User, state *h.FormState) h.FormField {
 	var fields []h.FormField
 	if u == nil {
 		mustNotBeInUse := func(loginName string) error {
-			if e.FindUser(loginName) != nil {
+			_, exists := n.FindUser(func(u core.User) bool { return u.LoginName == loginName })
+			if exists {
 				return errors.New("is already in use")
 			}
 			return nil
@@ -207,7 +208,7 @@ func buildUserMasterdataFieldset(e core.Engine, u *core.User, state *h.FormState
 		}
 	}
 
-	allGroups := e.ListGroups()
+	allGroups := n.ListGroups()
 	sort.Slice(allGroups, func(i, j int) bool {
 		return allGroups[i].LongName < allGroups[j].LongName
 	})
@@ -348,42 +349,66 @@ func buildUserPosixFieldset(u *core.User, state *h.FormState) h.FormField {
 	}
 }
 
-func getUserEditHandler(e core.Engine) http.Handler {
+func getUserEditHandler(n core.Nexus) http.Handler {
 	return Do(
 		LoadSession,
-		VerifyLogin(e),
+		VerifyLogin(n),
 		VerifyPermissions(adminPerms),
-		loadTargetUser(e),
-		useUserForm(e),
+		loadTargetUser(n),
+		useUserForm(n),
 		ShowForm("Edit user"),
 	)
 }
 
-func postUserEditHandler(e core.Engine) http.Handler {
+func postUserEditHandler(n core.Nexus) http.Handler {
 	return Do(
 		LoadSession,
-		VerifyLogin(e),
+		VerifyLogin(n),
 		VerifyPermissions(adminPerms),
-		loadTargetUser(e),
-		useUserForm(e),
+		loadTargetUser(n),
+		useUserForm(n),
 		ReadFormStateFromRequest,
 		validateEditUserForm,
 		ShowFormIfErrors("Edit user"),
-		executeEditUserForm(e),
+		executeEditUserForm(n),
 	)
 }
 
-func loadTargetUser(e core.Engine) HandlerStep {
+func loadTargetUser(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		userLoginName := mux.Vars(i.Req)["uid"]
-		user := e.FindUser(userLoginName)
-		if user == nil {
+		user, exists := n.FindUser(func(u core.User) bool { return u.LoginName == userLoginName })
+		if exists {
+			i.TargetUser = &user.User
+		} else {
 			msg := fmt.Sprintf("User %q does not exist.", userLoginName)
 			i.RedirectWithFlashTo("/users", Flash{"danger", msg})
-		} else {
-			i.TargetUser = &user.User
 		}
 	}
+}
+
+func buildUserFromFormState(fs *h.FormState, loginName, passwordHash string) core.User {
+	result := core.User{
+		LoginName:     loginName,
+		GivenName:     fs.Fields["given_name"].Value,
+		FamilyName:    fs.Fields["family_name"].Value,
+		EMailAddress:  fs.Fields["email"].Value,
+		SSHPublicKeys: core.SplitSSHPublicKeys(fs.Fields["ssh_public_keys"].Value),
+		PasswordHash:  passwordHash,
+		POSIX:         nil,
+	}
+	if fs.Fields["posix"].IsUnfolded {
+		uidAsUint64, _ := strconv.ParseUint(fs.Fields["posix_uid"].Value, 10, 16)
+		gidAsUint64, _ := strconv.ParseUint(fs.Fields["posix_gid"].Value, 10, 16)
+		result.POSIX = &core.UserPosixAttributes{
+			UID:           core.PosixID(uidAsUint64),
+			GID:           core.PosixID(gidAsUint64),
+			HomeDirectory: fs.Fields["posix_home"].Value,
+			LoginShell:    fs.Fields["posix_shell"].Value,
+			GECOS:         fs.Fields["posix_gecos"].Value,
+		}
+	}
+	return result
 }
 
 func validateEditUserForm(i *Interaction) {
@@ -397,58 +422,35 @@ func validateEditUserForm(i *Interaction) {
 	}
 }
 
-func executeEditUserForm(e core.Engine) HandlerStep {
+func executeEditUserForm(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
-		passwordHash := ""
+		passwordHash := i.TargetUser.PasswordHash
 		if i.FormState.Fields["reset_password"].IsUnfolded {
 			if pw := i.FormState.Fields["password"].Value; pw != "" {
 				passwordHash = shared.HashPasswordForLDAP(pw)
 			}
 		}
-		err := e.ChangeUser(i.TargetUser.LoginName, func(u core.User) (*core.User, error) {
-			if u.LoginName == "" {
-				return nil, fmt.Errorf("no such user")
-			}
-			u.GivenName = i.FormState.Fields["given_name"].Value
-			u.FamilyName = i.FormState.Fields["family_name"].Value
-			u.EMailAddress = i.FormState.Fields["email"].Value
-			u.SSHPublicKeys = core.SplitSSHPublicKeys(i.FormState.Fields["ssh_public_keys"].Value)
-			if passwordHash != "" {
-				u.PasswordHash = passwordHash
-			}
-			if i.FormState.Fields["posix"].IsUnfolded {
-				uidAsUint64, _ := strconv.ParseUint(i.FormState.Fields["posix_uid"].Value, 10, 16)
-				gidAsUint64, _ := strconv.ParseUint(i.FormState.Fields["posix_gid"].Value, 10, 16)
-				u.POSIX = &core.UserPosixAttributes{
-					UID:           core.PosixID(uidAsUint64),
-					GID:           core.PosixID(gidAsUint64),
-					HomeDirectory: i.FormState.Fields["posix_home"].Value,
-					LoginShell:    i.FormState.Fields["posix_shell"].Value,
-					GECOS:         i.FormState.Fields["posix_gecos"].Value,
-				}
-			} else {
-				u.POSIX = nil
-			}
-			return &u, nil
-		})
-		if err != nil {
-			i.RedirectWithFlashTo("/users", Flash{"danger", err.Error()})
-			return
-		}
 
-		isMemberOf := i.FormState.Fields["memberships"].Selected
-		for _, group := range e.ListGroups() {
-			err := e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
-				if g.Name == "" {
-					return nil, nil //if the group was deleted in parallel, no need to complain
-				}
-				g.MemberLoginNames[i.TargetUser.LoginName] = isMemberOf[group.Name]
-				return &g, nil
-			})
+		errs := n.Update(func(db *core.Database) error {
+			newUser := buildUserFromFormState(i.FormState, i.TargetUser.LoginName, passwordHash)
+			err := db.Users.Update(newUser)
 			if err != nil {
-				i.RedirectWithFlashTo("/users", Flash{"danger", err.Error()})
-				return
+				return err
 			}
+
+			isMemberOf := i.FormState.Fields["memberships"].Selected
+			for idx := range db.Groups {
+				group := &db.Groups[idx]
+				if group.MemberLoginNames == nil {
+					group.MemberLoginNames = make(map[string]bool)
+				}
+				group.MemberLoginNames[i.TargetUser.LoginName] = isMemberOf[group.Name]
+			}
+			return nil
+		}, interactiveUpdate)
+		if !errs.IsEmpty() {
+			i.RedirectWithFlashTo("/users", Flash{"danger", errs.Join(", ")})
+			return
 		}
 
 		msg := fmt.Sprintf("Updated user %q.", i.TargetUser.LoginName)
@@ -456,26 +458,26 @@ func executeEditUserForm(e core.Engine) HandlerStep {
 	}
 }
 
-func getUsersNewHandler(e core.Engine) http.Handler {
+func getUsersNewHandler(n core.Nexus) http.Handler {
 	return Do(
 		LoadSession,
-		VerifyLogin(e),
+		VerifyLogin(n),
 		VerifyPermissions(adminPerms),
-		useUserForm(e),
+		useUserForm(n),
 		ShowForm("Create user"),
 	)
 }
 
-func postUsersNewHandler(e core.Engine) http.Handler {
+func postUsersNewHandler(n core.Nexus) http.Handler {
 	return Do(
 		LoadSession,
-		VerifyLogin(e),
+		VerifyLogin(n),
 		VerifyPermissions(adminPerms),
-		useUserForm(e),
+		useUserForm(n),
 		ReadFormStateFromRequest,
 		validateCreateUserForm,
 		ShowFormIfErrors("Create user"),
-		executeCreateUserForm(e),
+		executeCreateUserForm(n),
 	)
 }
 
@@ -488,55 +490,28 @@ func validateCreateUserForm(i *Interaction) {
 	}
 }
 
-func executeCreateUserForm(e core.Engine) HandlerStep {
+func executeCreateUserForm(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		loginName := i.FormState.Fields["uid"].Value
 		passwordHash := shared.HashPasswordForLDAP(i.FormState.Fields["password"].Value)
 
-		var posixAttrs *core.UserPosixAttributes
-		if i.FormState.Fields["posix"].IsUnfolded {
-			uidAsUint64, _ := strconv.ParseUint(i.FormState.Fields["posix_uid"].Value, 10, 16)
-			gidAsUint64, _ := strconv.ParseUint(i.FormState.Fields["posix_gid"].Value, 10, 16)
-			posixAttrs = &core.UserPosixAttributes{
-				UID:           core.PosixID(uidAsUint64),
-				GID:           core.PosixID(gidAsUint64),
-				HomeDirectory: i.FormState.Fields["posix_home"].Value,
-				LoginShell:    i.FormState.Fields["posix_shell"].Value,
-				GECOS:         i.FormState.Fields["posix_gecos"].Value,
-			}
-		}
+		errs := n.Update(func(db *core.Database) error {
+			newUser := buildUserFromFormState(i.FormState, loginName, passwordHash)
+			db.Users = append(db.Users, newUser)
 
-		err := e.ChangeUser(loginName, func(u core.User) (*core.User, error) {
-			return &core.User{
-				LoginName:    loginName,
-				GivenName:    i.FormState.Fields["given_name"].Value,
-				FamilyName:   i.FormState.Fields["family_name"].Value,
-				EMailAddress: i.FormState.Fields["email"].Value,
-				PasswordHash: passwordHash,
-				POSIX:        posixAttrs,
-			}, nil
-		})
-		if err != nil {
-			i.RedirectWithFlashTo("/users", Flash{"danger", err.Error()})
-			return
-		}
-
-		isMemberOf := i.FormState.Fields["memberships"].Selected
-		for _, group := range e.ListGroups() {
-			if !isMemberOf[group.Name] {
-				continue
-			}
-			err := e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
-				if g.Name == "" {
-					return nil, nil //if the group was deleted in parallel, no need to complain
+			isMemberOf := i.FormState.Fields["memberships"].Selected
+			for idx := range db.Groups {
+				group := &db.Groups[idx]
+				if group.MemberLoginNames == nil {
+					group.MemberLoginNames = make(map[string]bool)
 				}
-				g.MemberLoginNames[loginName] = true
-				return &g, nil
-			})
-			if err != nil {
-				i.RedirectWithFlashTo("/users", Flash{"danger", err.Error()})
-				return
+				group.MemberLoginNames[loginName] = isMemberOf[group.Name]
 			}
+			return nil
+		}, interactiveUpdate)
+		if !errs.IsEmpty() {
+			i.RedirectWithFlashTo("/users", Flash{"danger", errs.Join(", ")})
+			return
 		}
 
 		msg := fmt.Sprintf("Created user %q.", loginName)
@@ -544,12 +519,12 @@ func executeCreateUserForm(e core.Engine) HandlerStep {
 	}
 }
 
-func getUserDeleteHandler(e core.Engine) http.Handler {
+func getUserDeleteHandler(n core.Nexus) http.Handler {
 	return Do(
 		LoadSession,
-		VerifyLogin(e),
+		VerifyLogin(n),
 		VerifyPermissions(adminPerms),
-		loadTargetUser(e),
+		loadTargetUser(n),
 		useDeleteUserForm,
 		UseEmptyFormState,
 		ShowForm("Confirm user deletion"),
@@ -577,39 +552,35 @@ func useDeleteUserForm(i *Interaction) {
 	}
 }
 
-func postUserDeleteHandler(e core.Engine) http.Handler {
+func postUserDeleteHandler(n core.Nexus) http.Handler {
 	return Do(
 		LoadSession,
-		VerifyLogin(e),
+		VerifyLogin(n),
 		VerifyPermissions(adminPerms),
-		loadTargetUser(e),
-		executeDeleteUser(e),
+		loadTargetUser(n),
+		executeDeleteUser(n),
 	)
 }
 
-func executeDeleteUser(e core.Engine) HandlerStep {
+func executeDeleteUser(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		userLoginName := i.TargetUser.LoginName
-		err := e.ChangeUser(userLoginName, func(core.User) (*core.User, error) {
-			return nil, nil
-		})
-		if err != nil {
-			i.RedirectWithFlashTo("/users", Flash{"danger", err.Error()})
-			return
-		}
-
-		for _, group := range e.ListGroups() {
-			err := e.ChangeGroup(group.Name, func(g core.Group) (*core.Group, error) {
-				if g.Name == "" {
-					return nil, nil //if the group was deleted in parallel, no need to complain
-				}
-				g.MemberLoginNames[userLoginName] = false
-				return &g, nil
-			})
+		errs := n.Update(func(db *core.Database) error {
+			err := db.Users.Delete(userLoginName)
 			if err != nil {
-				i.RedirectWithFlashTo("/users", Flash{"danger", err.Error()})
-				return
+				return err
 			}
+
+			for _, group := range db.Groups {
+				if group.MemberLoginNames != nil {
+					group.MemberLoginNames[userLoginName] = false
+				}
+			}
+			return nil
+		}, interactiveUpdate)
+		if !errs.IsEmpty() {
+			i.RedirectWithFlashTo("/users", Flash{"danger", errs.Join(", ")})
+			return
 		}
 
 		msg := fmt.Sprintf("Deleted user %q.", userLoginName)

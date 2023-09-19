@@ -1,0 +1,16 @@
+{
+	"groups": [
+		{
+			"name": "mingroup",
+			"long_name": "Minimal Group"
+		}
+	],
+	"users": [
+		{
+			"login_name": "minuser",
+			"given_name": "Minimal",
+			"family_name": "User"
+		}
+	],
+	"unknown_attribute": 42
+}

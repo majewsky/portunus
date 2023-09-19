@@ -1,0 +1,19 @@
+{
+  "users": [],
+  "groups": [
+    {
+      "name": "nobody",
+      "long_name": "Nobody in here.",
+      "members": [],
+      "permissions": {
+        "portunus": {
+          "is_admin": false
+        },
+        "ldap": {
+          "can_read": false
+        }
+      }
+    }
+  ],
+  "schema_version": 1
+}
