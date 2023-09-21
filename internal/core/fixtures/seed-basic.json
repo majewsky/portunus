@@ -37,7 +37,8 @@
 			],
 			"password": {
 				"from_command": [
-					"/bin/echo",
+					"/usr/bin/env",
+					"echo",
 					"swordfish"
 				]
 			},
