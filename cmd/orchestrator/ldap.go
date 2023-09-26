@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/majewsky/portunus/internal/shared"
+	"github.com/majewsky/portunus/internal/crypt"
 	"github.com/sapcc/go-bits/logg"
 )
 
@@ -87,12 +87,12 @@ var customSchema = `
 //^ The trailing empty line is important, otherwise slapd cannot correctly
 //parse this file. ikr?
 
-func renderSlapdConfig(environment map[string]string) []byte {
+func renderSlapdConfig(environment map[string]string, hasher crypt.PasswordHasher) []byte {
 	password := generateServiceUserPassword()
 	logg.Debug("password for cn=portunus,%s is %s",
 		environment["PORTUNUS_LDAP_SUFFIX"], password)
 	environment["PORTUNUS_LDAP_PASSWORD"] = password
-	environment["PORTUNUS_LDAP_PASSWORD_HASH"] = shared.HashPasswordForLDAP(password)
+	environment["PORTUNUS_LDAP_PASSWORD_HASH"] = hasher.HashPassword(password)
 
 	config := configTemplate
 	if environment["PORTUNUS_SLAPD_TLS_CERTIFICATE"] == "" {

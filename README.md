@@ -38,6 +38,13 @@ Portunus beyond what this README explains.
 
 </details>
 
+## Building
+
+Build with `make && sudo make install` in the usual way. Our build dependencies are:
+
+- a Go compiler (see `go.mod` for minimum version requirement)
+- a libcrypt.so that is [libxcrypt](github.com/besser82/libxcrypt)
+
 ## Running
 
 Once installed, run `portunus-orchestrator` with root privileges. Config is passed to it via the
@@ -53,7 +60,7 @@ following environment variables:
 | `PORTUNUS_SERVER_HTTP_LISTEN` | `127.0.0.1:8080` | Listen address where Portunus' HTTP server shall be running. |
 | `PORTUNUS_SERVER_HTTP_SECURE` | `true` | **Do not unset this flag in productive deployments.** In test deployments, this can be set to `false` so that the web GUI works without TLS. |
 | `PORTUNUS_SERVER_STATE_DIR` | `/var/lib/portunus` | The path where Portunus stores its database. **Set up a backup for this directory.** |
-| `PORTUNUS_SLAPD_BINARY` | `slapd` | Where to find the binary of slapd (the OpenLDAP server). Semantics match those of `execvp(3)`: If the supplied value is not a path containing slashes, `$PATH` will be searched for it. |
+| `PORTUNUS_SLAPD_BINARY` | `slapd` | Where to find the binary of slapd (the OpenLDAP server). Semantics match those of `execvp(3)`: If the supplied value is not a path containing slashes, `$PATH` will be searched for it. The slapd binary must link against the same libcrypt as the Portunus binaries, otherwise there will be disagreement between both parties on how password hashes work. |
 | `PORTUNUS_SLAPD_GROUP`<br>`PORTUNUS_SLAPD_USER` | `ldap` each | The Unix user/group that slapd will be run as. |
 | `PORTUNUS_SLAPD_SCHEMA_DIR` | `/etc/openldap/schema` | Where to find OpenLDAP's schema definitions. |
 | `PORTUNUS_SLAPD_STATE_DIR` | `/var/run/portunus-slapd` | The path where slapd stores its database. The contents of this directory are ephemeral and will be wiped when Portunus restarts, so you do not need to back this up. Place this on a tmpfs for optimal performance. |

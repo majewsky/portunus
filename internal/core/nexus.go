@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/majewsky/portunus/internal/crypt"
 	"github.com/sapcc/go-bits/errext"
 )
 
@@ -44,6 +45,9 @@ type Nexus interface {
 	ListUsers() []User
 	FindGroup(predicate func(Group) bool) (Group, bool)
 	FindUser(predicate func(User) bool) (UserWithPerms, bool)
+
+	// Components carried by the Nexus.
+	PasswordHasher() crypt.PasswordHasher
 }
 
 // UpdateOptions controls optional behavior in Nexus.Update().
@@ -59,12 +63,13 @@ type UpdateOptions struct {
 var ErrDatabaseNeedsInitialization = errors.New("ErrDatabaseNeedsInitialization")
 
 // NewNexus instantiates the Nexus.
-func NewNexus(d *DatabaseSeed) Nexus {
-	return &nexusImpl{seed: d}
+func NewNexus(d *DatabaseSeed, hasher crypt.PasswordHasher) Nexus {
+	return &nexusImpl{hasher: hasher, seed: d}
 }
 
 type nexusImpl struct {
-	//The mutex guards access to all other fields in this struct.
+	hasher crypt.PasswordHasher
+	//The mutex guards access to all fields listed below it in this struct.
 	mutex     sync.RWMutex
 	seed      *DatabaseSeed
 	db        Database
@@ -74,6 +79,11 @@ type nexusImpl struct {
 type listener struct {
 	ctx      context.Context
 	callback func(Database)
+}
+
+// PasswordHasher implements the Nexus interface.
+func (n *nexusImpl) PasswordHasher() crypt.PasswordHasher {
+	return n.hasher
 }
 
 // ListGroups implements the Nexus interface.
@@ -136,7 +146,7 @@ func (n *nexusImpl) Update(action UpdateAction, optsPtr *UpdateOptions) (errs er
 	newDB := n.db.Cloned()
 	err := action(&newDB)
 	if err == ErrDatabaseNeedsInitialization {
-		newDB = initializeDatabase(n.seed)
+		newDB = initializeDatabase(n.seed, n.hasher)
 	} else if err != nil {
 		errs.Add(err)
 		return
@@ -147,9 +157,9 @@ func (n *nexusImpl) Update(action UpdateAction, optsPtr *UpdateOptions) (errs er
 	errs = newDB.Validate()
 	if n.seed != nil {
 		if opts.ConflictWithSeedIsError {
-			errs.Append(n.seed.CheckConflicts(newDB))
+			errs.Append(n.seed.CheckConflicts(newDB, n.hasher))
 		} else {
-			n.seed.ApplyTo(&newDB)
+			n.seed.ApplyTo(&newDB, n.hasher)
 		}
 	}
 

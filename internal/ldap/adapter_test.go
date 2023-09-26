@@ -19,7 +19,7 @@ import (
 )
 
 func setupAdapterTest(t *testing.T) (conn *test.LDAPConnectionDouble, updateDBWithRunningAdapter func(core.UpdateAction) errext.ErrorSet) {
-	nexus := core.NewNexus(nil)
+	nexus := core.NewNexus(nil, &core.NoopHasher{})
 	conn = test.NewLDAPConnectionDouble("dc=example,dc=org")
 	adapter := NewAdapter(nexus, conn)
 

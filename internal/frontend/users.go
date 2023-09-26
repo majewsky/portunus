@@ -17,7 +17,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
-	"github.com/majewsky/portunus/internal/shared"
 )
 
 var adminPerms = core.Permissions{
@@ -427,7 +426,7 @@ func executeEditUserForm(n core.Nexus) HandlerStep {
 		passwordHash := i.TargetUser.PasswordHash
 		if i.FormState.Fields["reset_password"].IsUnfolded {
 			if pw := i.FormState.Fields["password"].Value; pw != "" {
-				passwordHash = shared.HashPasswordForLDAP(pw)
+				passwordHash = n.PasswordHasher().HashPassword(pw)
 			}
 		}
 
@@ -493,7 +492,7 @@ func validateCreateUserForm(i *Interaction) {
 func executeCreateUserForm(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		loginName := i.FormState.Fields["uid"].Value
-		passwordHash := shared.HashPasswordForLDAP(i.FormState.Fields["password"].Value)
+		passwordHash := n.PasswordHasher().HashPassword(i.FormState.Fields["password"].Value)
 
 		errs := n.Update(func(db *core.Database) error {
 			newUser := buildUserFromFormState(i.FormState, loginName, passwordHash)

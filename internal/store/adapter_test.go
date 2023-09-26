@@ -68,7 +68,7 @@ var (
 )
 
 func TestReadExistingStore(t *testing.T) {
-	nexus := core.NewNexus(nil)
+	nexus := core.NewNexus(nil, &core.NoopHasher{})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -90,7 +90,7 @@ func TestReadExistingStore(t *testing.T) {
 }
 
 func TestReadSideloadedStore(t *testing.T) {
-	nexus := core.NewNexus(nil)
+	nexus := core.NewNexus(nil, &core.NoopHasher{})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -144,7 +144,7 @@ func TestReadSideloadedStore(t *testing.T) {
 }
 
 func TestWriteStore(t *testing.T) {
-	nexus := core.NewNexus(nil)
+	nexus := core.NewNexus(nil, &core.NoopHasher{})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -190,7 +190,7 @@ func TestWriteStore(t *testing.T) {
 }
 
 func TestInitializeMissingStore(t *testing.T) {
-	nexus := core.NewNexus(nil)
+	nexus := core.NewNexus(nil, &core.NoopHasher{})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

@@ -15,6 +15,7 @@ import (
 	"syscall"
 
 	"github.com/majewsky/portunus/internal/core"
+	"github.com/majewsky/portunus/internal/crypt"
 	"github.com/majewsky/portunus/internal/frontend"
 	"github.com/majewsky/portunus/internal/ldap"
 	"github.com/majewsky/portunus/internal/store"
@@ -32,7 +33,8 @@ func main() {
 	errs.LogFatalIfError()
 
 	ctx := context.TODO()
-	nexus := core.NewNexus(seed)
+	hasher := must.Return(crypt.NewPasswordHasher())
+	nexus := core.NewNexus(seed, hasher)
 
 	storePath := filepath.Join(os.Getenv("PORTUNUS_SERVER_STATE_DIR"), "database.json")
 	storeAdapter := store.NewAdapter(nexus, storePath)

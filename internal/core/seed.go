@@ -18,7 +18,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/securecookie"
-	"github.com/majewsky/portunus/internal/shared"
+	"github.com/majewsky/portunus/internal/crypt"
 	"github.com/sapcc/go-bits/errext"
 	"github.com/sapcc/go-bits/logg"
 )
@@ -66,7 +66,7 @@ func (d DatabaseSeed) Validate() (errs errext.ErrorSet) {
 	//most validation can be performed by Database.Validate() by applying the
 	//seed to a fresh database
 	var db Database
-	d.ApplyTo(&db)
+	d.ApplyTo(&db, &NoopHasher{})
 	errs = db.Validate()
 
 	//the duplicate checks must be done differently for seeds because ApplyTo()
@@ -112,7 +112,7 @@ func (d DatabaseSeed) Validate() (errs errext.ErrorSet) {
 }
 
 // ApplyTo changes the given database to conform to the seed.
-func (d DatabaseSeed) ApplyTo(db *Database) {
+func (d DatabaseSeed) ApplyTo(db *Database, hasher crypt.PasswordHasher) {
 	//for each group seed...
 	for _, groupSeed := range d.Groups {
 		//...either the group exists already...
@@ -138,14 +138,14 @@ func (d DatabaseSeed) ApplyTo(db *Database) {
 		hasUser := false
 		for idx, user := range db.Users {
 			if user.LoginName == string(userSeed.LoginName) {
-				userSeed.ApplyTo(&db.Users[idx])
+				userSeed.ApplyTo(&db.Users[idx], hasher)
 				hasUser = true
 				break
 			}
 		}
 		if !hasUser {
 			user := User{LoginName: string(userSeed.LoginName)}
-			userSeed.ApplyTo(&user)
+			userSeed.ApplyTo(&user, hasher)
 			db.Users = append(db.Users, user)
 		}
 	}
@@ -157,13 +157,13 @@ var errSeededField = errors.New("must be equal to the seeded value")
 
 // CheckConflicts returns errors for all ways in which the Database deviates
 // from the seed's expectation.
-func (d DatabaseSeed) CheckConflicts(db Database) (errs errext.ErrorSet) {
+func (d DatabaseSeed) CheckConflicts(db Database, hasher crypt.PasswordHasher) (errs errext.ErrorSet) {
 	//if there are conflicts, then applying the seed to a copy of the DB will
 	//result in a different DB -- we will call the original DB "left-hand side"
 	//and its clone with the seed applied "right-hand side"
 	leftDB := db
 	rightDB := db.Cloned()
-	d.ApplyTo(&rightDB) //includes Normalize
+	d.ApplyTo(&rightDB, hasher) //includes Normalize
 
 	//NOTE: We do not need to check for users/groups that exist on the left but
 	//not on the right, because seeding only ever creates and updates objects,
@@ -251,11 +251,12 @@ func (d DatabaseSeed) CheckConflicts(db Database) (errs errext.ErrorSet) {
 
 // Initializes the Database from the given seed on first use.
 // If the seed is nil, the default initialization behavior is used.
-func initializeDatabase(d *DatabaseSeed) Database {
+func initializeDatabase(d *DatabaseSeed, hasher crypt.PasswordHasher) Database {
 	//if no seed has been given, create the "admin" user with access to the
 	//Portunus UI and log the password once
 	if d == nil {
 		password := hex.EncodeToString(securecookie.GenerateRandomKey(16))
+		passwordHash := hasher.HashPassword(password)
 		logg.Info("first-time initialization: adding user %q with password %q",
 			"admin", password)
 
@@ -270,14 +271,14 @@ func initializeDatabase(d *DatabaseSeed) Database {
 				LoginName:    "admin",
 				GivenName:    "Initial",
 				FamilyName:   "Administrator",
-				PasswordHash: shared.HashPasswordForLDAP(password),
+				PasswordHash: passwordHash,
 			}},
 		}
 	}
 
 	//otherwise, initialize the DB from the seed
 	var db Database
-	d.ApplyTo(&db)
+	d.ApplyTo(&db, hasher)
 	return db
 }
 
@@ -349,7 +350,7 @@ type UserSeed struct {
 }
 
 // ApplyTo changes the attributes of this group to conform to the given seed.
-func (u UserSeed) ApplyTo(target *User) {
+func (u UserSeed) ApplyTo(target *User, hasher crypt.PasswordHasher) {
 	//consistency check (the caller must ensure that the seed matches the object)
 	if target.LoginName != string(u.LoginName) {
 		panic(fmt.Sprintf("cannot apply seed with LoginName = %q to user with LoginName = %q",
@@ -370,11 +371,14 @@ func (u UserSeed) ApplyTo(target *User) {
 	}
 
 	if u.Password != "" {
-		//Password is only applied on creation (when no PasswordHash exists) or on
-		//password mismatch, otherwise we avoid useless rehashing
+		//to avoid useless rehashing, the password is only applied:
+		//- on creation (when no PasswordHash exists),
+		//- on method mismatch (i.e. when the hasher wants us to change hash methods), or
+		//- on password mismatch (i.e. when the password is updated in the seed)
 		pw := string(u.Password)
-		if target.PasswordHash == "" || !CheckPasswordHash(pw, target.PasswordHash) {
-			target.PasswordHash = shared.HashPasswordForLDAP(pw)
+		hash := target.PasswordHash
+		if hash == "" || hasher.IsWeakHash(hash) || !hasher.CheckPasswordHash(pw, hash) {
+			target.PasswordHash = hasher.HashPassword(pw)
 		}
 	}
 

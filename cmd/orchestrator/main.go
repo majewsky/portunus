@@ -12,53 +12,56 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/majewsky/portunus/internal/crypt"
 	"github.com/sapcc/go-bits/logg"
+	"github.com/sapcc/go-bits/must"
 	"github.com/tredoe/osutil/file"
 )
 
 func main() {
 	environment, ids := readConfig()
 	logg.ShowDebug = environment["PORTUNUS_DEBUG"] == "true"
+	hasher := must.Return(crypt.NewPasswordHasher())
 
 	//delete leftovers from previous runs
 	slapdStatePath := environment["PORTUNUS_SLAPD_STATE_DIR"]
-	must(os.RemoveAll(slapdStatePath))
+	must.Succeed(os.RemoveAll(slapdStatePath))
 
 	//setup the slapd directory with the correct permissions
-	must(os.Mkdir(slapdStatePath, 0700))
-	must(os.Chown(slapdStatePath, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
+	must.Succeed(os.Mkdir(slapdStatePath, 0700))
+	must.Succeed(os.Chown(slapdStatePath, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
 
 	slapdDataPath := filepath.Join(slapdStatePath, "data")
-	must(os.Mkdir(slapdDataPath, 0770))
-	must(os.Chown(slapdDataPath, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
+	must.Succeed(os.Mkdir(slapdDataPath, 0770))
+	must.Succeed(os.Chown(slapdDataPath, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
 
 	customSchemaPath := filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "portunus.schema")
-	must(os.WriteFile(customSchemaPath, []byte(customSchema), 0444))
+	must.Succeed(os.WriteFile(customSchemaPath, []byte(customSchema), 0444))
 
 	slapdConfigPath := filepath.Join(slapdStatePath, "slapd.conf")
-	must(os.WriteFile(slapdConfigPath, renderSlapdConfig(environment), 0444))
+	must.Succeed(os.WriteFile(slapdConfigPath, renderSlapdConfig(environment, hasher), 0444))
 
 	//copy TLS cert and private key into a location where slapd can definitely read it
 	if certPath := environment["PORTUNUS_SLAPD_TLS_CERTIFICATE"]; certPath != "" {
 		certPath2 := filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "cert.pem")
-		must(file.Copy(certPath, certPath2))
-		must(os.Chown(certPath2, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
+		must.Succeed(file.Copy(certPath, certPath2))
+		must.Succeed(os.Chown(certPath2, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
 
 		keyPath := environment["PORTUNUS_SLAPD_TLS_PRIVATE_KEY"]
 		keyPath2 := filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "key.pem")
-		must(file.Copy(keyPath, keyPath2))
-		must(os.Chown(keyPath2, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
+		must.Succeed(file.Copy(keyPath, keyPath2))
+		must.Succeed(os.Chown(keyPath2, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
 
 		caPath := environment["PORTUNUS_SLAPD_TLS_CA_CERTIFICATE"]
 		caPath2 := filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "ca.pem")
-		must(file.Copy(caPath, caPath2))
-		must(os.Chown(caPath2, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
+		must.Succeed(file.Copy(caPath, caPath2))
+		must.Succeed(os.Chown(caPath2, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
 	}
 
 	//setup our state directory with the correct permissions
 	statePath := environment["PORTUNUS_SERVER_STATE_DIR"]
-	must(os.MkdirAll(statePath, 0770))
-	must(os.Chown(statePath, ids["PORTUNUS_SERVER_UID"], ids["PORTUNUS_SERVER_GID"]))
+	must.Succeed(os.MkdirAll(statePath, 0770))
+	must.Succeed(os.Chown(statePath, ids["PORTUNUS_SERVER_UID"], ids["PORTUNUS_SERVER_GID"]))
 
 	go runLDAPServer(environment)
 
@@ -81,11 +84,5 @@ func main() {
 	err := cmd.Run()
 	if err != nil {
 		logg.Fatal("error encountered while running portunus-server: " + err.Error())
-	}
-}
-
-func must(err error) {
-	if err != nil {
-		logg.Fatal(err.Error())
 	}
 }

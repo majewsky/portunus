@@ -90,15 +90,36 @@ func checkLogin(n core.Nexus) HandlerStep {
 			} else {
 				predicate = func(u core.User) bool { return u.LoginName == userIdent }
 			}
+
 			user, exists := n.FindUser(predicate)
 			passwordHash := ""
 			if exists {
 				passwordHash = user.PasswordHash
 			}
-			if core.CheckPasswordHash(pwd, passwordHash) {
-				i.Session.Values["uid"] = user.LoginName
-			} else {
+
+			hasher := n.PasswordHasher()
+			if !hasher.CheckPasswordHash(pwd, passwordHash) {
 				fs.Fields["password"].ErrorMessage = "is not valid (or the user account does not exist)"
+				return
+			}
+			i.Session.Values["uid"] = user.LoginName
+
+			if hasher.IsWeakHash(passwordHash) {
+				//since the last login of this user, the hasher started preferring a different method
+				//-> we do have the user password right now, so we can rehash it transparently
+				newPasswordHash := hasher.HashPassword(pwd)
+				errs := n.Update(func(db *core.Database) error {
+					for idx, dbUser := range db.Users {
+						if dbUser.LoginName == user.LoginName && dbUser.PasswordHash == passwordHash {
+							db.Users[idx].PasswordHash = newPasswordHash
+						}
+					}
+					return nil
+				}, nil)
+				if !errs.IsEmpty() {
+					i.RedirectWithFlashTo("/self", Flash{"danger", errs.Join(", ")})
+					return
+				}
 			}
 		}
 	}

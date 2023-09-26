@@ -9,10 +9,9 @@ package core
 import (
 	"context"
 	"sort"
-	"strings"
 	"testing"
 
-	"github.com/majewsky/portunus/internal/shared"
+	"github.com/majewsky/portunus/internal/crypt"
 	"github.com/sapcc/go-bits/assert"
 	"github.com/sapcc/go-bits/errext"
 )
@@ -52,7 +51,7 @@ func dbWithBasicSeedApplied() Database {
 				FamilyName:    "User",
 				EMailAddress:  "maxuser@example.org",
 				SSHPublicKeys: []string{dummySSHPublicKey},
-				PasswordHash:  "matches:swordfish", //NOTE: see normalizeDBForComparison()
+				PasswordHash:  "{PLAINTEXT}swordfish",
 				POSIX: &UserPosixAttributes{
 					UID:           42,
 					GID:           23,
@@ -78,23 +77,25 @@ func reducerReturnEmpty(db *Database) error {
 // Reducer: Given the DB from dbWithBasicSeedApplied(), overwrite all seeded
 // attributes on "maxuser" and "maxgroup". (They are both at index 0 because
 // the normalization sorts by identifier.)
-func reducerOverwriteSeededAttrs1(db *Database) error {
-	db.Groups[0].LongName += "-changed"
-	db.Groups[0].MemberLoginNames = GroupMemberNames{} //removing seeded members is not allowed
-	db.Groups[0].Permissions.Portunus.IsAdmin = true
-	db.Groups[0].Permissions.LDAP.CanRead = false
-	db.Groups[0].PosixGID = pointerTo(*db.Groups[0].PosixGID + 1)
-	db.Users[0].GivenName += "-changed"
-	db.Users[0].FamilyName += "-changed"
-	db.Users[0].EMailAddress = "changed@example.org"
-	db.Users[0].SSHPublicKeys = append(db.Users[0].SSHPublicKeys, dummySSHPublicKey)
-	db.Users[0].PasswordHash = shared.HashPasswordForLDAP("incorrect")
-	db.Users[0].POSIX.UID += 1
-	db.Users[0].POSIX.GID += 1
-	db.Users[0].POSIX.HomeDirectory += "-changed"
-	db.Users[0].POSIX.LoginShell += "-changed"
-	db.Users[0].POSIX.GECOS += "-changed"
-	return nil
+func reducerOverwriteSeededAttrs1(hasher crypt.PasswordHasher) func(*Database) error {
+	return func(db *Database) error {
+		db.Groups[0].LongName += "-changed"
+		db.Groups[0].MemberLoginNames = GroupMemberNames{} //removing seeded members is not allowed
+		db.Groups[0].Permissions.Portunus.IsAdmin = true
+		db.Groups[0].Permissions.LDAP.CanRead = false
+		db.Groups[0].PosixGID = pointerTo(*db.Groups[0].PosixGID + 1)
+		db.Users[0].GivenName += "-changed"
+		db.Users[0].FamilyName += "-changed"
+		db.Users[0].EMailAddress = "changed@example.org"
+		db.Users[0].SSHPublicKeys = append(db.Users[0].SSHPublicKeys, dummySSHPublicKey)
+		db.Users[0].PasswordHash = hasher.HashPassword("incorrect")
+		db.Users[0].POSIX.UID += 1
+		db.Users[0].POSIX.GID += 1
+		db.Users[0].POSIX.HomeDirectory += "-changed"
+		db.Users[0].POSIX.LoginShell += "-changed"
+		db.Users[0].POSIX.GECOS += "-changed"
+		return nil
+	}
 }
 
 // Reducer: Like reducerOverwriteSeededAttrs1, but this one contains some edits
@@ -128,31 +129,35 @@ func reducerOverwriteSeededIdentifiers(db *Database) error {
 //
 // These changes are permissible even though the respective attributes are
 // seeded, since the change does not conflict with the seed.
-func reducerOverwriteMalleableAttributes(db *Database) error {
-	db.Users[0].PasswordHash = shared.HashPasswordForLDAP("swordfish")
-	db.Groups[0].MemberLoginNames["minuser"] = true
-	return nil
+func reducerOverwriteMalleableAttributes(hasher crypt.PasswordHasher) func(*Database) error {
+	return func(db *Database) error {
+		db.Users[0].PasswordHash = hasher.HashPassword("swordfish")
+		db.Groups[0].MemberLoginNames["minuser"] = true
+		return nil
+	}
 }
 
 // Reducer: Given the DB from dbWithBasicSeedApplied(), overwrite all unseeded
 // attributes on "minuser" and "mingroup". (They are both at index 1 because
 // the normalization sorts by identifier.)
-func reducerOverwriteUnseededAttributes(db *Database) error {
-	db.Groups[1].MemberLoginNames = GroupMemberNames{"minuser": true} //removing seeded members is not allowed
-	db.Groups[1].Permissions.Portunus.IsAdmin = true
-	db.Groups[1].Permissions.LDAP.CanRead = true
-	db.Groups[1].PosixGID = pointerTo(PosixID(123))
-	db.Users[1].EMailAddress = "minuser@example.org"
-	db.Users[1].SSHPublicKeys = []string{dummySSHPublicKey}
-	db.Users[1].PasswordHash = shared.HashPasswordForLDAP("qwerty")
-	db.Users[1].POSIX = &UserPosixAttributes{
-		UID:           142,
-		GID:           123,
-		HomeDirectory: "/home/minuser",
-		LoginShell:    "/bin/sh",
-		GECOS:         "Minimal User",
+func reducerOverwriteUnseededAttributes(hasher crypt.PasswordHasher) func(*Database) error {
+	return func(db *Database) error {
+		db.Groups[1].MemberLoginNames = GroupMemberNames{"minuser": true} //removing seeded members is not allowed
+		db.Groups[1].Permissions.Portunus.IsAdmin = true
+		db.Groups[1].Permissions.LDAP.CanRead = true
+		db.Groups[1].PosixGID = pointerTo(PosixID(123))
+		db.Users[1].EMailAddress = "minuser@example.org"
+		db.Users[1].SSHPublicKeys = []string{dummySSHPublicKey}
+		db.Users[1].PasswordHash = hasher.HashPassword("qwerty")
+		db.Users[1].POSIX = &UserPosixAttributes{
+			UID:           142,
+			GID:           123,
+			HomeDirectory: "/home/minuser",
+			LoginShell:    "/bin/sh",
+			GECOS:         "Minimal User",
+		}
+		return nil
 	}
-	return nil
 }
 
 func TestSeedEnforcementRelaxed(t *testing.T) {
@@ -167,7 +172,8 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	expectNoErrors(t, errs)
 
 	//register a listener to observe the real DB changes
-	nexus := NewNexus(seed)
+	hasher := &NoopHasher{}
+	nexus := NewNexus(seed, hasher)
 	var actualDB Database
 	nexus.AddListener(ctx, func(db Database) {
 		actualDB = db
@@ -178,43 +184,36 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	expectNoErrors(t, errs)
 
 	expectedDB := dbWithBasicSeedApplied()
-	normalizeDBForComparison(&actualDB)
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 
 	//overwriting seeded attributes is not allowed
 	//-> no change because seed gets reenforced
-	errs = nexus.Update(reducerOverwriteSeededAttrs1, nil)
+	errs = nexus.Update(reducerOverwriteSeededAttrs1(hasher), nil)
 	expectNoErrors(t, errs)
-	normalizeDBForComparison(&actualDB)
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 
 	errs = nexus.Update(reducerOverwriteSeededAttrs2, nil)
 	expectNoErrors(t, errs)
-	normalizeDBForComparison(&actualDB)
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 
 	//overwriting seeded attributes in a compatible way is allowed
-	errs = nexus.Update(reducerOverwriteMalleableAttributes, nil)
+	errs = nexus.Update(reducerOverwriteMalleableAttributes(hasher), nil)
 	expectNoErrors(t, errs)
 
-	err := reducerOverwriteMalleableAttributes(&expectedDB)
+	err := reducerOverwriteMalleableAttributes(hasher)(&expectedDB)
 	if err != nil {
 		t.Fatal(err)
 	}
-	normalizeDBForComparison(&expectedDB)
-	normalizeDBForComparison(&actualDB)
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 
 	//overwriting unseeded attributes is always allowed
-	errs = nexus.Update(reducerOverwriteUnseededAttributes, nil)
+	errs = nexus.Update(reducerOverwriteUnseededAttributes(hasher), nil)
 	expectNoErrors(t, errs)
 
-	err = reducerOverwriteUnseededAttributes(&expectedDB)
+	err = reducerOverwriteUnseededAttributes(hasher)(&expectedDB)
 	if err != nil {
 		t.Fatal(err)
 	}
-	normalizeDBForComparison(&expectedDB)
-	normalizeDBForComparison(&actualDB)
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 }
 
@@ -229,7 +228,8 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	expectNoErrors(t, errs)
 
 	//register a listener to observe the real DB changes
-	nexus := NewNexus(seed)
+	hasher := &NoopHasher{}
+	nexus := NewNexus(seed, hasher)
 	var actualDB Database
 	updateCount := 0
 	nexus.AddListener(ctx, func(db Database) {
@@ -242,13 +242,12 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	expectNoErrors(t, errs)
 
 	expectedDB := dbWithBasicSeedApplied()
-	normalizeDBForComparison(&actualDB)
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 	assert.DeepEqual(t, "update count", updateCount, 1)
 
 	//overwriting seeded attributes is not allowed
 	opts := UpdateOptions{ConflictWithSeedIsError: true}
-	errs = nexus.Update(reducerOverwriteSeededAttrs1, &opts)
+	errs = nexus.Update(reducerOverwriteSeededAttrs1(hasher), &opts)
 	expectTheseErrors(t, errs,
 		`field "long_name" in group "maxgroup" must be equal to the seeded value`,
 		`field "members" in group "maxgroup" must contain user "maxuser" because of seeded group membership`,
@@ -283,28 +282,24 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	assert.DeepEqual(t, "update count", updateCount, 1) //same as before (listener was not called)
 
 	//overwriting seeded attributes in a compatible way is allowed
-	errs = nexus.Update(reducerOverwriteMalleableAttributes, &opts)
+	errs = nexus.Update(reducerOverwriteMalleableAttributes(hasher), &opts)
 	expectNoErrors(t, errs)
 
-	err := reducerOverwriteMalleableAttributes(&expectedDB)
+	err := reducerOverwriteMalleableAttributes(hasher)(&expectedDB)
 	if err != nil {
 		t.Fatal(err)
 	}
-	normalizeDBForComparison(&expectedDB)
-	normalizeDBForComparison(&actualDB)
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 	assert.DeepEqual(t, "update count", updateCount, 2)
 
 	//overwriting unseeded attributes is always allowed
-	errs = nexus.Update(reducerOverwriteUnseededAttributes, &opts)
+	errs = nexus.Update(reducerOverwriteUnseededAttributes(hasher), &opts)
 	expectNoErrors(t, errs)
 
-	err = reducerOverwriteUnseededAttributes(&expectedDB)
+	err = reducerOverwriteUnseededAttributes(hasher)(&expectedDB)
 	if err != nil {
 		t.Fatal(err)
 	}
-	normalizeDBForComparison(&expectedDB)
-	normalizeDBForComparison(&actualDB)
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 	assert.DeepEqual(t, "update count", updateCount, 3)
 }
@@ -357,20 +352,59 @@ func TestSeedParseAndValidationErrors(t *testing.T) {
 	)
 }
 
-func normalizeDBForComparison(db *Database) {
-	//We want to compare `db` using reflect.DeepEqual(), but the User.PasswordHash field cannot be trivially compared. This function prepares `db` for DeepEqual comparison by replacing all User.PasswordHash values with their original passwords.
-	dummyPasswords := []string{"swordfish", "qwerty", "incorrect"}
-	for idx, user := range db.Users {
-		if strings.HasPrefix(user.PasswordHash, "matches:") {
-			continue //already normalized
-		}
-		for _, pw := range dummyPasswords {
-			if CheckPasswordHash(pw, user.PasswordHash) {
-				db.Users[idx].PasswordHash = "matches:" + pw
-				break
-			}
-		}
+func TestSeedCryptoAgility(t *testing.T) {
+	//This test initializes a database from seed with one minimal user that has a
+	//seeded password. We then test how the seed application and verification
+	//behaves when the seeded password is hashed with different methods.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	seed, errs := ReadDatabaseSeed("fixtures/seed-one-user-with-password.json")
+	expectNoErrors(t, errs)
+	_ = seed
+
+	//register a listener to observe the real DB changes
+	hasher := &NoopHasher{}
+	nexus := NewNexus(seed, hasher)
+	var actualDB Database
+	nexus.AddListener(ctx, func(db Database) {
+		actualDB = db
+	})
+
+	//load an empty database (like on first startup) -> seed gets applied
+	errs = nexus.Update(reducerReturnEmpty, nil)
+	expectNoErrors(t, errs)
+
+	expectedDB := Database{
+		Users: []User{{
+			LoginName:    "minuser",
+			GivenName:    "Minimal",
+			FamilyName:   "User",
+			PasswordHash: "{PLAINTEXT}swordfish",
+		}},
+		Groups: []Group{},
 	}
+	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
+
+	//change to a different hash method, but the hash still matches the password
+	//-> this will be accepted since this hash method is not considered weak
+	errs = nexus.Update(func(db *Database) error {
+		db.Users[0].PasswordHash = "{WEAK-PLAINTEXT}swordfish"
+		return nil
+	}, nil)
+	expectNoErrors(t, errs)
+
+	expectedDB.Users[0].PasswordHash = "{WEAK-PLAINTEXT}swordfish"
+	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
+
+	//if the hash method is considered weak, DatabaseSeed.ApplyTo() will rehash
+	//using a stronger method
+	hasher.UpgradeWeakHashes = true
+	errs = nexus.Update(func(db *Database) error { return nil }, nil)
+	expectNoErrors(t, errs)
+
+	expectedDB.Users[0].PasswordHash = "{PLAINTEXT}swordfish"
+	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 }
 
 func expectNoErrors(t *testing.T, errs errext.ErrorSet) {

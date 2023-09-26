@@ -1,11 +1,37 @@
 This project follows [semantic versioning](https://semver.org/spec/v2.0.0.html). If you believe that
 SemVer was not adhered to in one of our releases, please open an issue.
 
-# v1.2.0 (TBD)
+# v2.0.0 (TBD)
+
+**Backwards-incompatible changes:**
+
+- Portunus now links libcrypt and requires several features that are specific to [libxcrypt][libxcrypt]. Most Linux
+  distributions already use libxcrypt as their libcrypt in order to support non-ancient password hashes, so this
+  requirement should hopefully not be too painful for Linux users. Note that Portunus must use the same libcrypt as its
+  `slapd`, otherwise both parties might disagree on how password hashes work.
 
 New features:
 
+- With the move to libxcrypt, Portunus supports all the same strong password hashes that libxcrypt supports (such as
+  bcrypt and yescrypt.
+- Existing user accounts with weak password hashes in your Portunus database will continue to work. After the upgrade,
+  instruct all your users to log into the Portunus UI once. Upon successful login, Portunus will transparently upgrade
+  their stored password hashes to a stronger hash method. To enumerate users that have not been upgraded to a stronger
+  hash method yet, use this command:
+  ```sh
+  jq -r '.users[] | select(.password | match("^\\{CRYPT\\}\\$5\\$")) | "\(.login_name) <\(.email)>"' < /var/lib/portunus/database.json
+  ```
 - While creating or updating a group, memberships can be adjusted (without needing to edit the individual users).
+
+Changes:
+
+- The core business logic was completely rewritten into a more modular design suitable for unit tests. Tests have been
+  added to cover the logic core, including seeding and validation, the LDAP handling as well as the disk store handling.
+  The only major gap in the automated test coverage is the UI, which is still being tested manually for the time being.
+  At least one bug was discovered and fixed by the new test suite, and more bugs may have been fixed by accident during
+  the rewrite. :)
+
+[libxcrypt]: https://github.com/besser82/libxcrypt
 
 # v1.1.0 (2022-08-19)
 

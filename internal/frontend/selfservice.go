@@ -14,7 +14,6 @@ import (
 
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
-	"github.com/majewsky/portunus/internal/shared"
 )
 
 // TODO: allow flipped order (family name first)
@@ -141,29 +140,31 @@ func postSelfHandler(n core.Nexus) http.Handler {
 		VerifyLogin(n),
 		useSelfServiceForm(n),
 		ReadFormStateFromRequest,
-		validateSelfServiceForm,
+		validateSelfServiceForm(n),
 		ShowFormIfErrors("My profile"),
 		executeSelfServiceForm(n),
 		ShowForm("My profile"),
 	)
 }
 
-func validateSelfServiceForm(i *Interaction) {
-	fs := i.FormState
+func validateSelfServiceForm(n core.Nexus) HandlerStep {
+	return func(i *Interaction) {
+		fs := i.FormState
 
-	if fs.Fields["change_password"].IsUnfolded {
-		if fs.IsValid() {
-			newPassword1 := fs.Fields["new_password"].Value
-			newPassword2 := fs.Fields["repeat_password"].Value
-			if newPassword1 != newPassword2 {
-				fs.Fields["repeat_password"].ErrorMessage = "did not match"
+		if fs.Fields["change_password"].IsUnfolded {
+			if fs.IsValid() {
+				newPassword1 := fs.Fields["new_password"].Value
+				newPassword2 := fs.Fields["repeat_password"].Value
+				if newPassword1 != newPassword2 {
+					fs.Fields["repeat_password"].ErrorMessage = "did not match"
+				}
 			}
-		}
 
-		if fs.IsValid() {
-			oldPassword := fs.Fields["old_password"].Value
-			if !core.CheckPasswordHash(oldPassword, i.CurrentUser.PasswordHash) {
-				fs.Fields["old_password"].ErrorMessage = "is not correct"
+			if fs.IsValid() {
+				oldPassword := fs.Fields["old_password"].Value
+				if !n.PasswordHasher().CheckPasswordHash(oldPassword, i.CurrentUser.PasswordHash) {
+					fs.Fields["old_password"].ErrorMessage = "is not correct"
+				}
 			}
 		}
 	}
@@ -179,7 +180,7 @@ func executeSelfServiceForm(n core.Nexus) HandlerStep {
 			}
 
 			if fs.Fields["change_password"].IsUnfolded {
-				user.PasswordHash = shared.HashPasswordForLDAP(fs.Fields["new_password"].Value)
+				user.PasswordHash = n.PasswordHasher().HashPassword(fs.Fields["new_password"].Value)
 			}
 			user.SSHPublicKeys = core.SplitSSHPublicKeys(fs.Fields["ssh_public_keys"].Value)
 			return db.Users.Update(user)
