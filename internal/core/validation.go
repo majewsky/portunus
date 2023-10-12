@@ -17,11 +17,21 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// ObjectRef identifies a User or Group. It appears in type FieldRef.
+type ObjectRef struct {
+	Type string //either "user" or "group"
+	Name string //the LoginName for users or the Name for groups
+}
+
+// Field constructs a FieldRef for this object.
+func (r ObjectRef) Field(name string) FieldRef {
+	return FieldRef{r, name}
+}
+
 // FieldRef identifies a field within a User or Group. It appears in type ValidationError.
 type FieldRef struct {
-	ObjectType string //either "user" or "group"
-	ObjectName string //the LoginName for users or the Name for groups
-	FieldName  string //e.g. "surname" or "posix_gid", matches the input element name in the respective HTML forms
+	Object ObjectRef
+	Name   string //e.g. "surname" or "posix_gid", matches the input element name in the respective HTML forms
 }
 
 // ValidationError is a structured error type that describes an unacceptable
@@ -55,7 +65,7 @@ func (r FieldRef) WrapFirst(errs ...error) error {
 func (e ValidationError) Error() string {
 	r := e.FieldRef
 	return fmt.Sprintf("field %q in %s %q %s",
-		r.FieldName, r.ObjectType, r.ObjectName, e.FieldError.Error())
+		r.Name, r.Object.Type, r.Object.Name, e.FieldError.Error())
 }
 
 // this regexp copied from useradd(8) manpage
@@ -70,6 +80,7 @@ var (
 
 	errNotPosixAccountName = errors.New("is not an acceptable user/group name matching the pattern /" + posixAccountNamePattern + "/")
 	posixAccountNameRx     = regexp.MustCompile(`^` + posixAccountNamePattern + `$`)
+	errNotDecimalNumber    = errors.New("is not a decimal number")
 	errNotPosixUIDorGID    = errors.New("is not a number between 0 and 65535 inclusive")
 
 	errNotAbsolutePath = errors.New("must be an absolute path, i.e. start with a /")

@@ -79,31 +79,27 @@ func (g *GroupMemberNames) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// FieldRef returns a FieldRef that can be used to build validation errors.
-func (g Group) FieldRef(field string) FieldRef {
-	return FieldRef{
-		ObjectType: "group",
-		ObjectName: g.Name,
-		FieldName:  field,
+// Ref returns an ObjectRef that can be used to build validation errors.
+func (g Group) Ref() ObjectRef {
+	return ObjectRef{
+		Type: "group",
+		Name: g.Name,
 	}
 }
 
 // Checks the individual attributes of this Group. Relationships and uniqueness
 // are checked in Database.Validate().
 func (g Group) validateLocal() (errs errext.ErrorSet) {
-	ref := g.FieldRef("name")
-	errs.Add(ref.WrapFirst(
+	ref := g.Ref()
+	errs.Add(ref.Field("name").WrapFirst(
 		MustNotBeEmpty(g.Name),
 		MustNotHaveSurroundingSpaces(g.Name),
 		MustBePosixAccountName(g.Name),
 	))
-
-	ref = g.FieldRef("long_name")
-	errs.Add(ref.WrapFirst(
+	errs.Add(ref.Field("long_name").WrapFirst(
 		MustNotBeEmpty(g.LongName),
 		MustNotHaveSurroundingSpaces(g.LongName),
 	))
-
 	return
 }
 

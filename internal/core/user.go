@@ -56,59 +56,48 @@ func (u User) FullName() string {
 	return u.GivenName + " " + u.FamilyName //TODO: allow flipped order (family name first)
 }
 
-// FieldRef returns a FieldRef that can be used to build validation errors.
-func (u User) FieldRef(field string) FieldRef {
-	return FieldRef{
-		ObjectType: "user",
-		ObjectName: u.LoginName,
-		FieldName:  field,
+// Ref returns an ObjectRef that can be used to build validation errors.
+func (u User) Ref() ObjectRef {
+	return ObjectRef{
+		Type: "user",
+		Name: u.LoginName,
 	}
 }
 
 // Checks the individual attributes of this User. Relationships and uniqueness
 // are checked in Database.Validate().
 func (u User) validateLocal() (errs errext.ErrorSet) {
-	ref := u.FieldRef("login_name")
-	errs.Add(ref.WrapFirst(
+	ref := u.Ref()
+	errs.Add(ref.Field("login_name").WrapFirst(
 		MustNotBeEmpty(u.LoginName),
 		MustNotHaveSurroundingSpaces(u.LoginName),
 		MustBePosixAccountName(u.LoginName),
 	))
-
-	ref = u.FieldRef("given_name")
-	errs.Add(ref.WrapFirst(
+	errs.Add(ref.Field("given_name").WrapFirst(
 		MustNotBeEmpty(u.GivenName),
 		MustNotHaveSurroundingSpaces(u.GivenName),
 	))
-
-	ref = u.FieldRef("family_name")
-	errs.Add(ref.WrapFirst(
+	errs.Add(ref.Field("family_name").WrapFirst(
 		MustNotBeEmpty(u.FamilyName),
 		MustNotHaveSurroundingSpaces(u.FamilyName),
 	))
+	errs.Add(ref.Field("email").Wrap(MustNotHaveSurroundingSpaces(u.EMailAddress)))
 
-	ref = u.FieldRef("email")
-	errs.Add(ref.Wrap(MustNotHaveSurroundingSpaces(u.EMailAddress)))
-
-	ref = u.FieldRef("ssh_public_keys")
 	for idx, key := range u.SSHPublicKeys {
 		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
 		if err != nil {
 			err = fmt.Errorf("must have a valid SSH public key on each line (parse error on line %d)", idx+1)
-			errs.Add(ref.Wrap(err))
+			errs.Add(ref.Field("ssh_public_keys").Wrap(err))
 		}
 	}
 
 	if u.POSIX != nil {
-		ref = u.FieldRef("posix_home")
-		errs.Add(ref.WrapFirst(
+		errs.Add(ref.Field("posix_home").WrapFirst(
 			MustNotBeEmpty(u.POSIX.HomeDirectory),
 			MustNotHaveSurroundingSpaces(u.POSIX.HomeDirectory),
 			MustBeAbsolutePath(u.POSIX.HomeDirectory),
 		))
-
-		ref = u.FieldRef("posix_shell")
-		errs.Add(ref.WrapFirst(
+		errs.Add(ref.Field("posix_shell").WrapFirst(
 			MustNotHaveSurroundingSpaces(u.POSIX.LoginShell),
 			MustBeAbsolutePath(u.POSIX.LoginShell),
 		))

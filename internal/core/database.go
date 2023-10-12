@@ -82,7 +82,7 @@ func (d Database) Validate() (errs errext.ErrorSet) {
 		for loginName := range g.MemberLoginNames {
 			if userCount[loginName] == 0 {
 				err := fmt.Errorf("contains unknown user with login name %q", loginName)
-				errs.Add(ValidationError{g.FieldRef("members"), err})
+				errs.Add(ValidationError{g.Ref().Field("members"), err})
 			}
 		}
 	}
@@ -90,7 +90,7 @@ func (d Database) Validate() (errs errext.ErrorSet) {
 	//check user name uniqueness
 	for loginName, count := range userCount {
 		if count > 1 {
-			ref := User{LoginName: loginName}.FieldRef("login_name")
+			ref := User{LoginName: loginName}.Ref().Field("login_name")
 			errs.Add(ref.Wrap(errIsDuplicate))
 		}
 	}
@@ -98,7 +98,7 @@ func (d Database) Validate() (errs errext.ErrorSet) {
 	//check group name uniqueness
 	for name, count := range groupCount {
 		if count > 1 {
-			ref := Group{Name: name}.FieldRef("name")
+			ref := Group{Name: name}.Ref().Field("name")
 			errs.Add(ref.Wrap(errIsDuplicate))
 		}
 	}

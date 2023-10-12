@@ -77,8 +77,8 @@ func (d DatabaseSeed) Validate() (errs errext.ErrorSet) {
 	}
 	for name, count := range groupNameCounts {
 		if count > 1 {
-			ref := Group{Name: name}.FieldRef("name")
-			errs.Add(ref.Wrap(errIsDuplicateInSeed))
+			ref := Group{Name: name}.Ref()
+			errs.Add(ref.Field("name").Wrap(errIsDuplicateInSeed))
 		}
 	}
 
@@ -88,22 +88,21 @@ func (d DatabaseSeed) Validate() (errs errext.ErrorSet) {
 	}
 	for loginName, count := range userLoginNameCounts {
 		if count > 1 {
-			ref := User{LoginName: loginName}.FieldRef("login_name")
-			errs.Add(ref.Wrap(errIsDuplicateInSeed))
+			ref := User{LoginName: loginName}.Ref()
+			errs.Add(ref.Field("login_name").Wrap(errIsDuplicateInSeed))
 		}
 	}
 
 	//non-nil-ness of posix.uid and posix.gid on UserSeeds cannot be checked in
 	//Database.Validate() because those fields are not pointers on type User
 	for _, userSeed := range d.Users {
+		ref := User{LoginName: string(userSeed.LoginName)}.Ref()
 		if userSeed.POSIX != nil {
 			if userSeed.POSIX.UID == nil {
-				ref := User{LoginName: string(userSeed.LoginName)}.FieldRef("posix_uid")
-				errs.Add(ref.Wrap(errIsMissing))
+				errs.Add(ref.Field("posix_uid").Wrap(errIsMissing))
 			}
 			if userSeed.POSIX.GID == nil {
-				ref := User{LoginName: string(userSeed.LoginName)}.FieldRef("posix_gid")
-				errs.Add(ref.Wrap(errIsMissing))
+				errs.Add(ref.Field("posix_gid").Wrap(errIsMissing))
 			}
 		}
 	}
@@ -176,17 +175,18 @@ func (d DatabaseSeed) CheckConflicts(db Database, hasher crypt.PasswordHasher) (
 			continue
 		}
 
+		ref := leftGroup.Ref()
 		if leftGroup.LongName != rightGroup.LongName {
-			errs.Add(leftGroup.FieldRef("long_name").Wrap(errSeededField))
+			errs.Add(ref.Field("long_name").Wrap(errSeededField))
 		}
 		if leftGroup.Permissions.Portunus.IsAdmin != rightGroup.Permissions.Portunus.IsAdmin {
-			errs.Add(leftGroup.FieldRef("portunus_perms").Wrap(errSeededField))
+			errs.Add(ref.Field("portunus_perms").Wrap(errSeededField))
 		}
 		if leftGroup.Permissions.LDAP.CanRead != rightGroup.Permissions.LDAP.CanRead {
-			errs.Add(leftGroup.FieldRef("ldap_perms").Wrap(errSeededField))
+			errs.Add(ref.Field("ldap_perms").Wrap(errSeededField))
 		}
 		if !reflect.DeepEqual(leftGroup.PosixGID, rightGroup.PosixGID) {
-			errs.Add(leftGroup.FieldRef("posix_gid").Wrap(errSeededField))
+			errs.Add(ref.Field("posix_gid").Wrap(errSeededField))
 		}
 
 		//NOTE: Same logic as above. Seeds only ever add group memberships and
@@ -194,7 +194,7 @@ func (d DatabaseSeed) CheckConflicts(db Database, hasher crypt.PasswordHasher) (
 		for loginName, isRightMember := range rightGroup.MemberLoginNames {
 			if isRightMember && !leftGroup.MemberLoginNames[loginName] {
 				err := fmt.Errorf("must contain user %q because of seeded group membership", loginName)
-				errs.Add(leftGroup.FieldRef("members").Wrap(err))
+				errs.Add(ref.Field("members").Wrap(err))
 			}
 		}
 	}
@@ -206,42 +206,43 @@ func (d DatabaseSeed) CheckConflicts(db Database, hasher crypt.PasswordHasher) (
 			continue
 		}
 
+		ref := leftUser.Ref()
 		if leftUser.GivenName != rightUser.GivenName {
-			errs.Add(leftUser.FieldRef("given_name").Wrap(errSeededField))
+			errs.Add(ref.Field("given_name").Wrap(errSeededField))
 		}
 		if leftUser.FamilyName != rightUser.FamilyName {
-			errs.Add(leftUser.FieldRef("family_name").Wrap(errSeededField))
+			errs.Add(ref.Field("family_name").Wrap(errSeededField))
 		}
 		if leftUser.EMailAddress != rightUser.EMailAddress {
-			errs.Add(leftUser.FieldRef("email").Wrap(errSeededField))
+			errs.Add(ref.Field("email").Wrap(errSeededField))
 		}
 		if !reflect.DeepEqual(leftUser.SSHPublicKeys, rightUser.SSHPublicKeys) {
-			errs.Add(leftUser.FieldRef("ssh_public_keys").Wrap(errSeededField))
+			errs.Add(ref.Field("ssh_public_keys").Wrap(errSeededField))
 		}
 		if leftUser.PasswordHash != rightUser.PasswordHash {
-			errs.Add(leftUser.FieldRef("password").Wrap(errSeededField))
+			errs.Add(ref.Field("password").Wrap(errSeededField))
 		}
 		if (leftUser.POSIX == nil) != (rightUser.POSIX == nil) {
-			errs.Add(leftUser.FieldRef("posix").Wrap(errSeededField))
+			errs.Add(ref.Field("posix").Wrap(errSeededField))
 		}
 
 		if leftUser.POSIX != nil && rightUser.POSIX != nil {
 			leftPosix := *leftUser.POSIX
 			rightPosix := *rightUser.POSIX
 			if leftPosix.UID != rightPosix.UID {
-				errs.Add(leftUser.FieldRef("posix_uid").Wrap(errSeededField))
+				errs.Add(ref.Field("posix_uid").Wrap(errSeededField))
 			}
 			if leftPosix.GID != rightPosix.GID {
-				errs.Add(leftUser.FieldRef("posix_gid").Wrap(errSeededField))
+				errs.Add(ref.Field("posix_gid").Wrap(errSeededField))
 			}
 			if leftPosix.HomeDirectory != rightPosix.HomeDirectory {
-				errs.Add(leftUser.FieldRef("posix_home").Wrap(errSeededField))
+				errs.Add(ref.Field("posix_home").Wrap(errSeededField))
 			}
 			if leftPosix.LoginShell != rightPosix.LoginShell {
-				errs.Add(leftUser.FieldRef("posix_shell").Wrap(errSeededField))
+				errs.Add(ref.Field("posix_shell").Wrap(errSeededField))
 			}
 			if leftPosix.GECOS != rightPosix.GECOS {
-				errs.Add(leftUser.FieldRef("posix_gecos").Wrap(errSeededField))
+				errs.Add(ref.Field("posix_gecos").Wrap(errSeededField))
 			}
 		}
 	}
