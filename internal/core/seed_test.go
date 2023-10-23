@@ -69,7 +69,7 @@ func dbWithBasicSeedApplied() Database {
 	}
 }
 
-func reducerReturnEmpty(db *Database) error {
+func reducerReturnEmpty(db *Database) errext.ErrorSet {
 	*db = Database{}
 	return nil
 }
@@ -77,8 +77,8 @@ func reducerReturnEmpty(db *Database) error {
 // Reducer: Given the DB from dbWithBasicSeedApplied(), overwrite all seeded
 // attributes on "maxuser" and "maxgroup". (They are both at index 0 because
 // the normalization sorts by identifier.)
-func reducerOverwriteSeededAttrs1(hasher crypt.PasswordHasher) func(*Database) error {
-	return func(db *Database) error {
+func reducerOverwriteSeededAttrs1(hasher crypt.PasswordHasher) func(*Database) errext.ErrorSet {
+	return func(db *Database) errext.ErrorSet {
 		db.Groups[0].LongName += "-changed"
 		db.Groups[0].MemberLoginNames = GroupMemberNames{} //removing seeded members is not allowed
 		db.Groups[0].Permissions.Portunus.IsAdmin = true
@@ -100,7 +100,7 @@ func reducerOverwriteSeededAttrs1(hasher crypt.PasswordHasher) func(*Database) e
 
 // Reducer: Like reducerOverwriteSeededAttrs1, but this one contains some edits
 // that conflicts with the edits in that reducer.
-func reducerOverwriteSeededAttrs2(db *Database) error {
+func reducerOverwriteSeededAttrs2(db *Database) errext.ErrorSet {
 	db.Users[0].POSIX = nil
 	return nil
 }
@@ -108,7 +108,7 @@ func reducerOverwriteSeededAttrs2(db *Database) error {
 // Reducer: Given the DB from dbWithBasicSeedApplied(), rename "maxuser" and
 // "maxgroup". (They are both at index 0 because the normalization sorts by
 // identifier.)
-func reducerOverwriteSeededIdentifiers(db *Database) error {
+func reducerOverwriteSeededIdentifiers(db *Database) errext.ErrorSet {
 	previousUserName := db.Users[0].LoginName
 	db.Groups[0].Name += "-renamed"
 	db.Users[0].LoginName += "-renamed"
@@ -129,8 +129,8 @@ func reducerOverwriteSeededIdentifiers(db *Database) error {
 //
 // These changes are permissible even though the respective attributes are
 // seeded, since the change does not conflict with the seed.
-func reducerOverwriteMalleableAttributes(hasher crypt.PasswordHasher) func(*Database) error {
-	return func(db *Database) error {
+func reducerOverwriteMalleableAttributes(hasher crypt.PasswordHasher) func(*Database) errext.ErrorSet {
+	return func(db *Database) errext.ErrorSet {
 		db.Users[0].PasswordHash = hasher.HashPassword("swordfish")
 		db.Groups[0].MemberLoginNames["minuser"] = true
 		return nil
@@ -140,8 +140,8 @@ func reducerOverwriteMalleableAttributes(hasher crypt.PasswordHasher) func(*Data
 // Reducer: Given the DB from dbWithBasicSeedApplied(), overwrite all unseeded
 // attributes on "minuser" and "mingroup". (They are both at index 1 because
 // the normalization sorts by identifier.)
-func reducerOverwriteUnseededAttributes(hasher crypt.PasswordHasher) func(*Database) error {
-	return func(db *Database) error {
+func reducerOverwriteUnseededAttributes(hasher crypt.PasswordHasher) func(*Database) errext.ErrorSet {
+	return func(db *Database) errext.ErrorSet {
 		db.Groups[1].MemberLoginNames = GroupMemberNames{"minuser": true} //removing seeded members is not allowed
 		db.Groups[1].Permissions.Portunus.IsAdmin = true
 		db.Groups[1].Permissions.LDAP.CanRead = true
@@ -388,7 +388,7 @@ func TestSeedCryptoAgility(t *testing.T) {
 
 	//change to a different hash method, but the hash still matches the password
 	//-> this will be accepted since this hash method is not considered weak
-	errs = nexus.Update(func(db *Database) error {
+	errs = nexus.Update(func(db *Database) errext.ErrorSet {
 		db.Users[0].PasswordHash = "{WEAK-PLAINTEXT}swordfish"
 		return nil
 	}, nil)
@@ -400,7 +400,7 @@ func TestSeedCryptoAgility(t *testing.T) {
 	//if the hash method is considered weak, DatabaseSeed.ApplyTo() will rehash
 	//using a stronger method
 	hasher.UpgradeWeakHashes = true
-	errs = nexus.Update(func(db *Database) error { return nil }, nil)
+	errs = nexus.Update(func(db *Database) errext.ErrorSet { return nil }, nil)
 	expectNoErrors(t, errs)
 
 	expectedDB.Users[0].PasswordHash = "{PLAINTEXT}swordfish"

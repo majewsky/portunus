@@ -19,6 +19,7 @@ import (
 	"github.com/majewsky/portunus/internal/core"
 	"github.com/majewsky/portunus/internal/test"
 	"github.com/sapcc/go-bits/assert"
+	"github.com/sapcc/go-bits/errext"
 )
 
 // NOTE: The database contents in these tests are all very minimal. The point
@@ -170,7 +171,7 @@ func TestWriteStore(t *testing.T) {
 	//after the adapter has set up its listener...
 	time.Sleep(25 * time.Millisecond)
 	//...we update the database
-	action := func(db *core.Database) error {
+	action := func(db *core.Database) errext.ErrorSet {
 		*db = db2Contents.Cloned()
 		return nil
 	}

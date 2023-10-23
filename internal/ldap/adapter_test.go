@@ -109,7 +109,7 @@ func TestBasicOperations(t *testing.T) {
 	conn, updateDBWithRunningAdapter := setupAdapterTest(t)
 
 	//when we add a user and group...
-	action := func(db *core.Database) error {
+	action := func(db *core.Database) errext.ErrorSet {
 		db.Users = []core.User{{
 			LoginName:    "alice",
 			GivenName:    "Alice",
@@ -156,7 +156,7 @@ func TestBasicOperations(t *testing.T) {
 	conn.CheckAllExecuted(t)
 
 	//there is no rename operation: when we change the RDN of an object...
-	action = func(db *core.Database) error {
+	action = func(db *core.Database) errext.ErrorSet {
 		db.Groups[0].Name = "grafana-admins"
 		return nil
 	}
@@ -177,7 +177,7 @@ func TestBasicOperations(t *testing.T) {
 	conn.CheckAllExecuted(t)
 
 	//we can test object updates by adding the user to the group...
-	action = func(db *core.Database) error {
+	action = func(db *core.Database) errext.ErrorSet {
 		db.Groups[0].MemberLoginNames = core.GroupMemberNames{db.Users[0].LoginName: true}
 		return nil
 	}
@@ -201,7 +201,7 @@ func TestBasicOperations(t *testing.T) {
 	conn.CheckAllExecuted(t)
 
 	//by deleting the group...
-	action = func(db *core.Database) error {
+	action = func(db *core.Database) errext.ErrorSet {
 		db.Groups = nil
 		return nil
 	}
@@ -232,7 +232,7 @@ func TestAllFieldsFilled(t *testing.T) {
 	conn, updateDBWithRunningAdapter := setupAdapterTest(t)
 
 	//put one user and one group in the database
-	action := func(db *core.Database) error {
+	action := func(db *core.Database) errext.ErrorSet {
 		db.Users = []core.User{{
 			LoginName:     "alice",
 			GivenName:     "Alice",
@@ -319,7 +319,7 @@ func TestTypeChanges(t *testing.T) {
 	conn, updateDBWithRunningAdapter := setupAdapterTest(t)
 
 	//first we set up a regular user and group...
-	action := func(db *core.Database) error {
+	action := func(db *core.Database) errext.ErrorSet {
 		db.Users = []core.User{{
 			LoginName:    "alice",
 			GivenName:    "Alice",
@@ -369,7 +369,7 @@ func TestTypeChanges(t *testing.T) {
 	conn.CheckAllExecuted(t)
 
 	//changing the regular group into a POSIX group...
-	action = func(db *core.Database) error {
+	action = func(db *core.Database) errext.ErrorSet {
 		gid := core.PosixID(100)
 		db.Groups[0].PosixGID = &gid
 		return nil
@@ -389,7 +389,7 @@ func TestTypeChanges(t *testing.T) {
 	conn.CheckAllExecuted(t)
 
 	//changing the regular user into a POSIX user...
-	action = func(db *core.Database) error {
+	action = func(db *core.Database) errext.ErrorSet {
 		db.Users[0].POSIX = &core.UserPosixAttributes{
 			UID:           1000,
 			GID:           100,
@@ -432,7 +432,7 @@ func TestTypeChanges(t *testing.T) {
 	//we are going to change the group back first in order to cover every pairing
 	//of user type and group type -- changing the POSIX group back into a regular
 	//group...
-	action = func(db *core.Database) error {
+	action = func(db *core.Database) errext.ErrorSet {
 		db.Groups[0].PosixGID = nil
 		return nil
 	}
@@ -445,7 +445,7 @@ func TestTypeChanges(t *testing.T) {
 	conn.CheckAllExecuted(t)
 
 	//changing the POSIX user back into a regular user...
-	action = func(db *core.Database) error {
+	action = func(db *core.Database) errext.ErrorSet {
 		db.Users[0].POSIX = nil
 		return nil
 	}
@@ -476,7 +476,7 @@ func TestLDAPViewerPermission(t *testing.T) {
 	conn, updateDBWithRunningAdapter := setupAdapterTest(t)
 
 	//first we set up a user and group without LDAP permissions...
-	action := func(db *core.Database) error {
+	action := func(db *core.Database) errext.ErrorSet {
 		db.Users = []core.User{{
 			LoginName:    "alice",
 			GivenName:    "Alice",
@@ -524,7 +524,7 @@ func TestLDAPViewerPermission(t *testing.T) {
 	conn.CheckAllExecuted(t)
 
 	//adding the LDAP permission on the group...
-	action = func(db *core.Database) error {
+	action = func(db *core.Database) errext.ErrorSet {
 		db.Groups[0].Permissions.LDAP.CanRead = true
 		return nil
 	}

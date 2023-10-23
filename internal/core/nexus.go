@@ -18,7 +18,7 @@ import (
 
 // UpdateAction is an action that modifies the contents of the Database.
 // This type appears in the Nexus.Update() interface method.
-type UpdateAction func(*Database) error
+type UpdateAction func(*Database) errext.ErrorSet
 
 // Nexus stores the contents of the Database. All other parts of the
 // application use a reference to the Nexus to read and update the Database.
@@ -144,13 +144,18 @@ func (n *nexusImpl) Update(action UpdateAction, optsPtr *UpdateOptions) (errs er
 
 	//compute new DB by applying the reducer to a clone of the old DB
 	newDB := n.db.Cloned()
-	err := action(&newDB)
-	if err == ErrDatabaseNeedsInitialization {
+	errs = action(&newDB)
+	if len(errs) == 1 && errs[0] == ErrDatabaseNeedsInitialization {
 		newDB = initializeDatabase(n.seed, n.hasher)
-	} else if err != nil {
-		errs.Add(err)
-		return
 	}
+	//^ NOTE: We do not return early on error here. For interactive updates,
+	//we want to report as many errors as possible in a single go,
+	//without differentiating between errors from the UpdateAction
+	//and validation errors from the core logic.
+	//
+	//This is important for a consistent user experience because some
+	//validation errors cannot be generated in the core and must come
+	//from the UpdateAction (e.g. any checks involving unhashed passwords).
 
 	//normalize the DB and validate it against common rules and the seed
 	newDB.Normalize()

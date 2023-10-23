@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
+	"github.com/sapcc/go-bits/errext"
 )
 
 func getGroupsHandler(n core.Nexus) http.Handler {
@@ -340,9 +341,10 @@ func buildGroupFromFormState(fs *h.FormState, name string) core.Group {
 
 func executeEditGroupForm(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
-		errs := n.Update(func(db *core.Database) error {
+		errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
 			newGroup := buildGroupFromFormState(i.FormState, i.TargetGroup.Name)
-			return db.Groups.Update(newGroup)
+			errs.Add(db.Groups.Update(newGroup))
+			return
 		}, interactiveUpdate)
 		if !errs.IsEmpty() {
 			i.RedirectWithFlashTo("/groups", Flash{"danger", errs.Join(", ")})
@@ -379,10 +381,10 @@ func postGroupsNewHandler(n core.Nexus) http.Handler {
 func executeCreateGroupForm(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		groupName := i.FormState.Fields["name"].Value
-		errs := n.Update(func(db *core.Database) error {
+		errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
 			newGroup := buildGroupFromFormState(i.FormState, groupName)
 			db.Groups = append(db.Groups, newGroup)
-			return nil
+			return
 		}, interactiveUpdate)
 		if !errs.IsEmpty() {
 			i.RedirectWithFlashTo("/groups", Flash{"danger", errs.Join(", ")})
@@ -435,8 +437,9 @@ func postGroupDeleteHandler(n core.Nexus) http.Handler {
 func executeDeleteGroup(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		groupName := i.TargetGroup.Name
-		errs := n.Update(func(db *core.Database) error {
-			return db.Groups.Delete(groupName)
+		errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
+			errs.Add(db.Groups.Delete(groupName))
+			return
 		}, interactiveUpdate)
 		if !errs.IsEmpty() {
 			i.RedirectWithFlashTo("/groups", Flash{"danger", errs.Join(", ")})

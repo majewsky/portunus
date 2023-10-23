@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/majewsky/portunus/internal/core"
+	"github.com/sapcc/go-bits/errext"
 )
 
 // Adapter translates between the Portunus database and the disk store.
@@ -125,7 +126,12 @@ type persistedDatabase struct {
 	SchemaVersion uint         `json:"schema_version"`
 }
 
-func (a *Adapter) updateNexusByLoadingFromDisk(db *core.Database) error {
+func (a *Adapter) updateNexusByLoadingFromDisk(db *core.Database) (errs errext.ErrorSet) {
+	errs.Add(a.updateNexusByLoadingFromDiskImpl(db))
+	return
+}
+
+func (a *Adapter) updateNexusByLoadingFromDiskImpl(db *core.Database) error {
 	a.initPending = false
 	buf, err := a.readStoreFile()
 	if err != nil {

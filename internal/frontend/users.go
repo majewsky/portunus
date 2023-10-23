@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
+	"github.com/sapcc/go-bits/errext"
 )
 
 var adminPerms = core.Permissions{
@@ -430,12 +431,9 @@ func executeEditUserForm(n core.Nexus) HandlerStep {
 			}
 		}
 
-		errs := n.Update(func(db *core.Database) error {
+		errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
 			newUser := buildUserFromFormState(i.FormState, i.TargetUser.LoginName, passwordHash)
-			err := db.Users.Update(newUser)
-			if err != nil {
-				return err
-			}
+			errs.Add(db.Users.Update(newUser))
 
 			isMemberOf := i.FormState.Fields["memberships"].Selected
 			for idx := range db.Groups {
@@ -445,7 +443,7 @@ func executeEditUserForm(n core.Nexus) HandlerStep {
 				}
 				group.MemberLoginNames[i.TargetUser.LoginName] = isMemberOf[group.Name]
 			}
-			return nil
+			return
 		}, interactiveUpdate)
 		if !errs.IsEmpty() {
 			i.RedirectWithFlashTo("/users", Flash{"danger", errs.Join(", ")})
@@ -494,7 +492,7 @@ func executeCreateUserForm(n core.Nexus) HandlerStep {
 		loginName := i.FormState.Fields["uid"].Value
 		passwordHash := n.PasswordHasher().HashPassword(i.FormState.Fields["password"].Value)
 
-		errs := n.Update(func(db *core.Database) error {
+		errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
 			newUser := buildUserFromFormState(i.FormState, loginName, passwordHash)
 			db.Users = append(db.Users, newUser)
 
@@ -506,7 +504,7 @@ func executeCreateUserForm(n core.Nexus) HandlerStep {
 				}
 				group.MemberLoginNames[loginName] = isMemberOf[group.Name]
 			}
-			return nil
+			return
 		}, interactiveUpdate)
 		if !errs.IsEmpty() {
 			i.RedirectWithFlashTo("/users", Flash{"danger", errs.Join(", ")})
@@ -564,18 +562,15 @@ func postUserDeleteHandler(n core.Nexus) http.Handler {
 func executeDeleteUser(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		userLoginName := i.TargetUser.LoginName
-		errs := n.Update(func(db *core.Database) error {
-			err := db.Users.Delete(userLoginName)
-			if err != nil {
-				return err
-			}
+		errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
+			errs.Add(db.Users.Delete(userLoginName))
 
 			for _, group := range db.Groups {
 				if group.MemberLoginNames != nil {
 					group.MemberLoginNames[userLoginName] = false
 				}
 			}
-			return nil
+			return
 		}, interactiveUpdate)
 		if !errs.IsEmpty() {
 			i.RedirectWithFlashTo("/users", Flash{"danger", errs.Join(", ")})

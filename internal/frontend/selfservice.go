@@ -7,13 +7,13 @@
 package frontend
 
 import (
-	"errors"
 	"net/http"
 	"sort"
 	"strings"
 
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
+	"github.com/sapcc/go-bits/errext"
 )
 
 // TODO: allow flipped order (family name first)
@@ -173,17 +173,19 @@ func validateSelfServiceForm(n core.Nexus) HandlerStep {
 func executeSelfServiceForm(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		fs := i.FormState
-		errs := n.Update(func(db *core.Database) error {
+		errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
 			user, exists := db.Users.Find(func(u core.User) bool { return u.LoginName == i.CurrentUser.LoginName })
 			if !exists {
-				return errors.New("no such user")
+				errs.Addf("no such user")
+				return
 			}
 
 			if fs.Fields["change_password"].IsUnfolded {
 				user.PasswordHash = n.PasswordHasher().HashPassword(fs.Fields["new_password"].Value)
 			}
 			user.SSHPublicKeys = core.SplitSSHPublicKeys(fs.Fields["ssh_public_keys"].Value)
-			return db.Users.Update(user)
+			errs.Add(db.Users.Update(user))
+			return
 		}, interactiveUpdate)
 
 		if errs.IsEmpty() {

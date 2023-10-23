@@ -12,6 +12,7 @@ import (
 
 	"github.com/majewsky/portunus/internal/core"
 	h "github.com/majewsky/portunus/internal/html"
+	"github.com/sapcc/go-bits/errext"
 )
 
 func useLoginForm(i *Interaction) {
@@ -108,13 +109,13 @@ func checkLogin(n core.Nexus) HandlerStep {
 				//since the last login of this user, the hasher started preferring a different method
 				//-> we do have the user password right now, so we can rehash it transparently
 				newPasswordHash := hasher.HashPassword(pwd)
-				errs := n.Update(func(db *core.Database) error {
+				errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
 					for idx, dbUser := range db.Users {
 						if dbUser.LoginName == user.LoginName && dbUser.PasswordHash == passwordHash {
 							db.Users[idx].PasswordHash = newPasswordHash
 						}
 					}
-					return nil
+					return
 				}, nil)
 				if !errs.IsEmpty() {
 					i.RedirectWithFlashTo("/self", Flash{"danger", errs.Join(", ")})
