@@ -276,7 +276,7 @@ The contents of the seed file look like in this example:
         "sh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEr5uZiZaOeztaBs/9lyhQRmedjDILjxzITNC+RbWuSL technicaladmin@cluster"
       ],
       "password": {
-        "from_command": [ "/usr/bin/env", "cat", "/etc/secrets/technical-admin-password.txt" ]
+        "from_command": [ "cat", "/etc/secrets/technical-admin-password.txt" ]
       },
       "posix": {
         "uid": 1001,
