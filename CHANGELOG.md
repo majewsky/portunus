@@ -13,7 +13,7 @@ SemVer was not adhered to in one of our releases, please open an issue.
 New features:
 
 - With the move to libxcrypt, Portunus supports all the same strong password hashes that libxcrypt supports (such as
-  bcrypt and yescrypt.
+  bcrypt and yescrypt).
 - Existing user accounts with weak password hashes in your Portunus database will continue to work. After the upgrade,
   instruct all your users to log into the Portunus UI once. Upon successful login, Portunus will transparently upgrade
   their stored password hashes to a stronger hash method. To enumerate users that have not been upgraded to a stronger
