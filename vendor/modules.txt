@@ -41,19 +41,6 @@ github.com/sapcc/go-bits/osext
 # github.com/sergi/go-diff v1.3.1
 ## explicit; go 1.12
 github.com/sergi/go-diff/diffmatchpatch
-# github.com/tredoe/goutil v0.0.0-20161130132832-0a73aea41b0b
-## explicit
-github.com/tredoe/goutil/reflectutil
-# github.com/tredoe/osutil v1.0.4
-## explicit; go 1.13
-github.com/tredoe/osutil/config/shconf
-github.com/tredoe/osutil/file
-github.com/tredoe/osutil/user
-github.com/tredoe/osutil/user/crypt
-github.com/tredoe/osutil/user/crypt/common
-github.com/tredoe/osutil/user/crypt/md5_crypt
-github.com/tredoe/osutil/user/crypt/sha256_crypt
-github.com/tredoe/osutil/user/crypt/sha512_crypt
 # golang.org/x/crypto v0.14.0
 ## explicit; go 1.17
 golang.org/x/crypto/blowfish

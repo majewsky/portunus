@@ -7,11 +7,14 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/sapcc/go-bits/logg"
-	osutil_user "github.com/tredoe/osutil/user"
+	"github.com/sapcc/go-bits/must"
 )
 
 var (
@@ -77,33 +80,40 @@ func readConfig() (environment map[string]string, ids map[string]int) {
 
 	//resolve user/group names into IDs
 	ids = map[string]int{
-		"PORTUNUS_SERVER_UID": getUIDForName(environment["PORTUNUS_SERVER_USER"]),
-		"PORTUNUS_SERVER_GID": getGIDForName(environment["PORTUNUS_SERVER_GROUP"]),
-		"PORTUNUS_SLAPD_UID":  getUIDForName(environment["PORTUNUS_SLAPD_USER"]),
-		"PORTUNUS_SLAPD_GID":  getGIDForName(environment["PORTUNUS_SLAPD_GROUP"]),
+		"PORTUNUS_SERVER_UID": must.Return(lookupID("/etc/passwd", environment["PORTUNUS_SERVER_USER"])),
+		"PORTUNUS_SERVER_GID": must.Return(lookupID("/etc/group", environment["PORTUNUS_SERVER_GROUP"])),
+		"PORTUNUS_SLAPD_UID":  must.Return(lookupID("/etc/passwd", environment["PORTUNUS_SLAPD_USER"])),
+		"PORTUNUS_SLAPD_GID":  must.Return(lookupID("/etc/group", environment["PORTUNUS_SLAPD_GROUP"])),
 	}
 
 	return
 }
 
-func getGIDForName(name string) int {
-	group, err := osutil_user.LookupGroup(name)
-	if err != nil {
-		logg.Fatal("cannot find group %s: %s", name, err.Error())
-	}
-	if group == nil {
-		logg.Fatal("cannot find group %s", name)
-	}
-	return group.GID
-}
+func lookupID(databasePath, entityName string) (int, error) {
+	//In both `/etc/passwd` and `/etc/passwd`:
+	//- The columns are colon-separated.
+	//- The first column has the entity name.
+	//- The third column has the entity's own numeric ID.
+	buf := must.Return(os.ReadFile(databasePath))
+	for _, line := range strings.Split(string(buf), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
 
-func getUIDForName(name string) int {
-	user, err := osutil_user.LookupUser(name)
-	if err != nil {
-		logg.Fatal("cannot find user %s: %s", name, err.Error())
+		fields := strings.Split(line, ":")
+		if fields[0] != entityName {
+			continue
+		}
+
+		id, err := strconv.ParseUint(fields[2], 10, 32) // in Linux, uid_t = gid_t = uint32_t
+		if err != nil {
+			return 0, fmt.Errorf("while reading %q: cannot parse ID for %q: %w",
+				databasePath, entityName, err)
+		}
+		return int(id), nil
 	}
-	if user == nil {
-		logg.Fatal("cannot find user %s", name)
-	}
-	return user.UID
+
+	return 0, fmt.Errorf("while reading %q: cannot find ID for %q",
+		databasePath, entityName)
 }

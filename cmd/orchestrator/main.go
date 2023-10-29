@@ -15,7 +15,6 @@ import (
 	"github.com/majewsky/portunus/internal/crypt"
 	"github.com/sapcc/go-bits/logg"
 	"github.com/sapcc/go-bits/must"
-	"github.com/tredoe/osutil/file"
 )
 
 func main() {
@@ -42,20 +41,17 @@ func main() {
 	must.Succeed(os.WriteFile(slapdConfigPath, renderSlapdConfig(environment, hasher), 0444))
 
 	//copy TLS cert and private key into a location where slapd can definitely read it
-	if certPath := environment["PORTUNUS_SLAPD_TLS_CERTIFICATE"]; certPath != "" {
-		certPath2 := filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "cert.pem")
-		must.Succeed(file.Copy(certPath, certPath2))
-		must.Succeed(os.Chown(certPath2, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
+	if environment["PORTUNUS_SLAPD_TLS_CERTIFICATE"] != "" {
+		copyTLSFile := func(destName, srcPath string) {
+			destPath := filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], destName)
+			buf := must.Return(os.ReadFile(srcPath))
+			must.Succeed(os.WriteFile(destPath, buf, 0400))
+			must.Succeed(os.Chown(destPath, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
+		}
 
-		keyPath := environment["PORTUNUS_SLAPD_TLS_PRIVATE_KEY"]
-		keyPath2 := filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "key.pem")
-		must.Succeed(file.Copy(keyPath, keyPath2))
-		must.Succeed(os.Chown(keyPath2, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
-
-		caPath := environment["PORTUNUS_SLAPD_TLS_CA_CERTIFICATE"]
-		caPath2 := filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "ca.pem")
-		must.Succeed(file.Copy(caPath, caPath2))
-		must.Succeed(os.Chown(caPath2, ids["PORTUNUS_SLAPD_UID"], ids["PORTUNUS_SLAPD_GID"]))
+		copyTLSFile("cert.pem", environment["PORTUNUS_SLAPD_TLS_CERTIFICATE"])
+		copyTLSFile("key.pem", environment["PORTUNUS_SLAPD_TLS_PRIVATE_KEY"])
+		copyTLSFile("ca.pem", environment["PORTUNUS_SLAPD_TLS_CA_CERTIFICATE"])
 	}
 
 	//setup our state directory with the correct permissions

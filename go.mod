@@ -11,7 +11,6 @@ require (
 	github.com/gorilla/sessions v1.2.1
 	github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25
 	github.com/sapcc/go-bits v0.0.0-20231025110038-7e644a44c112
-	github.com/tredoe/osutil v1.0.4
 	golang.org/x/crypto v0.14.0
 )
 
@@ -21,6 +20,5 @@ require (
 	github.com/google/uuid v1.3.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sergi/go-diff v1.3.1 // indirect
-	github.com/tredoe/goutil v0.0.0-20161130132832-0a73aea41b0b // indirect
 	golang.org/x/sys v0.13.0 // indirect
 )
