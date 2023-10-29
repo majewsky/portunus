@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/majewsky/portunus/internal/core"
+	"github.com/majewsky/portunus/internal/crypt"
 	h "github.com/majewsky/portunus/internal/html"
 	"github.com/sapcc/go-bits/errext"
 )
@@ -27,6 +28,7 @@ var userEMailAddressSnippet = h.NewSnippet(`
 func useSelfServiceForm(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		user := i.CurrentUser
+		i.TargetRef = user.Ref()
 
 		isAdmin := user.Perms.Portunus.IsAdmin
 		visibleGroups := user.GroupMemberships
@@ -84,10 +86,6 @@ func useSelfServiceForm(n core.Nexus) HandlerStep {
 				h.MultilineInputFieldSpec{
 					Name:  "ssh_public_keys",
 					Label: "SSH public key(s)",
-					Rules: []h.ValidationRule{
-						core.MustNotHaveSurroundingSpaces,
-						core.MustBeSSHPublicKeys,
-					},
 				},
 				h.FieldSet{
 					Name:       "change_password",
@@ -98,25 +96,16 @@ func useSelfServiceForm(n core.Nexus) HandlerStep {
 							InputType: "password",
 							Name:      "old_password",
 							Label:     "Old password",
-							Rules: []h.ValidationRule{
-								core.MustNotBeEmpty,
-							},
 						},
 						h.InputFieldSpec{
 							InputType: "password",
 							Name:      "new_password",
 							Label:     "New password",
-							Rules: []h.ValidationRule{
-								core.MustNotBeEmpty,
-							},
 						},
 						h.InputFieldSpec{
 							InputType: "password",
 							Name:      "repeat_password",
 							Label:     "Repeat password",
-							Rules: []h.ValidationRule{
-								core.MustNotBeEmpty,
-							},
 						},
 					},
 				},
@@ -141,9 +130,9 @@ func postSelfHandler(n core.Nexus) http.Handler {
 		useSelfServiceForm(n),
 		ReadFormStateFromRequest,
 		validateSelfServiceForm(n),
+		TryUpdateNexus(n, executeSelfService),
 		ShowFormIfErrors("My profile"),
-		executeSelfServiceForm(n),
-		ShowForm("My profile"),
+		RedirectWithFlashTo("/self", "Updated"),
 	)
 }
 
@@ -152,46 +141,31 @@ func validateSelfServiceForm(n core.Nexus) HandlerStep {
 		fs := i.FormState
 
 		if fs.Fields["change_password"].IsUnfolded {
-			if fs.IsValid() {
-				newPassword1 := fs.Fields["new_password"].Value
-				newPassword2 := fs.Fields["repeat_password"].Value
-				if newPassword1 != newPassword2 {
-					fs.Fields["repeat_password"].ErrorMessage = "did not match"
-				}
+			oldPassword := fs.Fields["old_password"].GetValueOrSetError()
+			if oldPassword != "" && !n.PasswordHasher().CheckPasswordHash(oldPassword, i.CurrentUser.PasswordHash) {
+				fs.Fields["old_password"].ErrorMessage = "is not correct"
 			}
 
-			if fs.IsValid() {
-				oldPassword := fs.Fields["old_password"].Value
-				if !n.PasswordHasher().CheckPasswordHash(oldPassword, i.CurrentUser.PasswordHash) {
-					fs.Fields["old_password"].ErrorMessage = "is not correct"
-				}
+			newPassword1 := fs.Fields["new_password"].GetValueOrSetError()
+			newPassword2 := fs.Fields["repeat_password"].GetValueOrSetError()
+			if newPassword2 != "" && newPassword1 != newPassword2 {
+				fs.Fields["repeat_password"].ErrorMessage = "did not match"
 			}
 		}
 	}
 }
 
-func executeSelfServiceForm(n core.Nexus) HandlerStep {
-	return func(i *Interaction) {
-		fs := i.FormState
-		errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
-			user, exists := db.Users.Find(func(u core.User) bool { return u.LoginName == i.CurrentUser.LoginName })
-			if !exists {
-				errs.Addf("no such user")
-				return
-			}
-
-			if fs.Fields["change_password"].IsUnfolded {
-				user.PasswordHash = n.PasswordHasher().HashPassword(fs.Fields["new_password"].Value)
-			}
-			user.SSHPublicKeys = core.SplitSSHPublicKeys(fs.Fields["ssh_public_keys"].Value)
-			errs.Add(db.Users.Update(user))
-			return
-		}, interactiveUpdate)
-
-		if errs.IsEmpty() {
-			i.Session.AddFlash(Flash{"success", "Profile updated."})
-		} else {
-			i.Session.AddFlash(Flash{"danger", errs.Join(", ")})
+func executeSelfService(db *core.Database, i *Interaction, hasher crypt.PasswordHasher) (errs errext.ErrorSet) {
+	fs := i.FormState
+	for idx, user := range db.Users {
+		if user.LoginName != i.CurrentUser.LoginName {
+			continue
 		}
+		if fs.Fields["change_password"].IsUnfolded {
+			user.PasswordHash = hasher.HashPassword(fs.Fields["new_password"].Value)
+		}
+		user.SSHPublicKeys = core.SplitSSHPublicKeys(fs.Fields["ssh_public_keys"].Value)
+		db.Users[idx] = user //`user` copies by value, so we need to write the changes back explicitly
 	}
+	return
 }

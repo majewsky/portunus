@@ -7,15 +7,14 @@
 package frontend
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/majewsky/portunus/internal/core"
+	"github.com/majewsky/portunus/internal/crypt"
 	h "github.com/majewsky/portunus/internal/html"
 	"github.com/sapcc/go-bits/errext"
 )
@@ -115,7 +114,7 @@ func useGroupForm(n core.Nexus) HandlerStep {
 		}
 		i.FormSpec = &h.FormSpec{
 			Fields: []h.FormField{
-				buildGroupMasterdataFieldset(n, i.TargetGroup, i.FormState),
+				buildGroupMasterdataFieldset(i.TargetGroup, i.FormState),
 				buildGroupPermissionsFieldset(i.TargetGroup, i.FormState),
 				buildGroupPosixFieldset(i.TargetGroup, i.FormState),
 				buildGroupMemberFieldset(n, i.TargetGroup, i.FormState),
@@ -132,26 +131,13 @@ func useGroupForm(n core.Nexus) HandlerStep {
 	}
 }
 
-func buildGroupMasterdataFieldset(n core.Nexus, g *core.Group, state *h.FormState) h.FormField {
+func buildGroupMasterdataFieldset(g *core.Group, state *h.FormState) h.FormField {
 	var nameField h.FormField
 	if g == nil {
-		mustNotBeInUse := func(name string) error {
-			_, exists := n.FindGroup(func(g core.Group) bool { return g.Name == name })
-			if exists {
-				return errors.New("is already in use")
-			}
-			return nil
-		}
 		nameField = h.InputFieldSpec{
 			InputType: "text",
 			Name:      "name",
 			Label:     "Name",
-			Rules: []h.ValidationRule{
-				core.MustNotBeEmpty,
-				core.MustNotHaveSurroundingSpaces,
-				core.MustBePosixAccountName,
-				mustNotBeInUse,
-			},
 		}
 	} else {
 		nameField = h.StaticField{
@@ -170,10 +156,6 @@ func buildGroupMasterdataFieldset(n core.Nexus, g *core.Group, state *h.FormStat
 				InputType: "text",
 				Name:      "long_name",
 				Label:     "Long name",
-				Rules: []h.ValidationRule{
-					core.MustNotBeEmpty,
-					core.MustNotHaveSurroundingSpaces,
-				},
 			},
 		},
 	}
@@ -269,11 +251,6 @@ func buildGroupPosixFieldset(g *core.Group, state *h.FormState) h.FormField {
 				Name:      "posix_gid",
 				Label:     "Group ID",
 				InputType: "text",
-				Rules: []h.ValidationRule{
-					core.MustNotBeEmpty,
-					core.MustNotHaveSurroundingSpaces,
-					core.MustBePosixUIDorGID,
-				},
 			},
 		},
 	}
@@ -298,8 +275,9 @@ func postGroupEditHandler(n core.Nexus) http.Handler {
 		loadTargetGroup(n),
 		useGroupForm(n),
 		ReadFormStateFromRequest,
+		TryUpdateNexus(n, executeEditGroup),
 		ShowFormIfErrors("Edit group"),
-		executeEditGroupForm(n),
+		RedirectWithFlashTo("/groups", "Updated"),
 	)
 }
 
@@ -309,6 +287,7 @@ func loadTargetGroup(n core.Nexus) HandlerStep {
 		group, exists := n.FindGroup(func(g core.Group) bool { return g.Name == groupName })
 		if exists {
 			i.TargetGroup = &group
+			i.TargetRef = group.Ref()
 		} else {
 			msg := fmt.Sprintf("Group %q does not exist.", groupName)
 			i.RedirectWithFlashTo("/groups", Flash{"danger", msg})
@@ -316,8 +295,8 @@ func loadTargetGroup(n core.Nexus) HandlerStep {
 	}
 }
 
-func buildGroupFromFormState(fs *h.FormState, name string) core.Group {
-	result := core.Group{
+func buildGroupFromFormState(fs *h.FormState, name string) (result core.Group, errs errext.ErrorSet) {
+	result = core.Group{
 		Name:             name,
 		LongName:         fs.Fields["long_name"].Value,
 		MemberLoginNames: fs.Fields["members"].Selected,
@@ -332,28 +311,17 @@ func buildGroupFromFormState(fs *h.FormState, name string) core.Group {
 		PosixGID: nil,
 	}
 	if fs.Fields["posix"].IsUnfolded {
-		gidAsUint64, _ := strconv.ParseUint(fs.Fields["posix_gid"].Value, 10, 16)
-		gid := core.PosixID(gidAsUint64)
+		gid, err := core.ParsePosixID(fs.Fields["posix_gid"].Value, result.Ref().Field("posix_gid"))
 		result.PosixGID = &gid
+		errs.Add(err)
 	}
-	return result
+	return
 }
 
-func executeEditGroupForm(n core.Nexus) HandlerStep {
-	return func(i *Interaction) {
-		errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
-			newGroup := buildGroupFromFormState(i.FormState, i.TargetGroup.Name)
-			errs.Add(db.Groups.Update(newGroup))
-			return
-		}, interactiveUpdate)
-		if !errs.IsEmpty() {
-			i.RedirectWithFlashTo("/groups", Flash{"danger", errs.Join(", ")})
-			return
-		}
-
-		msg := fmt.Sprintf("Updated group %q.", i.TargetGroup.Name)
-		i.RedirectWithFlashTo("/groups", Flash{"success", msg})
-	}
+func executeEditGroup(db *core.Database, i *Interaction, _ crypt.PasswordHasher) errext.ErrorSet {
+	newGroup, errs := buildGroupFromFormState(i.FormState, i.TargetGroup.Name)
+	errs.Add(db.Groups.Update(newGroup))
+	return errs
 }
 
 func getGroupsNewHandler(n core.Nexus) http.Handler {
@@ -373,27 +341,18 @@ func postGroupsNewHandler(n core.Nexus) http.Handler {
 		VerifyPermissions(adminPerms),
 		useGroupForm(n),
 		ReadFormStateFromRequest,
+		TryUpdateNexus(n, executeCreateGroup),
 		ShowFormIfErrors("Create group"),
-		executeCreateGroupForm(n),
+		RedirectWithFlashTo("/groups", "Created"),
 	)
 }
 
-func executeCreateGroupForm(n core.Nexus) HandlerStep {
-	return func(i *Interaction) {
-		groupName := i.FormState.Fields["name"].Value
-		errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
-			newGroup := buildGroupFromFormState(i.FormState, groupName)
-			db.Groups = append(db.Groups, newGroup)
-			return
-		}, interactiveUpdate)
-		if !errs.IsEmpty() {
-			i.RedirectWithFlashTo("/groups", Flash{"danger", errs.Join(", ")})
-			return
-		}
-
-		msg := fmt.Sprintf("Created group %q.", groupName)
-		i.RedirectWithFlashTo("/groups", Flash{"success", msg})
-	}
+func executeCreateGroup(db *core.Database, i *Interaction, _ crypt.PasswordHasher) errext.ErrorSet {
+	groupName := i.FormState.Fields["name"].Value
+	newGroup, errs := buildGroupFromFormState(i.FormState, groupName)
+	i.TargetRef = newGroup.Ref()
+	db.Groups = append(db.Groups, newGroup)
+	return errs
 }
 
 func getGroupDeleteHandler(n core.Nexus) http.Handler {
@@ -430,23 +389,15 @@ func postGroupDeleteHandler(n core.Nexus) http.Handler {
 		VerifyLogin(n),
 		VerifyPermissions(adminPerms),
 		loadTargetGroup(n),
-		executeDeleteGroup(n),
+		useDeleteGroupForm,
+		UseEmptyFormState,
+		TryUpdateNexus(n, executeDeleteGroup),
+		ShowFormIfErrors("Confirm group deletion"),
+		RedirectWithFlashTo("/groups", "Deleted"),
 	)
 }
 
-func executeDeleteGroup(n core.Nexus) HandlerStep {
-	return func(i *Interaction) {
-		groupName := i.TargetGroup.Name
-		errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
-			errs.Add(db.Groups.Delete(groupName))
-			return
-		}, interactiveUpdate)
-		if !errs.IsEmpty() {
-			i.RedirectWithFlashTo("/groups", Flash{"danger", errs.Join(", ")})
-			return
-		}
-
-		msg := fmt.Sprintf("Deleted group %q.", groupName)
-		i.RedirectWithFlashTo("/groups", Flash{"success", msg})
-	}
+func executeDeleteGroup(db *core.Database, i *Interaction, _ crypt.PasswordHasher) (errs errext.ErrorSet) {
+	errs.Add(db.Groups.Delete(i.TargetGroup.Name))
+	return
 }

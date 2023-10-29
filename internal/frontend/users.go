@@ -7,15 +7,14 @@
 package frontend
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/majewsky/portunus/internal/core"
+	"github.com/majewsky/portunus/internal/crypt"
 	h "github.com/majewsky/portunus/internal/html"
 	"github.com/sapcc/go-bits/errext"
 )
@@ -131,30 +130,16 @@ func useUserForm(n core.Nexus) HandlerStep {
 			buildUserPosixFieldset(i.TargetUser, i.FormState),
 			buildUserPasswordFieldset(i.TargetUser),
 		)
-
 	}
 }
 
 func buildUserMasterdataFieldset(n core.Nexus, u *core.User, state *h.FormState) h.FormField {
 	var fields []h.FormField
 	if u == nil {
-		mustNotBeInUse := func(loginName string) error {
-			_, exists := n.FindUser(func(u core.User) bool { return u.LoginName == loginName })
-			if exists {
-				return errors.New("is already in use")
-			}
-			return nil
-		}
 		fields = append(fields, h.InputFieldSpec{
 			InputType: "text",
-			Name:      "uid",
+			Name:      "login_name",
 			Label:     "Login name",
-			Rules: []h.ValidationRule{
-				core.MustNotBeEmpty,
-				core.MustNotHaveSurroundingSpaces,
-				core.MustBePosixAccountName,
-				mustNotBeInUse,
-			},
 		})
 	} else {
 		fields = append(fields, h.StaticField{
@@ -168,35 +153,20 @@ func buildUserMasterdataFieldset(n core.Nexus, u *core.User, state *h.FormState)
 			InputType: "text",
 			Name:      "given_name",
 			Label:     "Given name",
-			Rules: []h.ValidationRule{
-				core.MustNotBeEmpty,
-				core.MustNotHaveSurroundingSpaces,
-			},
 		},
 		h.InputFieldSpec{
 			InputType: "text",
 			Name:      "family_name",
 			Label:     "Family name",
-			Rules: []h.ValidationRule{
-				core.MustNotBeEmpty,
-				core.MustNotHaveSurroundingSpaces,
-			},
 		},
 		h.InputFieldSpec{
 			InputType: "text",
 			Name:      "email",
 			Label:     "Email address (optional in Portunus, but required by some services)",
-			Rules: []h.ValidationRule{
-				core.MustNotHaveSurroundingSpaces,
-			},
 		},
 		h.MultilineInputFieldSpec{
 			Name:  "ssh_public_keys",
 			Label: "SSH public key(s)",
-			Rules: []h.ValidationRule{
-				core.MustNotHaveSurroundingSpaces,
-				core.MustBeSSHPublicKeys,
-			},
 		},
 	)
 	if u != nil {
@@ -238,52 +208,31 @@ func buildUserMasterdataFieldset(n core.Nexus, u *core.User, state *h.FormState)
 }
 
 func buildUserPasswordFieldset(u *core.User) h.FormField {
+	fields := []h.FormField{
+		h.InputFieldSpec{
+			InputType: "password",
+			Name:      "password",
+			Label:     "Password",
+		},
+		h.InputFieldSpec{
+			InputType: "password",
+			Name:      "repeat_password",
+			Label:     "Repeat password",
+		},
+	}
+
 	if u == nil {
 		return h.FieldSet{
 			Label:      "Initial password",
 			IsFoldable: false,
-			Fields: []h.FormField{
-				h.InputFieldSpec{
-					InputType: "password",
-					Name:      "password",
-					Label:     "Password",
-					Rules: []h.ValidationRule{
-						core.MustNotBeEmpty,
-					},
-				},
-				h.InputFieldSpec{
-					InputType: "password",
-					Name:      "repeat_password",
-					Label:     "Repeat password",
-					Rules: []h.ValidationRule{
-						core.MustNotBeEmpty,
-					},
-				},
-			},
+			Fields:     fields,
 		}
 	}
 	return h.FieldSet{
 		Name:       "reset_password",
 		Label:      "Reset password",
 		IsFoldable: true,
-		Fields: []h.FormField{
-			h.InputFieldSpec{
-				InputType: "password",
-				Name:      "password",
-				Label:     "New password",
-				Rules: []h.ValidationRule{
-					core.MustNotBeEmpty,
-				},
-			},
-			h.InputFieldSpec{
-				InputType: "password",
-				Name:      "repeat_password",
-				Label:     "Repeat password",
-				Rules: []h.ValidationRule{
-					core.MustNotBeEmpty,
-				},
-			},
-		},
+		Fields:     fields,
 	}
 }
 
@@ -306,39 +255,21 @@ func buildUserPosixFieldset(u *core.User, state *h.FormState) h.FormField {
 				Name:      "posix_uid",
 				Label:     "User ID",
 				InputType: "text",
-				Rules: []h.ValidationRule{
-					core.MustNotBeEmpty,
-					core.MustNotHaveSurroundingSpaces,
-					core.MustBePosixUIDorGID,
-				},
 			},
 			h.InputFieldSpec{
 				Name:      "posix_gid",
 				Label:     "Primary group ID",
 				InputType: "text",
-				Rules: []h.ValidationRule{
-					core.MustNotBeEmpty,
-					core.MustNotHaveSurroundingSpaces,
-					core.MustBePosixUIDorGID,
-				},
 			},
 			h.InputFieldSpec{
 				Name:      "posix_home",
 				Label:     "Home directory",
 				InputType: "text",
-				Rules: []h.ValidationRule{
-					core.MustNotBeEmpty,
-					core.MustNotHaveSurroundingSpaces,
-					core.MustBeAbsolutePath,
-				},
 			},
 			h.InputFieldSpec{
 				Name:      "posix_shell",
 				Label:     "Login shell (optional)",
 				InputType: "text",
-				Rules: []h.ValidationRule{
-					core.MustBeAbsolutePath,
-				},
 			},
 			h.InputFieldSpec{
 				Name:      "posix_gecos",
@@ -368,9 +299,10 @@ func postUserEditHandler(n core.Nexus) http.Handler {
 		loadTargetUser(n),
 		useUserForm(n),
 		ReadFormStateFromRequest,
-		validateEditUserForm,
+		validateUserForm,
+		TryUpdateNexus(n, executeEditUser),
 		ShowFormIfErrors("Edit user"),
-		executeEditUserForm(n),
+		RedirectWithFlashTo("/users", "Updated"),
 	)
 }
 
@@ -380,6 +312,7 @@ func loadTargetUser(n core.Nexus) HandlerStep {
 		user, exists := n.FindUser(func(u core.User) bool { return u.LoginName == userLoginName })
 		if exists {
 			i.TargetUser = &user.User
+			i.TargetRef = user.User.Ref()
 		} else {
 			msg := fmt.Sprintf("User %q does not exist.", userLoginName)
 			i.RedirectWithFlashTo("/users", Flash{"danger", msg})
@@ -387,8 +320,8 @@ func loadTargetUser(n core.Nexus) HandlerStep {
 	}
 }
 
-func buildUserFromFormState(fs *h.FormState, loginName, passwordHash string) core.User {
-	result := core.User{
+func buildUserFromFormState(fs *h.FormState, loginName, passwordHash string) (result core.User, errs errext.ErrorSet) {
+	result = core.User{
 		LoginName:     loginName,
 		GivenName:     fs.Fields["given_name"].Value,
 		FamilyName:    fs.Fields["family_name"].Value,
@@ -398,61 +331,53 @@ func buildUserFromFormState(fs *h.FormState, loginName, passwordHash string) cor
 		POSIX:         nil,
 	}
 	if fs.Fields["posix"].IsUnfolded {
-		uidAsUint64, _ := strconv.ParseUint(fs.Fields["posix_uid"].Value, 10, 16)
-		gidAsUint64, _ := strconv.ParseUint(fs.Fields["posix_gid"].Value, 10, 16)
+		uid, err := core.ParsePosixID(fs.Fields["posix_uid"].Value, result.Ref().Field("posix_uid"))
+		errs.Add(err)
+		gid, err := core.ParsePosixID(fs.Fields["posix_gid"].Value, result.Ref().Field("posix_gid"))
+		errs.Add(err)
+
 		result.POSIX = &core.UserPosixAttributes{
-			UID:           core.PosixID(uidAsUint64),
-			GID:           core.PosixID(gidAsUint64),
+			UID:           uid,
+			GID:           gid,
 			HomeDirectory: fs.Fields["posix_home"].Value,
 			LoginShell:    fs.Fields["posix_shell"].Value,
 			GECOS:         fs.Fields["posix_gecos"].Value,
 		}
 	}
-	return result
+	return
 }
 
-func validateEditUserForm(i *Interaction) {
+func validateUserForm(i *Interaction) {
 	fs := i.FormState
-	if i.FormState.Fields["reset_password"].IsUnfolded {
-		password1 := fs.Fields["password"].Value
-		password2 := fs.Fields["repeat_password"].Value
-		if password1 != password2 {
+	if i.TargetUser == nil || fs.Fields["reset_password"].IsUnfolded {
+		password1 := fs.Fields["password"].GetValueOrSetError()
+		password2 := fs.Fields["repeat_password"].GetValueOrSetError()
+		if password2 != "" && password1 != password2 {
 			fs.Fields["repeat_password"].ErrorMessage = "did not match"
 		}
 	}
 }
 
-func executeEditUserForm(n core.Nexus) HandlerStep {
-	return func(i *Interaction) {
-		passwordHash := i.TargetUser.PasswordHash
-		if i.FormState.Fields["reset_password"].IsUnfolded {
-			if pw := i.FormState.Fields["password"].Value; pw != "" {
-				passwordHash = n.PasswordHasher().HashPassword(pw)
-			}
+func executeEditUser(db *core.Database, i *Interaction, hasher crypt.PasswordHasher) errext.ErrorSet {
+	passwordHash := i.TargetUser.PasswordHash
+	if i.FormState.Fields["reset_password"].IsUnfolded {
+		if pw := i.FormState.Fields["password"].Value; pw != "" {
+			passwordHash = hasher.HashPassword(pw)
 		}
-
-		errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
-			newUser := buildUserFromFormState(i.FormState, i.TargetUser.LoginName, passwordHash)
-			errs.Add(db.Users.Update(newUser))
-
-			isMemberOf := i.FormState.Fields["memberships"].Selected
-			for idx := range db.Groups {
-				group := &db.Groups[idx]
-				if group.MemberLoginNames == nil {
-					group.MemberLoginNames = make(map[string]bool)
-				}
-				group.MemberLoginNames[i.TargetUser.LoginName] = isMemberOf[group.Name]
-			}
-			return
-		}, interactiveUpdate)
-		if !errs.IsEmpty() {
-			i.RedirectWithFlashTo("/users", Flash{"danger", errs.Join(", ")})
-			return
-		}
-
-		msg := fmt.Sprintf("Updated user %q.", i.TargetUser.LoginName)
-		i.RedirectWithFlashTo("/users", Flash{"success", msg})
 	}
+
+	newUser, errs := buildUserFromFormState(i.FormState, i.TargetUser.LoginName, passwordHash)
+	errs.Add(db.Users.Update(newUser))
+
+	isMemberOf := i.FormState.Fields["memberships"].Selected
+	for idx := range db.Groups {
+		group := &db.Groups[idx]
+		if group.MemberLoginNames == nil {
+			group.MemberLoginNames = make(map[string]bool)
+		}
+		group.MemberLoginNames[i.TargetUser.LoginName] = isMemberOf[group.Name]
+	}
+	return errs
 }
 
 func getUsersNewHandler(n core.Nexus) http.Handler {
@@ -472,48 +397,30 @@ func postUsersNewHandler(n core.Nexus) http.Handler {
 		VerifyPermissions(adminPerms),
 		useUserForm(n),
 		ReadFormStateFromRequest,
-		validateCreateUserForm,
+		validateUserForm,
+		TryUpdateNexus(n, executeCreateUser),
 		ShowFormIfErrors("Create user"),
-		executeCreateUserForm(n),
+		RedirectWithFlashTo("/users", "Created"),
 	)
 }
 
-func validateCreateUserForm(i *Interaction) {
-	fs := i.FormState
-	password1 := fs.Fields["password"].Value
-	password2 := fs.Fields["repeat_password"].Value
-	if password1 != password2 {
-		fs.Fields["repeat_password"].ErrorMessage = "did not match"
-	}
-}
+func executeCreateUser(db *core.Database, i *Interaction, hasher crypt.PasswordHasher) errext.ErrorSet {
+	loginName := i.FormState.Fields["login_name"].Value
+	passwordHash := hasher.HashPassword(i.FormState.Fields["password"].Value)
 
-func executeCreateUserForm(n core.Nexus) HandlerStep {
-	return func(i *Interaction) {
-		loginName := i.FormState.Fields["uid"].Value
-		passwordHash := n.PasswordHasher().HashPassword(i.FormState.Fields["password"].Value)
+	newUser, errs := buildUserFromFormState(i.FormState, loginName, passwordHash)
+	i.TargetRef = newUser.Ref()
+	db.Users = append(db.Users, newUser)
 
-		errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
-			newUser := buildUserFromFormState(i.FormState, loginName, passwordHash)
-			db.Users = append(db.Users, newUser)
-
-			isMemberOf := i.FormState.Fields["memberships"].Selected
-			for idx := range db.Groups {
-				group := &db.Groups[idx]
-				if group.MemberLoginNames == nil {
-					group.MemberLoginNames = make(map[string]bool)
-				}
-				group.MemberLoginNames[loginName] = isMemberOf[group.Name]
-			}
-			return
-		}, interactiveUpdate)
-		if !errs.IsEmpty() {
-			i.RedirectWithFlashTo("/users", Flash{"danger", errs.Join(", ")})
-			return
+	isMemberOf := i.FormState.Fields["memberships"].Selected
+	for idx := range db.Groups {
+		group := &db.Groups[idx]
+		if group.MemberLoginNames == nil {
+			group.MemberLoginNames = make(map[string]bool)
 		}
-
-		msg := fmt.Sprintf("Created user %q.", loginName)
-		i.RedirectWithFlashTo("/users", Flash{"success", msg})
+		group.MemberLoginNames[loginName] = isMemberOf[group.Name]
 	}
+	return errs
 }
 
 func getUserDeleteHandler(n core.Nexus) http.Handler {
@@ -555,29 +462,22 @@ func postUserDeleteHandler(n core.Nexus) http.Handler {
 		VerifyLogin(n),
 		VerifyPermissions(adminPerms),
 		loadTargetUser(n),
-		executeDeleteUser(n),
+		useDeleteUserForm,
+		UseEmptyFormState,
+		TryUpdateNexus(n, executeDeleteUser),
+		ShowFormIfErrors("Confirm user deletion"),
+		RedirectWithFlashTo("/users", "Deleted"),
 	)
 }
 
-func executeDeleteUser(n core.Nexus) HandlerStep {
-	return func(i *Interaction) {
-		userLoginName := i.TargetUser.LoginName
-		errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
-			errs.Add(db.Users.Delete(userLoginName))
+func executeDeleteUser(db *core.Database, i *Interaction, _ crypt.PasswordHasher) (errs errext.ErrorSet) {
+	userLoginName := i.TargetUser.LoginName
+	errs.Add(db.Users.Delete(userLoginName))
 
-			for _, group := range db.Groups {
-				if group.MemberLoginNames != nil {
-					group.MemberLoginNames[userLoginName] = false
-				}
-			}
-			return
-		}, interactiveUpdate)
-		if !errs.IsEmpty() {
-			i.RedirectWithFlashTo("/users", Flash{"danger", errs.Join(", ")})
-			return
+	for _, group := range db.Groups {
+		if group.MemberLoginNames != nil {
+			group.MemberLoginNames[userLoginName] = false
 		}
-
-		msg := fmt.Sprintf("Deleted user %q.", userLoginName)
-		i.RedirectWithFlashTo("/users", Flash{"success", msg})
 	}
+	return
 }

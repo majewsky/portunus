@@ -13,8 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-
-	"golang.org/x/crypto/ssh"
 )
 
 // ObjectRef identifies a User or Group. It appears in type FieldRef.
@@ -145,24 +143,4 @@ func SplitSSHPublicKeys(val string) (result []string) {
 		}
 	}
 	return result
-}
-
-// MustBeSSHPublicKeys is a h.ValidationRule.
-func MustBeSSHPublicKeys(val string) error {
-	for idx, line := range SplitSSHPublicKeys(val) {
-		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(line))
-		if err != nil {
-			return fmt.Errorf("must have a valid SSH public key on each line (parse error on line %d)", idx+1)
-		}
-	}
-	return nil
-}
-
-// MustBeSSHPublicKey is a h.ValidationRule.
-func MustBeSSHPublicKey(val string) error {
-	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(val))
-	if err != nil {
-		return errors.New("must be a valid SSH public key")
-	}
-	return nil
 }

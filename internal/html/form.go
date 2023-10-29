@@ -11,6 +11,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/csrf"
+	"github.com/majewsky/portunus/internal/core"
+	"github.com/sapcc/go-bits/errext"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -18,11 +20,15 @@ import (
 
 // FormState describes the state of an HTML form.
 type FormState struct {
-	Fields map[string]*FieldState
+	Fields        map[string]*FieldState
+	ErrorMessages []string //errors that do not apply to specific fields
 }
 
 // IsValid returns false if any field has a validation error.
 func (s FormState) IsValid() bool {
+	if len(s.ErrorMessages) > 0 {
+		return false
+	}
 	for _, field := range s.Fields {
 		if field != nil && field.ErrorMessage != "" {
 			return false
@@ -31,12 +37,40 @@ func (s FormState) IsValid() bool {
 	return true
 }
 
+// FillErrorsFrom distributes all core.ValidationError instances matching the
+// given ObjectRef into the individual FieldState.ErrorMessage fields,
+// and collects all other errors in the main FormState.ErrorMessages field.
+func (s *FormState) FillErrorsFrom(errs errext.ErrorSet, oref core.ObjectRef) {
+	for _, err := range errs {
+		switch err := err.(type) {
+		case core.ValidationError:
+			fn := err.FieldRef.Name
+			if err.FieldRef.Object == oref && s.Fields[fn] != nil && s.Fields[fn].ErrorMessage == "" {
+				s.Fields[fn].ErrorMessage = err.FieldError.Error()
+			} else {
+				s.ErrorMessages = append(s.ErrorMessages, err.Error())
+			}
+		default:
+			s.ErrorMessages = append(s.ErrorMessages, err.Error())
+		}
+	}
+}
+
 // FieldState describes the state of an <input> field within type FormState.
 type FieldState struct {
 	Value        string          //only used by InputFieldSpec
 	Selected     map[string]bool //only used by SelectFieldSpec
 	IsUnfolded   bool            //only used by FieldSet
 	ErrorMessage string
+}
+
+// GetValueOrSetError returns the field's value.
+// If it is empty, the ErrorMessage is filled.
+func (s *FieldState) GetValueOrSetError() string {
+	if s.Value == "" {
+		s.ErrorMessage = "must not be empty"
+	}
+	return s.Value
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,6 +101,9 @@ func (f FormSpec) ReadState(r *http.Request, s *FormState) {
 }
 
 var formSpecSnippet = NewSnippet(`
+	{{- range .ErrorMessages }}
+		<div class="flash flash-danger">{{ . }}</div>
+	{{- end }}
 	<form method="POST" action={{.Spec.PostTarget}}>
 		{{.Fields}}
 		<div class="button-row">
@@ -78,11 +115,13 @@ var formSpecSnippet = NewSnippet(`
 // Render produces the HTML for this form.
 func (f FormSpec) Render(r *http.Request, s FormState) template.HTML {
 	data := struct {
-		Spec   FormSpec
-		Fields template.HTML
+		Spec          FormSpec
+		Fields        template.HTML
+		ErrorMessages []string
 	}{
-		Spec:   f,
-		Fields: csrf.TemplateField(r),
+		Spec:          f,
+		Fields:        csrf.TemplateField(r),
+		ErrorMessages: s.ErrorMessages,
 	}
 	for _, field := range f.Fields {
 		data.Fields = data.Fields + field.RenderField(s)
@@ -93,9 +132,6 @@ func (f FormSpec) Render(r *http.Request, s FormState) template.HTML {
 ////////////////////////////////////////////////////////////////////////////////
 // type InputFieldSpec
 
-// ValidationRule returns an error message if the given field value is invalid.
-type ValidationRule func(string) error
-
 // InputFieldSpec describes a single <input> field within type FormSpec.
 type InputFieldSpec struct {
 	Name             string
@@ -103,21 +139,12 @@ type InputFieldSpec struct {
 	InputType        string
 	AutoFocus        bool
 	AutocompleteMode string
-	Rules            []ValidationRule
 }
 
 // ReadState reads and validates the field value from r.PostForm, and stores it
 // in the given FormState.
 func (f InputFieldSpec) ReadState(r *http.Request, formState *FormState) {
-	s := FieldState{Value: r.PostForm.Get(f.Name)}
-	for _, rule := range f.Rules {
-		err := rule(s.Value)
-		if err != nil {
-			s.ErrorMessage = err.Error()
-			break
-		}
-	}
-	formState.Fields[f.Name] = &s
+	formState.Fields[f.Name] = &FieldState{Value: r.PostForm.Get(f.Name)}
 }
 
 var inputFieldSnippet = NewSnippet(`
@@ -160,21 +187,12 @@ func (f InputFieldSpec) RenderField(state FormState) template.HTML {
 type MultilineInputFieldSpec struct {
 	Name  string
 	Label string
-	Rules []ValidationRule
 }
 
 // ReadState reads and validates the field value from r.PostForm, and stores it
 // in the given FormState.
 func (f MultilineInputFieldSpec) ReadState(r *http.Request, formState *FormState) {
-	s := FieldState{Value: r.PostForm.Get(f.Name)}
-	for _, rule := range f.Rules {
-		err := rule(s.Value)
-		if err != nil {
-			s.ErrorMessage = err.Error()
-			break
-		}
-	}
-	formState.Fields[f.Name] = &s
+	formState.Fields[f.Name] = &FieldState{Value: r.PostForm.Get(f.Name)}
 }
 
 var multilineInputFieldSnippet = NewSnippet(`

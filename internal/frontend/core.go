@@ -7,6 +7,7 @@
 package frontend
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,8 +17,10 @@ import (
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
 	"github.com/majewsky/portunus/internal/core"
+	"github.com/majewsky/portunus/internal/crypt"
 	h "github.com/majewsky/portunus/internal/html"
 	"github.com/majewsky/portunus/static"
+	"github.com/sapcc/go-bits/errext"
 	"github.com/sapcc/go-bits/logg"
 )
 
@@ -81,10 +84,6 @@ func getToplevelHandler(n core.Nexus) http.Handler {
 	)
 }
 
-var interactiveUpdate = &core.UpdateOptions{
-	ConflictWithSeedIsError: true,
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // type Handler
 
@@ -100,12 +99,12 @@ func Do(steps ...HandlerStep) Handler {
 }
 
 // ServeHTTP implements the http.Handler interface.
-func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (hh Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	i := Interaction{
 		Req:    r,
 		writer: w,
 	}
-	for _, step := range h.steps {
+	for _, step := range hh.steps {
 		step(&i)
 		if i.writer == nil {
 			return
@@ -128,8 +127,9 @@ type Interaction struct {
 	CurrentUser *core.UserWithPerms
 	FormSpec    *h.FormSpec
 	FormState   *h.FormState
-	TargetUser  *core.User  //only used by CRUD views editing a single user
-	TargetGroup *core.Group //only used by CRUD views editing a single group
+	TargetUser  *core.User     //only used by CRUD views editing a single user
+	TargetGroup *core.Group    //only used by CRUD views editing a single group
+	TargetRef   core.ObjectRef //refers to TargetGroup/TargetUser (for admin forms) or CurrentUser (for selfservice forms)
 }
 
 // WriteError wraps http.Error().
@@ -182,6 +182,16 @@ func ShowView(view func(i *Interaction) Page) HandlerStep {
 func RedirectTo(url string) HandlerStep {
 	return func(i *Interaction) {
 		i.RedirectTo(url)
+	}
+}
+
+// RedirectWithFlashTo is like RedirectTo, but adds a flash
+// describing a successful CRUD operation.
+func RedirectWithFlashTo(url, action string) HandlerStep {
+	return func(i *Interaction) {
+		ref := i.TargetRef
+		msg := fmt.Sprintf("%s %s %q.", action, ref.Type, ref.Name)
+		i.RedirectWithFlashTo(url, Flash{"success", msg})
 	}
 }
 
@@ -317,5 +327,20 @@ func ShowFormIfErrors(title string) HandlerStep {
 		if !i.FormState.IsValid() {
 			ShowForm(title)(i)
 		}
+	}
+}
+
+// TryUpdateNexus is a handler step that calls nexus.Update() if the FormState
+// does not have any errors yet, and pushes all errors into the FormState.
+func TryUpdateNexus(n core.Nexus, action func(*core.Database, *Interaction, crypt.PasswordHasher) errext.ErrorSet) HandlerStep {
+	return func(i *Interaction) {
+		opts := core.UpdateOptions{
+			ConflictWithSeedIsError: true,
+			DryRun:                  !i.FormState.IsValid(),
+		}
+		errs := n.Update(func(db *core.Database) errext.ErrorSet {
+			return action(db, i, n.PasswordHasher())
+		}, &opts)
+		i.FormState.FillErrorsFrom(errs, i.TargetRef)
 	}
 }

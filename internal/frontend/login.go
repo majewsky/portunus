@@ -26,18 +26,12 @@ func useLoginForm(i *Interaction) {
 				Label:            "Login name or email address",
 				AutoFocus:        true,
 				AutocompleteMode: "on",
-				Rules: []h.ValidationRule{
-					core.MustNotBeEmpty,
-				},
 			},
 			h.InputFieldSpec{
 				InputType:        "password",
 				Name:             "password",
 				Label:            "Password",
 				AutocompleteMode: "on",
-				Rules: []h.ValidationRule{
-					core.MustNotBeEmpty,
-				},
 			},
 		},
 	}
@@ -81,8 +75,8 @@ func postLoginHandler(n core.Nexus) http.Handler {
 func checkLogin(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		fs := i.FormState
-		userIdent := fs.Fields["user_ident"].Value //either uid or email address
-		pwd := fs.Fields["password"].Value
+		userIdent := fs.Fields["user_ident"].GetValueOrSetError() //either uid or email address
+		pwd := fs.Fields["password"].GetValueOrSetError()
 
 		if fs.IsValid() {
 			var predicate func(core.User) bool
