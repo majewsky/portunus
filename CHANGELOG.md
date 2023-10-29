@@ -3,6 +3,8 @@ SemVer was not adhered to in one of our releases, please open an issue.
 
 # v2.0.0 (TBD)
 
+# v2.0.0-beta.1 (2023-10-29)
+
 **Backwards-incompatible changes:**
 
 - Portunus now links libcrypt and requires several features that are specific to [libxcrypt][libxcrypt]. Most Linux
