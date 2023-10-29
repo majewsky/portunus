@@ -55,6 +55,11 @@ type UpdateOptions struct {
 	//If true, conflicts with the seed will be reported as validation errors.
 	//If false (default), conflicts with the seed will be corrected silently.
 	ConflictWithSeedIsError bool
+
+	//If true, the updated database will be computed and validated, but not
+	//saved. This is used to obtain a more complete set of errors for the UI
+	//after a preliminary validation step already failed.
+	DryRun bool
 }
 
 // ErrDatabaseNeedsInitialization is used by the disk store connection to
@@ -147,6 +152,7 @@ func (n *nexusImpl) Update(action UpdateAction, optsPtr *UpdateOptions) (errs er
 	errs = action(&newDB)
 	if len(errs) == 1 && errs[0] == ErrDatabaseNeedsInitialization {
 		newDB = initializeDatabase(n.seed, n.hasher)
+		errs = nil
 	}
 	//^ NOTE: We do not return early on error here. For interactive updates,
 	//we want to report as many errors as possible in a single go,
@@ -159,7 +165,7 @@ func (n *nexusImpl) Update(action UpdateAction, optsPtr *UpdateOptions) (errs er
 
 	//normalize the DB and validate it against common rules and the seed
 	newDB.Normalize()
-	errs = newDB.Validate()
+	errs.Append(newDB.Validate())
 	if n.seed != nil {
 		if opts.ConflictWithSeedIsError {
 			errs.Append(n.seed.CheckConflicts(newDB, n.hasher))
@@ -168,8 +174,8 @@ func (n *nexusImpl) Update(action UpdateAction, optsPtr *UpdateOptions) (errs er
 		}
 	}
 
-	//abort the update if errors have been found
-	if !errs.IsEmpty() {
+	//do we have a reason to not update the DB for real?
+	if opts.DryRun || !errs.IsEmpty() {
 		return errs
 	}
 
