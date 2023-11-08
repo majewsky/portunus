@@ -17,7 +17,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/gorilla/securecookie"
 	"github.com/majewsky/portunus/internal/crypt"
 	"github.com/sapcc/go-bits/errext"
 	"github.com/sapcc/go-bits/logg"
@@ -256,7 +255,7 @@ func initializeDatabase(d *DatabaseSeed, hasher crypt.PasswordHasher) Database {
 	//if no seed has been given, create the "admin" user with access to the
 	//Portunus UI and log the password once
 	if d == nil {
-		password := hex.EncodeToString(securecookie.GenerateRandomKey(16))
+		password := hex.EncodeToString(GenerateRandomKey(16))
 		passwordHash := hasher.HashPassword(password)
 		logg.Info("first-time initialization: adding user %q with password %q",
 			"admin", password)

@@ -14,7 +14,6 @@ import (
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
 	"github.com/majewsky/portunus/internal/core"
 	"github.com/majewsky/portunus/internal/crypt"
@@ -54,7 +53,7 @@ func HTTPHandler(nexus core.Nexus, isBehindTLSProxy bool) http.Handler {
 	r.Methods("POST").Path(`/groups/{name}/delete`).Handler(postGroupDeleteHandler(nexus))
 
 	//setup CSRF with maxAge = 30 minutes
-	csrfKey := securecookie.GenerateRandomKey(32)
+	csrfKey := core.GenerateRandomKey(32)
 	csrfMiddleware := csrf.Protect(csrfKey, csrf.MaxAge(1800), csrf.Secure(isBehindTLSProxy))
 	handler := csrfMiddleware(r)
 
@@ -209,7 +208,7 @@ func init() {
 
 	if len(keyBytes) != 32 {
 		logg.Info("generating new session key")
-		keyBytes = securecookie.GenerateRandomKey(32)
+		keyBytes = core.GenerateRandomKey(32)
 		err := os.WriteFile(keyPath, keyBytes, 0600)
 		if err != nil {
 			logg.Error(err.Error())
