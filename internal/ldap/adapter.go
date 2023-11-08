@@ -34,8 +34,6 @@ func NewAdapter(nexus core.Nexus, conn Connection) *Adapter {
 // Run listens for changes to the Portunus database until `ctx` expires.
 // An error is returned if any write into the LDAP database fails.
 func (a *Adapter) Run(ctx context.Context) error {
-	operationsChan := make(chan operation, 64)
-
 	//create main directory structure, but only when Run() is called for the first time
 	//(this precaution is not relevant for regular execution because main() calls
 	//Run() exactly once anyway; however, unit tests call Run() multiple times to
@@ -56,32 +54,36 @@ func (a *Adapter) Run(ctx context.Context) error {
 	ctxListen, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	//when the nexus informs us about a DB change, we compute the set of LDAP
-	//operations immediately; but then we send them back to this goroutine for
-	//execution to ensure proper serialization and to allow the nexus to proceed
-	//with the update before the LDAP server has finished ingesting our
-	//operations
+	//writes get sent to us from whatever goroutine the nexus update is running on
+	writeChan := make(chan core.Database, 1)
 	a.nexus.AddListener(ctxListen, func(db core.Database) {
-		newObjects := renderDBToLDAP(db, a.conn.DNSuffix())
-
-		a.objectsMutex.Lock()
-		defer a.objectsMutex.Unlock()
-
-		computeUpdates(a.objects, newObjects, operationsChan)
-		a.objects = newObjects
+		writeChan <- db
 	})
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case op := <-operationsChan:
-			err := op.ExecuteOn(a.conn)
-			if err != nil {
-				return err
+		case db := <-writeChan:
+			for _, op := range a.computeUpdates(db) {
+				err := op.ExecuteOn(a.conn)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
+}
+
+func (a *Adapter) computeUpdates(db core.Database) []operation {
+	newObjects := renderDBToLDAP(db, a.conn.DNSuffix())
+
+	a.objectsMutex.Lock()
+	defer a.objectsMutex.Unlock()
+
+	result := computeUpdates(a.objects, newObjects)
+	a.objects = newObjects
+	return result
 }
 
 // Renders the static objects that we need to establish our basic LDAP

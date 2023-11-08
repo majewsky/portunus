@@ -32,7 +32,7 @@ func (op operation) ExecuteOn(conn Connection) error {
 
 // Computes a minimal changeset (i.e. a set of LDAP write operations) by
 // diffing two sets of LDAP objects.
-func computeUpdates(oldObjects, newObjects []Object, operations chan<- operation) {
+func computeUpdates(oldObjects, newObjects []Object) (result []operation) {
 	oldObjectsByDN := make(map[string]Object, len(oldObjects))
 	for _, oldObj := range oldObjects {
 		oldObjectsByDN[oldObj.DN] = oldObj
@@ -43,21 +43,23 @@ func computeUpdates(oldObjects, newObjects []Object, operations chan<- operation
 		isExistingDN[newObj.DN] = true
 		oldObj, exists := oldObjectsByDN[newObj.DN]
 		if exists {
-			buildModifyRequest(newObj.DN, oldObj.Attributes, newObj.Attributes, operations)
+			result = append(result, buildModifyRequest(newObj.DN, oldObj.Attributes, newObj.Attributes)...)
 		} else {
-			buildAddRequest(newObj, operations)
+			result = append(result, buildAddRequest(newObj))
 		}
 	}
 
 	for _, oldObj := range oldObjects {
 		if !isExistingDN[oldObj.DN] {
 			req := goldap.DelRequest{DN: oldObj.DN}
-			operations <- operation{DeleteRequest: &req}
+			result = append(result, operation{DeleteRequest: &req})
 		}
 	}
+
+	return result
 }
 
-func buildAddRequest(obj Object, operations chan<- operation) {
+func buildAddRequest(obj Object) operation {
 	req := goldap.AddRequest{
 		DN:         obj.DN,
 		Attributes: make([]goldap.Attribute, 0, len(obj.Attributes)),
@@ -68,10 +70,10 @@ func buildAddRequest(obj Object, operations chan<- operation) {
 			req.Attributes = append(req.Attributes, attr)
 		}
 	}
-	operations <- operation{AddRequest: &req}
+	return operation{AddRequest: &req}
 }
 
-func buildModifyRequest(dn string, oldAttrs, newAttrs map[string][]string, operations chan<- operation) {
+func buildModifyRequest(dn string, oldAttrs, newAttrs map[string][]string) []operation {
 	req := goldap.ModifyRequest{DN: dn}
 	keepAttribute := make(map[string]bool, len(newAttrs))
 
@@ -96,9 +98,9 @@ func buildModifyRequest(dn string, oldAttrs, newAttrs map[string][]string, opera
 	}
 
 	if len(req.Changes) == 0 {
-		return
+		return nil
 	}
-	operations <- operation{ModifyRequest: &req}
+	return []operation{{ModifyRequest: &req}}
 }
 
 func stringListsAreEqual(lhs, rhs []string) bool {
