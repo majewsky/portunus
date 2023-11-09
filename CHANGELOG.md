@@ -3,6 +3,13 @@ SemVer was not adhered to in one of our releases, please open an issue.
 
 # v2.0.0 (TBD)
 
+# v2.0.0-beta.2 (2023-11-09)
+
+Changes since beta.1:
+
+- A bug was fixed where the LDAP server initialization could deadlock on databases with more than 64 users and groups.
+- Interactive changes to the database will not fail anymore if there is an unrelated user with a seeded password.
+
 # v2.0.0-beta.1 (2023-10-29)
 
 **Backwards-incompatible changes:**
