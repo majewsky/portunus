@@ -9,10 +9,11 @@ package core
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/majewsky/portunus/internal/grammars"
 )
 
 // ObjectRef identifies a User or Group. It appears in type FieldRef.
@@ -77,7 +78,6 @@ var (
 	errTrailingSpaces    = errors.New("may not end with a space character")
 
 	errNotPosixAccountName = errors.New("is not an acceptable user/group name matching the pattern /" + posixAccountNamePattern + "/")
-	posixAccountNameRx     = regexp.MustCompile(`^` + posixAccountNamePattern + `$`)
 	errNotDecimalNumber    = errors.New("is not a decimal number")
 	errNotPosixUIDorGID    = errors.New("is not a number between 0 and 65535 inclusive")
 
@@ -107,7 +107,7 @@ func MustNotHaveSurroundingSpaces(val string) error {
 
 // MustBePosixAccountName is a h.ValidationRule.
 func MustBePosixAccountName(val string) error {
-	if posixAccountNameRx.MatchString(val) {
+	if grammars.IsPOSIXAccountName(val) {
 		return nil
 	}
 	return errNotPosixAccountName

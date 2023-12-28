@@ -9,13 +9,18 @@ package main
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/majewsky/portunus/internal/grammars"
 	"github.com/sapcc/go-bits/logg"
 	"github.com/sapcc/go-bits/must"
 )
+
+type valueCheck struct {
+	Checker    func(string) bool
+	FormatDesc string
+}
 
 var (
 	envDefaults = map[string]string{
@@ -35,20 +40,26 @@ var (
 		"PORTUNUS_SLAPD_USER":         "ldap",
 	}
 
-	boolRx        = regexp.MustCompile(`^(?:true|false)$`)
-	ldapSuffixRx  = regexp.MustCompile(`^dc=[a-z0-9_-]+(?:,dc=[a-z0-9_-]+)*$`)
-	userOrGroupRx = regexp.MustCompile(`^[a-z_][a-z0-9_-]*\$?$`)
-	envFormats    = map[string]*regexp.Regexp{
-		"PORTUNUS_DEBUG":              boolRx,
-		"PORTUNUS_LDAP_SUFFIX":        ldapSuffixRx,
-		"PORTUNUS_SERVER_GROUP":       userOrGroupRx,
-		"PORTUNUS_SERVER_HTTP_LISTEN": regexp.MustCompile(`^(?:[0-9.]+|\[[0-9a-f:]+\]):[0-9]+$`),
-		"PORTUNUS_SERVER_HTTP_SECURE": boolRx,
-		"PORTUNUS_SERVER_USER":        userOrGroupRx,
-		"PORTUNUS_SLAPD_GROUP":        userOrGroupRx,
-		"PORTUNUS_SLAPD_USER":         userOrGroupRx,
+	strictBoolCheck    = valueCheck{isStrictBool, `either "true" or "false"`}
+	ldapSuffixCheck    = valueCheck{grammars.IsLDAPSuffix, `an RDN with only dc= components`}
+	listenAddressCheck = valueCheck{grammars.IsListenAddress, `a listen address like "1.2.3.4:80" or "[::1]:8080"`}
+	posixAcctNameCheck = valueCheck{grammars.IsPOSIXAccountName, "a POSIX account name (see `man 8 useradd` for format description)"}
+
+	envFormats = map[string]valueCheck{
+		"PORTUNUS_DEBUG":              strictBoolCheck,
+		"PORTUNUS_LDAP_SUFFIX":        ldapSuffixCheck,
+		"PORTUNUS_SERVER_GROUP":       posixAcctNameCheck,
+		"PORTUNUS_SERVER_HTTP_LISTEN": listenAddressCheck,
+		"PORTUNUS_SERVER_HTTP_SECURE": strictBoolCheck,
+		"PORTUNUS_SERVER_USER":        posixAcctNameCheck,
+		"PORTUNUS_SLAPD_GROUP":        posixAcctNameCheck,
+		"PORTUNUS_SLAPD_USER":         posixAcctNameCheck,
 	}
 )
+
+func isStrictBool(input string) bool {
+	return input == "true" || input == "false"
+}
 
 func readConfig() (environment map[string]string, ids map[string]int) {
 	//last-minute initializations in envDefaults
@@ -69,9 +80,9 @@ func readConfig() (environment map[string]string, ids map[string]int) {
 		if value == "" {
 			logg.Fatal("missing required environment variable: " + key)
 		}
-		if rx := envFormats[key]; rx != nil {
-			if !rx.MatchString(value) {
-				logg.Fatal("malformed environment variable: %s must look like /%s/", value, rx.String())
+		if check := envFormats[key]; check.Checker != nil {
+			if !check.Checker(value) {
+				logg.Fatal("malformed environment variable: %s must be %s", value, check.FormatDesc)
 			}
 		}
 		environment[key] = value

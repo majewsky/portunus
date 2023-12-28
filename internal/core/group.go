@@ -8,11 +8,11 @@ package core
 
 import (
 	"encoding/json"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/majewsky/portunus/internal/grammars"
 	"github.com/sapcc/go-bits/errext"
 )
 
@@ -114,13 +114,11 @@ func (id PosixID) String() string {
 	return strconv.FormatUint(uint64(id), 10)
 }
 
-var posixIDRx = regexp.MustCompile(`^(?:0|[1-9][0-9]*)$`)
-
 // ParsePosixID parses a PosixID from its decimal text representation.
 // If the parse fails, a ValidationError is returned, using the provided FieldRef.
 func ParsePosixID(input string, ref FieldRef) (PosixID, error) {
 	input = strings.TrimSpace(input)
-	if !posixIDRx.MatchString(input) {
+	if !grammars.IsNonnegativeInteger(input) {
 		return 0, ref.Wrap(errNotDecimalNumber)
 	}
 	value, err := strconv.ParseUint(input, 10, 16)
