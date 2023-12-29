@@ -45,6 +45,9 @@ Build with `make && sudo make install` in the usual way. Our build dependencies 
 - a Go compiler (see `go.mod` for minimum version requirement)
 - a libcrypt.so that is [libxcrypt](github.com/besser82/libxcrypt)
 
+If for some reason you absolutely do not have any access to `make`, The individual binaries can also be installed with
+`go install github.com/majewsky/portunus/cmd/portunus-{orchestrator,server}`.
+
 ## Running
 
 Once installed, run `portunus-orchestrator` with root privileges. Config is passed to it via the

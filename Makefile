@@ -1,10 +1,10 @@
-CMDS = orchestrator server
+CMDS = portunus-orchestrator portunus-server
 
 PREFIX        = /usr
 GO_BUILDFLAGS =
 GO_LDFLAGS    =
 
-all: build/orchestrator build/server
+all: $(addprefix build/,$(CMDS))
 
 build/%: static/css/portunus.css FORCE
 	go build -o $@ $(GO_BUILDFLAGS) -ldflags '-s -w $(GO_LDFLAGS)' 'github.com/majewsky/portunus/cmd/$*'
@@ -13,9 +13,9 @@ static/css/portunus.css: static/css/*.scss
 	sassc -t compressed -I vendor/github.com/majewsky/xyrillian.css -I static/css static/css/portunus.scss static/css/portunus.css
 
 install: FORCE all
-	install -D -m 0755 "build/orchestrator" "$(DESTDIR)$(PREFIX)/bin/portunus-orchestrator"
-	install -D -m 0755 "build/server"       "$(DESTDIR)$(PREFIX)/bin/portunus-server"
-	install -D -m 0644 README.md            "$(DESTDIR)$(PREFIX)/share/doc/portunus/README.md"
+	install -D -m 0755 "build/portunus-orchestrator" "$(DESTDIR)$(PREFIX)/bin/portunus-orchestrator"
+	install -D -m 0755 "build/portunus-server"       "$(DESTDIR)$(PREFIX)/bin/portunus-server"
+	install -D -m 0644 README.md                     "$(DESTDIR)$(PREFIX)/share/doc/portunus/README.md"
 
 check: build/cover.html
 

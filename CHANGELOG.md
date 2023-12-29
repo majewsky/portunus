@@ -7,6 +7,7 @@ Changes:
 
 - The size of the orchestrator binary that runs with root privileges has been reduced by about 10-15% by replacing
   usages of a regex engine with explicit string parsers.
+- Binaries can now be installed with `go install` if `make` is not available for some reason.
 
 # v2.0.0 (2023-12-27)
 
