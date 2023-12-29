@@ -9,10 +9,10 @@ package main
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -20,7 +20,7 @@ import (
 	"github.com/sapcc/go-bits/logg"
 )
 
-// Notes on this configuration template:
+// Notes on these configuration templates:
 //   - Only Portunus' own technical user has any sort of write access.
 //   - The cn=portunus-viewers virtual group corresponds to Portunus' `LDAP.CanRead` permission.
 //   - Users can read their own object, so that applications not using a service
@@ -28,34 +28,38 @@ import (
 //   - TLSProtocolMin 3.3 means "TLS 1.2 or higher". (TODO select cipher suites according to recommendations)
 //
 // TODO when TLS is configured, also listen on ldap:///, but require StartTLS through `security minssf=256`.
-var configTemplate = `
-include %PORTUNUS_SLAPD_SCHEMA_DIR%/core.schema
-include %PORTUNUS_SLAPD_SCHEMA_DIR%/cosine.schema
-include %PORTUNUS_SLAPD_SCHEMA_DIR%/inetorgperson.schema
-include %PORTUNUS_SLAPD_SCHEMA_DIR%/nis.schema
+//
+// For what the format directives refer to, compare the fmt.Sprintf() call down below.
+const configTemplateGeneral = `
+include %[1]s/core.schema
+include %[1]s/cosine.schema
+include %[1]s/inetorgperson.schema
+include %[1]s/nis.schema
 
-include %PORTUNUS_SLAPD_STATE_DIR%/portunus.schema
+include %[2]s/portunus.schema
 
 access to dn.base="" by * read
 access to dn.base="cn=Subschema" by * read
 
 access to *
-	by dn.base="cn=portunus,%PORTUNUS_LDAP_SUFFIX%" write
-	by group.exact="cn=portunus-viewers,%PORTUNUS_LDAP_SUFFIX%" read
+	by dn.base="cn=portunus,%[3]s" write
+	by group.exact="cn=portunus-viewers,%[3]s" read
 	by self read
 	by anonymous auth
-
-TLSCACertificateFile  "%PORTUNUS_SLAPD_STATE_DIR%/ca.pem"
-TLSCertificateFile    "%PORTUNUS_SLAPD_STATE_DIR%/cert.pem"
-TLSCertificateKeyFile "%PORTUNUS_SLAPD_STATE_DIR%/key.pem"
+`
+const configTemplateTLS = `
+TLSCACertificateFile  "%[2]s/ca.pem"
+TLSCertificateFile    "%[2]s/cert.pem"
+TLSCertificateKeyFile "%[2]s/key.pem"
 TLSProtocolMin 3.3
-
+`
+const configTemplateDatabase = `
 database   mdb
 maxsize    1073741824
-suffix     "%PORTUNUS_LDAP_SUFFIX%"
-rootdn     "cn=portunus,%PORTUNUS_LDAP_SUFFIX%"
-rootpw     "%PORTUNUS_LDAP_PASSWORD_HASH%"
-directory  "%PORTUNUS_SLAPD_STATE_DIR%/data"
+suffix     "%[3]s"
+rootdn     "cn=portunus,%[3]s"
+rootpw     "%[4]s"
+directory  "%[2]s/data"
 
 index objectClass eq
 `
@@ -94,19 +98,19 @@ func renderSlapdConfig(environment map[string]string, hasher crypt.PasswordHashe
 	environment["PORTUNUS_LDAP_PASSWORD"] = password
 	environment["PORTUNUS_LDAP_PASSWORD_HASH"] = hasher.HashPassword(password)
 
-	config := configTemplate
-	if environment["PORTUNUS_SLAPD_TLS_CERTIFICATE"] == "" {
-		config = regexp.MustCompile(`(?m)^TLS.*$`).ReplaceAllString(config, "")
+	configTemplates := []string{strings.TrimSpace(configTemplateGeneral)}
+	if environment["PORTUNUS_SLAPD_TLS_CERTIFICATE"] != "" {
+		configTemplates = append(configTemplates, strings.TrimSpace(configTemplateTLS))
 	}
+	configTemplates = append(configTemplates, strings.TrimSpace(configTemplateDatabase))
 
-	config = regexp.MustCompile(`%\w+%`).
-		ReplaceAllStringFunc(config, func(match string) string {
-			match = strings.TrimPrefix(match, "%")
-			match = strings.TrimSuffix(match, "%")
-			return environment[match]
-		})
-
-	return []byte(config)
+	return []byte(fmt.Sprintf(
+		strings.Join(configTemplates, "\n\n")+"\n",
+		environment["PORTUNUS_SLAPD_SCHEMA_DIR"],
+		environment["PORTUNUS_SLAPD_STATE_DIR"],
+		environment["PORTUNUS_LDAP_SUFFIX"],
+		environment["PORTUNUS_LDAP_PASSWORD_HASH"],
+	))
 }
 
 func generateServiceUserPassword() string {
