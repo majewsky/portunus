@@ -1,6 +1,12 @@
 This project follows [semantic versioning](https://semver.org/spec/v2.0.0.html). If you believe that
 SemVer was not adhered to in one of our releases, please open an issue.
 
+# v2.1.1 (2023-12-30)
+
+Bugfixes:
+
+- Fix `PORTUNUS_GROUP_NAME_REGEX` and `PORTUNUS_USER_NAME_REGEX` not being read properly by the server process.
+
 # v2.1.0 (2023-12-30)
 
 New features:

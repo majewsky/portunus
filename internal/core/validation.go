@@ -105,7 +105,7 @@ func GetValidationConfigForTests() *ValidationConfig {
 
 func compileRegexFromEnvironment(key string) (*regexp.Regexp, error) {
 	pattern := os.Getenv(key)
-	if key != "" {
+	if pattern == "" {
 		return nil, fmt.Errorf("missing environment variable: %s", key)
 	}
 	rx, err := regexp.Compile(`^(?:` + pattern + `)$`)
