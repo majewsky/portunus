@@ -3,6 +3,14 @@ SemVer was not adhered to in one of our releases, please open an issue.
 
 # v2.1.0 (TBD)
 
+New features:
+
+- The configuration variables `PORTUNUS_GROUP_NAME_REGEX` and `PORTUNUS_USER_NAME_REGEX` have been added to expand the
+  range of supported user and group names. If non-default name regexes are configured, Portunus will still enforce the
+  POSIX account name regex for POSIX users and POSIX groups. Also, names with characters that have special meaning in
+  LDAP DNs will always be rejected, regardless of what is configured. This protects against syntax injection attacks
+  similar to SQL injections.
+
 Changes:
 
 - The size of the orchestrator binary that runs with root privileges has been reduced by about 10-15% by replacing

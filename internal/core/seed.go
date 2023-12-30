@@ -34,16 +34,16 @@ type DatabaseSeed struct {
 // ReadDatabaseSeedFromEnvironment reads and validates the file at
 // PORTUNUS_SEED_PATH. If that environment variable was not provided, nil is
 // returned instead.
-func ReadDatabaseSeedFromEnvironment() (*DatabaseSeed, errext.ErrorSet) {
+func ReadDatabaseSeedFromEnvironment(cfg *ValidationConfig) (*DatabaseSeed, errext.ErrorSet) {
 	path := os.Getenv("PORTUNUS_SEED_PATH")
 	if path == "" {
 		return nil, nil
 	}
-	return ReadDatabaseSeed(path)
+	return ReadDatabaseSeed(path, cfg)
 }
 
 // ReadDatabaseSeed reads and validates the seed file at the given path.
-func ReadDatabaseSeed(path string) (result *DatabaseSeed, errs errext.ErrorSet) {
+func ReadDatabaseSeed(path string, cfg *ValidationConfig) (result *DatabaseSeed, errs errext.ErrorSet) {
 	buf, err := os.ReadFile(path)
 	if err != nil {
 		errs.Add(err)
@@ -57,16 +57,16 @@ func ReadDatabaseSeed(path string) (result *DatabaseSeed, errs errext.ErrorSet) 
 		errs.Addf("while parsing %s: %w", path, err)
 		return nil, errs
 	}
-	return &seed, seed.Validate()
+	return &seed, seed.Validate(cfg)
 }
 
 // Validate returns an error if the seed contains any invalid or missing values.
-func (d DatabaseSeed) Validate() (errs errext.ErrorSet) {
+func (d DatabaseSeed) Validate(cfg *ValidationConfig) (errs errext.ErrorSet) {
 	//most validation can be performed by Database.Validate() by applying the
 	//seed to a fresh database
 	var db Database
 	d.ApplyTo(&db, &NoopHasher{})
-	errs = db.Validate()
+	errs = db.Validate(cfg)
 
 	//the duplicate checks must be done differently for seeds because ApplyTo()
 	//will not create duplicate users or groups

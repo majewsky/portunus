@@ -68,12 +68,13 @@ type UpdateOptions struct {
 var ErrDatabaseNeedsInitialization = errors.New("ErrDatabaseNeedsInitialization")
 
 // NewNexus instantiates the Nexus.
-func NewNexus(d *DatabaseSeed, hasher crypt.PasswordHasher) Nexus {
-	return &nexusImpl{hasher: hasher, seed: d}
+func NewNexus(d *DatabaseSeed, cfg *ValidationConfig, hasher crypt.PasswordHasher) Nexus {
+	return &nexusImpl{hasher: hasher, vcfg: cfg, seed: d}
 }
 
 type nexusImpl struct {
 	hasher crypt.PasswordHasher
+	vcfg   *ValidationConfig
 	//The mutex guards access to all fields listed below it in this struct.
 	mutex     sync.RWMutex
 	seed      *DatabaseSeed
@@ -165,7 +166,7 @@ func (n *nexusImpl) Update(action UpdateAction, optsPtr *UpdateOptions) (errs er
 
 	//normalize the DB and validate it against common rules and the seed
 	newDB.Normalize()
-	errs.Append(newDB.Validate())
+	errs.Append(newDB.Validate(n.vcfg))
 	if n.seed != nil {
 		if opts.ConflictWithSeedIsError {
 			errs.Append(n.seed.CheckConflicts(newDB, n.hasher))

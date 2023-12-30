@@ -8,15 +8,24 @@
 			"long_name": "Surrounding spaces in name"
 		},
 		{
-			"name": "malformed+name",
-			"long_name": "Name is not a POSIX account name"
+			"name": "malformed-name$",
+			"long_name": "Name is rejected by configured regex, even though it is a POSIX account name"
 		},
 		{
-			"name": "duplicate-name",
+			"name": "nonldap,name",
+			"long_name": "Name contains characters that have special meaning in LDAP DNs"
+		},
+		{
+			"name": "nonposix.name",
+			"long_name": "Name is accepted by configured regex, but not a POSIX account name",
+			"posix_gid": 42
+		},
+		{
+			"name": "duplicate.name",
 			"long_name": "Duplicate name (this one is fine)"
 		},
 		{
-			"name": "duplicate-name",
+			"name": "duplicate.name",
 			"long_name": "Duplicate name (this one errors)"
 		},
 		{
@@ -29,7 +38,7 @@
 		{
 			"name": "unknown-member",
 			"long_name": "Unknown member",
-			"members": [ "duplicate-name", "incognito" ]
+			"members": [ "duplicate.name", "incognito" ]
 		}
 	],
 	"users": [
@@ -44,17 +53,32 @@
 			"family_name": "surrounding spaces in login name"
 		},
 		{
-			"login_name": "malformed+name",
+			"login_name": "malformed-name$",
 			"given_name": "Problem is",
-			"family_name": "login name is not a POSIX account name"
+			"family_name": "login name is rejected by configured regex, even though it is a POSIX account name"
 		},
 		{
-			"login_name": "duplicate-name",
+			"login_name": "nonposix.name",
+			"given_name": "Problem is",
+			"family_name": "login name is accepted by configured regex, but not a POSIX account name",
+			"posix": {
+				"uid": 42,
+				"gid": 23,
+				"home": "/var/empty"
+			}
+		},
+		{
+			"login_name": "nonldap,name",
+			"given_name": "Problem is",
+			"family_name": "login name contains characters that have special meaning in LDAP DNs"
+		},
+		{
+			"login_name": "duplicate.name",
 			"given_name": "Problem is",
 			"family_name": "duplicate login name (this one is fine)"
 		},
 		{
-			"login_name": "duplicate-name",
+			"login_name": "duplicate.name",
 			"given_name": "Problem is",
 			"family_name": "duplicate login name (this one errors)"
 		},

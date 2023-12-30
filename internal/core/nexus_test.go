@@ -23,8 +23,9 @@ func TestDryRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	vcfg := GetValidationConfigForTests()
 	hasher := &NoopHasher{}
-	nexus := NewNexus(nil, hasher)
+	nexus := NewNexus(nil, vcfg, hasher)
 	var actualDB Database
 	nexus.AddListener(ctx, func(db Database) {
 		actualDB = db

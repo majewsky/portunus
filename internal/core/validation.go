@@ -9,6 +9,8 @@ package core
 import (
 	"errors"
 	"fmt"
+	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
@@ -67,8 +69,51 @@ func (e ValidationError) Error() string {
 		r.Name, r.Object.Type, r.Object.Name, e.FieldError.Error())
 }
 
-// this regexp copied from useradd(8) manpage
-const posixAccountNamePattern = `[a-z_][a-z0-9_-]*\$?`
+// ValidationConfig contains runtime configuration for user/group validation.
+type ValidationConfig struct {
+	GroupNameRegex *regexp.Regexp //from PORTUNUS_GROUP_NAME_REGEX
+	UserNameRegex  *regexp.Regexp //from PORTUNUS_USER_NAME_REGEX
+}
+
+// ReadValidationConfigFromEnvironment builds a ValidationConfig from the
+// respective environment variables.
+func ReadValidationConfigFromEnvironment() (result *ValidationConfig, err error) {
+	var cfg ValidationConfig
+	cfg.GroupNameRegex, err = compileRegexFromEnvironment("PORTUNUS_GROUP_NAME_REGEX")
+	if err != nil {
+		return nil, err
+	}
+	cfg.UserNameRegex, err = compileRegexFromEnvironment("PORTUNUS_USER_NAME_REGEX")
+	if err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+// GetValidationConfigForTests returns a specific hard-coded ValidationConfig
+// that can be used in unit tests to ensure that all branches can be tested.
+func GetValidationConfigForTests() *ValidationConfig {
+	//Unlike POSIXAccountNameRegex, this accepts e.g. `john.doe`, but rejects e.g. `bob$`.
+	//Also, this accepts e.g. `john,doe`, even though Portunus rejects characters with special
+	//meaning in LDAP DNs.
+	rx := regexp.MustCompile(`^[a-z0-9.,-]+$`)
+	return &ValidationConfig{
+		GroupNameRegex: rx,
+		UserNameRegex:  rx,
+	}
+}
+
+func compileRegexFromEnvironment(key string) (*regexp.Regexp, error) {
+	pattern := os.Getenv(key)
+	if key != "" {
+		return nil, fmt.Errorf("missing environment variable: %s", key)
+	}
+	rx, err := regexp.Compile(`^(?:` + pattern + `)$`)
+	if err != nil {
+		return nil, fmt.Errorf("while compiling %s: %w", key, err)
+	}
+	return rx, nil
+}
 
 var (
 	errIsDuplicate       = errors.New("is already in use")
@@ -77,7 +122,11 @@ var (
 	errLeadingSpaces     = errors.New("may not start with a space character")
 	errTrailingSpaces    = errors.New("may not end with a space character")
 
-	errNotPosixAccountName = errors.New("is not an acceptable user/group name matching the pattern /" + posixAccountNamePattern + "/")
+	errMalformedGroupName       = errors.New("is not an acceptable group name")
+	errMalformedUserLoginName   = errors.New("is not an acceptable user name")
+	errIncludesDNSyntaxElements = errors.New("may not include commas, plus signs or equals signs")
+
+	errNotPosixAccountName = fmt.Errorf("is not an acceptable POSIX account name matching the pattern /%s/", grammars.POSIXAccountNameRegex)
 	errNotDecimalNumber    = errors.New("is not a decimal number")
 	errNotPosixUIDorGID    = errors.New("is not a number between 0 and 65535 inclusive")
 
@@ -105,8 +154,37 @@ func MustNotHaveSurroundingSpaces(val string) error {
 	return nil
 }
 
-// MustBePosixAccountName is a h.ValidationRule.
-func MustBePosixAccountName(val string) error {
+// MustNotIncludeDNSyntaxElements is a validation rule that rejects values
+// containing characters that serve as syntax in LDAP DNs (RFC 2253).
+func MustNotIncludeDNSyntaxElements(val string) error {
+	if strings.ContainsAny(val, ",+=") {
+		return errIncludesDNSyntaxElements
+	}
+	return nil
+}
+
+// MustBeGroupName is a validation rule that enforces the GroupNameRegex.
+func MustBeGroupName(val string, cfg *ValidationConfig) error {
+	if !cfg.GroupNameRegex.MatchString(val) {
+		return errMalformedGroupName
+	}
+	return nil
+}
+
+// MustBeUserLoginName is a validation rule that enforces the UserNameRegex.
+func MustBeUserLoginName(val string, cfg *ValidationConfig) error {
+	if !cfg.UserNameRegex.MatchString(val) {
+		return errMalformedUserLoginName
+	}
+	return nil
+}
+
+// MustBePosixAccountNameIf is a validation rule that enforces the POSIX
+// account name pattern on `val` iff the given condition is upheld.
+func MustBePosixAccountNameIf(val string, condition bool) error {
+	if !condition {
+		return nil
+	}
 	if grammars.IsPOSIXAccountName(val) {
 		return nil
 	}

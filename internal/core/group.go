@@ -91,12 +91,14 @@ func (g Group) Ref() ObjectRef {
 
 // Checks the individual attributes of this Group. Relationships and uniqueness
 // are checked in Database.Validate().
-func (g Group) validateLocal() (errs errext.ErrorSet) {
+func (g Group) validateLocal(cfg *ValidationConfig) (errs errext.ErrorSet) {
 	ref := g.Ref()
 	errs.Add(ref.Field("name").WrapFirst(
 		MustNotBeEmpty(g.Name),
 		MustNotHaveSurroundingSpaces(g.Name),
-		MustBePosixAccountName(g.Name),
+		MustBeGroupName(g.Name, cfg),
+		MustNotIncludeDNSyntaxElements(g.Name),
+		MustBePosixAccountNameIf(g.Name, g.PosixGID != nil),
 	))
 	errs.Add(ref.Field("long_name").WrapFirst(
 		MustNotBeEmpty(g.LongName),

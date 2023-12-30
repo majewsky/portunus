@@ -65,18 +65,18 @@ func (d *Database) Normalize() {
 }
 
 // Validate checks all users and groups in this Database for validity.
-func (d Database) Validate() (errs errext.ErrorSet) {
+func (d Database) Validate(cfg *ValidationConfig) (errs errext.ErrorSet) {
 	//check user attributes
 	userCount := make(map[string]uint)
 	for _, u := range d.Users {
-		errs.Append(u.validateLocal())
+		errs.Append(u.validateLocal(cfg))
 		userCount[u.LoginName]++
 	}
 
 	//check group attributes and membership
 	groupCount := make(map[string]uint)
 	for _, g := range d.Groups {
-		errs.Append(g.validateLocal())
+		errs.Append(g.validateLocal(cfg))
 		groupCount[g.Name]++
 
 		for loginName := range g.MemberLoginNames {

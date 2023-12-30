@@ -23,9 +23,11 @@ type valueCheck struct {
 }
 
 var (
-	envDefaults = map[string]string{
+	userOrGroupPattern = `^[a-z_][a-z0-9_-]*\$?$`
+	envDefaults        = map[string]string{
 		//empty value = not optional
 		"PORTUNUS_DEBUG":              "false",
+		"PORTUNUS_GROUP_NAME_REGEX":   userOrGroupPattern,
 		"PORTUNUS_LDAP_SUFFIX":        "",
 		"PORTUNUS_SERVER_BINARY":      "portunus-server",
 		"PORTUNUS_SERVER_GROUP":       "portunus",
@@ -38,6 +40,7 @@ var (
 		"PORTUNUS_SLAPD_SCHEMA_DIR":   "/etc/openldap/schema",
 		"PORTUNUS_SLAPD_STATE_DIR":    "/var/run/portunus-slapd",
 		"PORTUNUS_SLAPD_USER":         "ldap",
+		"PORTUNUS_USER_NAME_REGEX":    userOrGroupPattern,
 	}
 
 	strictBoolCheck    = valueCheck{isStrictBool, `either "true" or "false"`}

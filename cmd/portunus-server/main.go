@@ -29,12 +29,13 @@ func main() {
 	logg.ShowDebug = os.Getenv("PORTUNUS_DEBUG") == "true"
 	dropPrivileges()
 
-	seed, errs := core.ReadDatabaseSeedFromEnvironment()
+	vcfg := must.Return(core.ReadValidationConfigFromEnvironment())
+	seed, errs := core.ReadDatabaseSeedFromEnvironment(vcfg)
 	errs.LogFatalIfError()
 
 	ctx := context.TODO()
 	hasher := must.Return(crypt.NewPasswordHasher())
-	nexus := core.NewNexus(seed, hasher)
+	nexus := core.NewNexus(seed, vcfg, hasher)
 
 	storePath := filepath.Join(os.Getenv("PORTUNUS_SERVER_STATE_DIR"), "database.json")
 	storeAdapter := store.NewAdapter(nexus, storePath)

@@ -66,12 +66,14 @@ func (u User) Ref() ObjectRef {
 
 // Checks the individual attributes of this User. Relationships and uniqueness
 // are checked in Database.Validate().
-func (u User) validateLocal() (errs errext.ErrorSet) {
+func (u User) validateLocal(cfg *ValidationConfig) (errs errext.ErrorSet) {
 	ref := u.Ref()
 	errs.Add(ref.Field("login_name").WrapFirst(
 		MustNotBeEmpty(u.LoginName),
 		MustNotHaveSurroundingSpaces(u.LoginName),
-		MustBePosixAccountName(u.LoginName),
+		MustBeUserLoginName(u.LoginName, cfg),
+		MustNotIncludeDNSyntaxElements(u.LoginName),
+		MustBePosixAccountNameIf(u.LoginName, u.POSIX != nil),
 	))
 	errs.Add(ref.Field("given_name").WrapFirst(
 		MustNotBeEmpty(u.GivenName),

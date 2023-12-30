@@ -168,12 +168,13 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	seed, errs := ReadDatabaseSeed("fixtures/seed-basic.json")
+	vcfg := GetValidationConfigForTests()
+	seed, errs := ReadDatabaseSeed("fixtures/seed-basic.json", vcfg)
 	expectNoErrors(t, errs)
 
 	//register a listener to observe the real DB changes
 	hasher := &NoopHasher{}
-	nexus := NewNexus(seed, hasher)
+	nexus := NewNexus(seed, vcfg, hasher)
 	var actualDB Database
 	nexus.AddListener(ctx, func(db Database) {
 		actualDB = db
@@ -224,12 +225,13 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	seed, errs := ReadDatabaseSeed("fixtures/seed-basic.json")
+	vcfg := GetValidationConfigForTests()
+	seed, errs := ReadDatabaseSeed("fixtures/seed-basic.json", vcfg)
 	expectNoErrors(t, errs)
 
 	//register a listener to observe the real DB changes
 	hasher := &NoopHasher{}
-	nexus := NewNexus(seed, hasher)
+	nexus := NewNexus(seed, vcfg, hasher)
 	var actualDB Database
 	updateCount := 0
 	nexus.AddListener(ctx, func(db Database) {
@@ -305,14 +307,16 @@ func TestSeedEnforcementStrict(t *testing.T) {
 }
 
 func TestSeedParseAndValidationErrors(t *testing.T) {
+	vcfg := GetValidationConfigForTests()
+
 	//test a seed file with unknown attributes (we parse with strict rules)
-	_, errs := ReadDatabaseSeed("fixtures/seed-parse-error-1.json")
+	_, errs := ReadDatabaseSeed("fixtures/seed-parse-error-1.json", vcfg)
 	expectTheseErrors(t, errs,
 		`while parsing fixtures/seed-parse-error-1.json: json: unknown field "unknown_attribute"`,
 	)
 
 	//test a seed file with a malformatted command substitution
-	_, errs = ReadDatabaseSeed("fixtures/seed-parse-error-2.json")
+	_, errs = ReadDatabaseSeed("fixtures/seed-parse-error-2.json", vcfg)
 	expectTheseErrors(t, errs,
 		`while parsing fixtures/seed-parse-error-2.json: json: cannot unmarshal object into Go struct field UserSeed.users.password of type string`,
 	)
@@ -323,12 +327,14 @@ func TestSeedParseAndValidationErrors(t *testing.T) {
 
 	//test a seed file with every possible validation error (each user and group
 	//has one validation error, as indicated in their name fields)
-	_, errs = ReadDatabaseSeed("fixtures/seed-validation-errors.json")
+	_, errs = ReadDatabaseSeed("fixtures/seed-validation-errors.json", vcfg)
 	expectTheseErrors(t, errs,
 		`field "login_name" in user "" is missing`,
 		`field "login_name" in user " spaces-in-name " may not start with a space character`,
-		`field "login_name" in user "malformed+name" is not an acceptable user/group name matching the pattern /[a-z_][a-z0-9_-]*\$?/`,
-		`field "login_name" in user "duplicate-name" is defined multiple times`,
+		`field "login_name" in user "malformed-name$" is not an acceptable user name`,
+		`field "login_name" in user "nonposix.name" is not an acceptable POSIX account name matching the pattern /^[a-z_][a-z0-9_-]*\$?$/`,
+		`field "login_name" in user "nonldap,name" may not include commas, plus signs or equals signs`,
+		`field "login_name" in user "duplicate.name" is defined multiple times`,
 		`field "given_name" in user "missing-given-name" is missing`,
 		`field "given_name" in user "spaces-in-given-name" may not start with a space character`,
 		`field "family_name" in user "missing-family-name" is missing`,
@@ -344,8 +350,10 @@ func TestSeedParseAndValidationErrors(t *testing.T) {
 		`field "posix_shell" in user "posix-shell-is-not-absolute" must be an absolute path, i.e. start with a /`,
 		`field "name" in group "" is missing`,
 		`field "name" in group " spaces-in-name " may not start with a space character`,
-		`field "name" in group "malformed+name" is not an acceptable user/group name matching the pattern /[a-z_][a-z0-9_-]*\$?/`,
-		`field "name" in group "duplicate-name" is defined multiple times`,
+		`field "name" in group "malformed-name$" is not an acceptable group name`,
+		`field "name" in group "nonposix.name" is not an acceptable POSIX account name matching the pattern /^[a-z_][a-z0-9_-]*\$?$/`,
+		`field "name" in group "nonldap,name" may not include commas, plus signs or equals signs`,
+		`field "name" in group "duplicate.name" is defined multiple times`,
 		`field "long_name" in group "missing-long-name" is missing`,
 		`field "long_name" in group "spaces-in-long-name" may not start with a space character`,
 		`field "members" in group "unknown-member" contains unknown user with login name "incognito"`,
@@ -359,13 +367,14 @@ func TestSeedCryptoAgility(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	seed, errs := ReadDatabaseSeed("fixtures/seed-one-user-with-password.json")
+	vcfg := GetValidationConfigForTests()
+	seed, errs := ReadDatabaseSeed("fixtures/seed-one-user-with-password.json", vcfg)
 	expectNoErrors(t, errs)
 	_ = seed
 
 	//register a listener to observe the real DB changes
 	hasher := &NoopHasher{}
-	nexus := NewNexus(seed, hasher)
+	nexus := NewNexus(seed, vcfg, hasher)
 	var actualDB Database
 	nexus.AddListener(ctx, func(db Database) {
 		actualDB = db

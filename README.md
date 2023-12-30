@@ -56,6 +56,7 @@ following environment variables:
 | Variable | Default | Explanation |
 | -------- | ------- | ----------- |
 | `PORTUNUS_DEBUG` | `false` | When true, log debug messages to standard error. May cause passwords to be logged. **Do not use in production.** |
+| `PORTUNUS_GROUP_NAME_REGEX` | `^[a-z_][a-z0-9_-]*\$?$` | Names of groups will be rejected as invalid unless they match this regular expression, given in [Go regex syntax](https://pkg.go.dev/regexp/syntax). The default is the same as for POSIX account names. Even if this regex is set to be more liberal than the default, groups that are POSIX groups must also conform to the POSIX account name regex. |
 | `PORTUNUS_LDAP_SUFFIX` | *(required)* | The DN of the topmost entry in your LDAP directory. Must currently be a sequence of `dc=xxx` RDNs. (This requirement may be lifted in future versions.) See [*LDAP directory structure*](#ldap-directory-structure) for details and a guide-level explanation. |
 | `PORTUNUS_SEED_PATH` | *(optional)* | If given, seed users and groups from the configuration file at the given path. This is the recommended setup method when using configuration management. [See below](#seeding-users-and-groups-from-static-configuration) for details. |
 | `PORTUNUS_SERVER_BINARY` | `portunus-server` | Where to find the portunus-server binary. Semantics match those of `execvp(3)`: If the supplied value is not a path containing slashes, `$PATH` will be searched for it. |
@@ -71,6 +72,7 @@ following environment variables:
 | `PORTUNUS_SLAPD_TLS_CA_CERTIFICATE` | *(optional)* | *Required* when a TLS certificate is given. The full chain of CA certificates which has signed the TLS certificate, *including the root CA*. |
 | `PORTUNUS_SLAPD_TLS_DOMAIN_NAME` | *(optional)* | *Required* when a TLS certificate is given. The domain name for which the certificate is valid. `portunus-server` will use this domain name when connecting to the LDAP server. |
 | `PORTUNUS_SLAPD_TLS_PRIVATE_KEY` | *(optional)* | *Required* when a TLS certificate is given. The path to the private key belonging to the TLS certificate. |
+| `PORTUNUS_USER_NAME_REGEX` | `^[a-z_][a-z0-9_-]*\$?$` | Login names of users will be rejected as invalid unless they match this regular expression, given in [Go regex syntax](https://pkg.go.dev/regexp/syntax). The default is the same as for POSIX account names. Even if this regex is set to be more liberal than the default, user accounts that are POSIX users must also conform to the POSIX regex. |
 
 Root privileges are required for the orchestrator because it needs to setup runtime directories and
 bind the LDAP port which is a privileged port (389 without TLS, 636 with TLS). No process managed by
