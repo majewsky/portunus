@@ -1,7 +1,7 @@
 This project follows [semantic versioning](https://semver.org/spec/v2.0.0.html). If you believe that
 SemVer was not adhered to in one of our releases, please open an issue.
 
-# v2.1.0 (TBD)
+# v2.1.0 (2023-12-30)
 
 New features:
 
