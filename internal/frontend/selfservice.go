@@ -71,7 +71,11 @@ func useSelfServiceForm(n core.Nexus) HandlerStep {
 		}
 
 		i.FormSpec = &h.FormSpec{
-			PostTarget:  "/self",
+			PostTarget: "/self",
+			Links: []h.Link{{
+				DisplayName: "Configure TOTP",
+				Target:      "/self/totp",
+			}},
 			SubmitLabel: "Update profile",
 			Fields: []h.FormField{
 				h.StaticField{

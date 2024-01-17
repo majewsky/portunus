@@ -35,6 +35,8 @@ func HTTPHandler(nexus core.Nexus, isBehindTLSProxy bool) http.Handler {
 
 	r.Methods("GET").Path(`/self`).Handler(getSelfHandler(nexus))
 	r.Methods("POST").Path(`/self`).Handler(postSelfHandler(nexus))
+	r.Methods("GET").Path(`/self/totp`).Handler(getSelfTOTPHandler(nexus))
+	r.Methods("POST").Path(`/self/totp`).Handler(postSelfTOTPHandler(nexus))
 
 	r.Methods("GET").Path(`/users`).Handler(getUsersHandler(nexus))
 	r.Methods("GET").Path(`/users/new`).Handler(getUsersNewHandler(nexus))

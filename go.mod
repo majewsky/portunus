@@ -9,12 +9,14 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25
+	github.com/pquerna/otp v1.4.0
 	github.com/sapcc/go-bits v0.0.0-20231025110038-7e644a44c112
 	golang.org/x/crypto v0.17.0
 )
 
 require (
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.5 // indirect
 	github.com/google/uuid v1.3.1 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
