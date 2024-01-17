@@ -333,6 +333,10 @@ func ShowFormIfErrors(title string) HandlerStep {
 // does not have any errors yet, and pushes all errors into the FormState.
 func TryUpdateNexus(n core.Nexus, action func(*core.Database, *Interaction, crypt.PasswordHasher) errext.ErrorSet) HandlerStep {
 	return func(i *Interaction) {
+		if i.FormState == nil {
+			panic("TryUpdateNexus requires a form state")
+		}
+
 		opts := core.UpdateOptions{
 			ConflictWithSeedIsError: true,
 			DryRun:                  !i.FormState.IsValid(),
