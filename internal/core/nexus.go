@@ -48,6 +48,7 @@ type Nexus interface {
 
 	// Components carried by the Nexus.
 	PasswordHasher() crypt.PasswordHasher
+	WebDomain() string
 }
 
 // UpdateOptions controls optional behavior in Nexus.Update().
@@ -90,6 +91,11 @@ type listener struct {
 // PasswordHasher implements the Nexus interface.
 func (n *nexusImpl) PasswordHasher() crypt.PasswordHasher {
 	return n.hasher
+}
+
+// WebDomain implements the Nexus interface.
+func (n *nexusImpl) WebDomain() string {
+	return n.vcfg.Domain
 }
 
 // ListGroups implements the Nexus interface.
