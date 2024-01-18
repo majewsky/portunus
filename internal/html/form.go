@@ -7,6 +7,7 @@
 package h
 
 import (
+	"encoding/base64"
 	"html/template"
 	"net/http"
 
@@ -82,11 +83,19 @@ type FormField interface {
 	RenderField(FormState) template.HTML
 }
 
+// Link describe an a element that is shown before hte submit button.
+type Link struct {
+	DisplayName string
+	Target      string
+}
+
 // FormSpec describes an HTML form that is submitted to a POST endpoint.
 type FormSpec struct {
 	PostTarget  string
 	SubmitLabel string
+	Links       []Link
 	Fields      []FormField
+	Warning     bool
 }
 
 // ReadState reads and validates the field value from r.PostForm, and stores it
@@ -107,7 +116,10 @@ var formSpecSnippet = NewSnippet(`
 	<form method="POST" action={{.Spec.PostTarget}}>
 		{{.Fields}}
 		<div class="button-row">
-			<button type="submit" class="button button-primary">{{.Spec.SubmitLabel}}</button>
+			{{- range .Links }}
+			<a class="button button-primary" href="{{.Target}}" >{{.DisplayName}}</a>
+			{{- end }}
+			<button type="submit" class="button button-{{if .Warning}}warning{{else}}primary{{end}}">{{.Spec.SubmitLabel}}</button>
 		</div>
 	</form>
 `)
@@ -118,10 +130,14 @@ func (f FormSpec) Render(r *http.Request, s FormState) template.HTML {
 		Spec          FormSpec
 		Fields        template.HTML
 		ErrorMessages []string
+		Links         []Link
+		Warning       bool
 	}{
 		Spec:          f,
 		Fields:        csrf.TemplateField(r),
 		ErrorMessages: s.ErrorMessages,
+		Links:         f.Links,
+		Warning:       f.Warning,
 	}
 	for _, field := range f.Fields {
 		data.Fields = data.Fields + field.RenderField(s)
@@ -136,9 +152,11 @@ func (f FormSpec) Render(r *http.Request, s FormState) template.HTML {
 type InputFieldSpec struct {
 	Name             string
 	Label            string
-	InputType        string
 	AutoFocus        bool
 	AutocompleteMode string
+	InputMode        string
+	InputType        string
+	Pattern          string
 }
 
 // ReadState reads and validates the field value from r.PostForm, and stores it
@@ -161,6 +179,8 @@ var inputFieldSnippet = NewSnippet(`
 			{{ if .Spec.AutoFocus }}autofocus{{ end }}
 			class="row-input {{if .State.ErrorMessage}}form-error{{end}}"
 			autocomplete="{{if .Spec.AutocompleteMode}}{{.Spec.AutocompleteMode}}{{else}}off{{end}}"
+			{{if .Spec.InputMode}}inputmode="{{.Spec.InputMode}}"{{end}}
+			{{if .Spec.Pattern}}pattern="{{.Spec.Pattern}}"{{end}}
 		/>
 	</div>
 `)
@@ -312,4 +332,44 @@ func (fs FieldSet) RenderField(state FormState) template.HTML {
 	}
 
 	return fieldSetSnippet.Render(data)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// type ImgData
+
+// ImgData describes a png image which is rendered using data:
+type ImgData struct {
+	Alt   string
+	Image []byte
+	Label string
+	Name  string
+}
+
+// ReadState implements the FormField interface.
+func (i ImgData) ReadState(*http.Request, *FormState) {
+}
+
+var ImgDataSnippet = NewSnippet(`
+  <div class="form-row">
+  <label for="{{.Name}}">{{.Label}}</label>
+    <img alt="{{.Alt}}" name="{{.Name}}" src="data:image/png;base64,{{.Data}}">
+  </div>
+`)
+
+// RenderField produces the HTML for this field.
+func (i ImgData) RenderField(FormState) template.HTML {
+	data := struct {
+		Alt   string
+		Data  string
+		Label string
+		Name  string
+	}{
+		Alt:   i.Alt,
+		Label: i.Label,
+		Name:  i.Name,
+	}
+
+	data.Data = base64.StdEncoding.EncodeToString(i.Image)
+
+	return ImgDataSnippet.Render(data)
 }

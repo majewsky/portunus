@@ -35,6 +35,8 @@ func HTTPHandler(nexus core.Nexus, isBehindTLSProxy bool) http.Handler {
 
 	r.Methods("GET").Path(`/self`).Handler(getSelfHandler(nexus))
 	r.Methods("POST").Path(`/self`).Handler(postSelfHandler(nexus))
+	r.Methods("GET").Path(`/self/totp`).Handler(getSelfTOTPHandler(nexus))
+	r.Methods("POST").Path(`/self/totp`).Handler(postSelfTOTPHandler(nexus))
 
 	r.Methods("GET").Path(`/users`).Handler(getUsersHandler(nexus))
 	r.Methods("GET").Path(`/users/new`).Handler(getUsersNewHandler(nexus))
@@ -333,6 +335,10 @@ func ShowFormIfErrors(title string) HandlerStep {
 // does not have any errors yet, and pushes all errors into the FormState.
 func TryUpdateNexus(n core.Nexus, action func(*core.Database, *Interaction, crypt.PasswordHasher) errext.ErrorSet) HandlerStep {
 	return func(i *Interaction) {
+		if i.FormState == nil {
+			panic("TryUpdateNexus requires a form state")
+		}
+
 		opts := core.UpdateOptions{
 			ConflictWithSeedIsError: true,
 			DryRun:                  !i.FormState.IsValid(),

@@ -16,6 +16,7 @@ import (
 	"unicode"
 
 	"github.com/majewsky/portunus/internal/grammars"
+	"github.com/sapcc/go-bits/osext"
 )
 
 // ObjectRef identifies a User or Group. It appears in type FieldRef.
@@ -69,8 +70,9 @@ func (e ValidationError) Error() string {
 		r.Name, r.Object.Type, r.Object.Name, e.FieldError.Error())
 }
 
-// ValidationConfig contains runtime configuration for user/group validation.
+// ValidationConfig contains runtime configuration for totp and user/group validation.
 type ValidationConfig struct {
+	Domain         string         //from PORTUNUS_DOMAIN_NAME
 	GroupNameRegex *regexp.Regexp //from PORTUNUS_GROUP_NAME_REGEX
 	UserNameRegex  *regexp.Regexp //from PORTUNUS_USER_NAME_REGEX
 }
@@ -79,6 +81,7 @@ type ValidationConfig struct {
 // respective environment variables.
 func ReadValidationConfigFromEnvironment() (result *ValidationConfig, err error) {
 	var cfg ValidationConfig
+	cfg.Domain = osext.GetenvOrDefault("PORTUNUS_DOMAIN_NAME", "portunus")
 	cfg.GroupNameRegex, err = compileRegexFromEnvironment("PORTUNUS_GROUP_NAME_REGEX")
 	if err != nil {
 		return nil, err
@@ -98,6 +101,7 @@ func GetValidationConfigForTests() *ValidationConfig {
 	//meaning in LDAP DNs.
 	rx := regexp.MustCompile(`^[a-z0-9.,-]+$`)
 	return &ValidationConfig{
+		Domain:         "portunus.example.com",
 		GroupNameRegex: rx,
 		UserNameRegex:  rx,
 	}

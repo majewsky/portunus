@@ -17,6 +17,15 @@ import (
 	"github.com/sapcc/go-bits/errext"
 )
 
+const (
+	Memberships    = "memberships"
+	changePassword = "change_password"
+	oldPassword    = "old_password"
+	newPassword    = "new_password"
+	repeatPassword = "repeat_password"
+	sshPublicKeys  = "ssh_public_keys"
+)
+
 // TODO: allow flipped order (family name first)
 var userFullNameSnippet = h.NewSnippet(`
 	<span class="given-name">{{.GivenName}}</span> <span class="family-name">{{.FamilyName}}</span>
@@ -52,17 +61,21 @@ func useSelfServiceForm(n core.Nexus) HandlerStep {
 
 		i.FormState = &h.FormState{
 			Fields: map[string]*h.FieldState{
-				"memberships": {
+				Memberships: {
 					Selected: isSelected,
 				},
-				"ssh_public_keys": {
+				sshPublicKeys: {
 					Value: strings.Join(user.SSHPublicKeys, "\r\n"),
 				},
 			},
 		}
 
 		i.FormSpec = &h.FormSpec{
-			PostTarget:  "/self",
+			PostTarget: "/self",
+			Links: []h.Link{{
+				DisplayName: "Configure TOTP",
+				Target:      "/self/totp",
+			}},
 			SubmitLabel: "Update profile",
 			Fields: []h.FormField{
 				h.StaticField{
@@ -78,33 +91,33 @@ func useSelfServiceForm(n core.Nexus) HandlerStep {
 					Value: userEMailAddressSnippet.Render(user),
 				},
 				h.SelectFieldSpec{
-					Name:     "memberships",
+					Name:     Memberships,
 					Label:    "Group memberships",
 					Options:  memberships,
 					ReadOnly: true,
 				},
 				h.MultilineInputFieldSpec{
-					Name:  "ssh_public_keys",
+					Name:  sshPublicKeys,
 					Label: "SSH public key(s)",
 				},
 				h.FieldSet{
-					Name:       "change_password",
+					Name:       changePassword,
 					Label:      "Change password",
 					IsFoldable: true,
 					Fields: []h.FormField{
 						h.InputFieldSpec{
 							InputType: "password",
-							Name:      "old_password",
+							Name:      oldPassword,
 							Label:     "Old password",
 						},
 						h.InputFieldSpec{
 							InputType: "password",
-							Name:      "new_password",
+							Name:      newPassword,
 							Label:     "New password",
 						},
 						h.InputFieldSpec{
 							InputType: "password",
-							Name:      "repeat_password",
+							Name:      repeatPassword,
 							Label:     "Repeat password",
 						},
 					},
@@ -139,17 +152,18 @@ func postSelfHandler(n core.Nexus) http.Handler {
 func validateSelfServiceForm(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		fs := i.FormState
+		user := i.CurrentUser
 
-		if fs.Fields["change_password"].IsUnfolded {
-			oldPassword := fs.Fields["old_password"].GetValueOrSetError()
-			if oldPassword != "" && !n.PasswordHasher().CheckPasswordHash(oldPassword, i.CurrentUser.PasswordHash) {
-				fs.Fields["old_password"].ErrorMessage = "is not correct"
+		if fs.Fields[changePassword].IsUnfolded {
+			oldPassword := fs.Fields[oldPassword].GetValueOrSetError()
+			if oldPassword != "" && !n.PasswordHasher().CheckPasswordHash(oldPassword, user.PasswordHash) {
+				fs.Fields[oldPassword].ErrorMessage = "is not correct"
 			}
 
-			newPassword1 := fs.Fields["new_password"].GetValueOrSetError()
-			newPassword2 := fs.Fields["repeat_password"].GetValueOrSetError()
+			newPassword1 := fs.Fields[newPassword].GetValueOrSetError()
+			newPassword2 := fs.Fields[repeatPassword].GetValueOrSetError()
 			if newPassword2 != "" && newPassword1 != newPassword2 {
-				fs.Fields["repeat_password"].ErrorMessage = "did not match"
+				fs.Fields[repeatPassword].ErrorMessage = "did not match"
 			}
 		}
 	}
@@ -164,7 +178,7 @@ func executeSelfService(db *core.Database, i *Interaction, hasher crypt.Password
 		if fs.Fields["change_password"].IsUnfolded {
 			user.PasswordHash = hasher.HashPassword(fs.Fields["new_password"].Value)
 		}
-		user.SSHPublicKeys = core.SplitSSHPublicKeys(fs.Fields["ssh_public_keys"].Value)
+		user.SSHPublicKeys = core.SplitSSHPublicKeys(fs.Fields[sshPublicKeys].Value)
 		db.Users[idx] = user //`user` copies by value, so we need to write the changes back explicitly
 	}
 	return
