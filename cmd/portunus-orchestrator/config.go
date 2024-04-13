@@ -23,7 +23,7 @@ type valueCheck struct {
 }
 
 var (
-	userOrGroupPattern = `^[a-z_][a-z0-9_-]*\$?$`
+	userOrGroupPattern = `^[a-z_][a-z0-9_\-]*\$?$`
 	envDefaults        = map[string]string{
 		//empty value = not optional
 		"PORTUNUS_DEBUG":              "false",
