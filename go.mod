@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/sessions v1.2.2
 	github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25
 	github.com/sapcc/go-bits v0.0.0-20240412131404-c19f29da6dd1
-	golang.org/x/crypto v0.22.0
+	golang.org/x/crypto v0.31.0
 )
 
 require (
@@ -19,5 +19,5 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/sergi/go-diff v1.3.1 // indirect
-	golang.org/x/sys v0.19.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
 )
