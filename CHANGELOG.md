@@ -1,11 +1,11 @@
 This project follows [semantic versioning](https://semver.org/spec/v2.0.0.html). If you believe that
 SemVer was not adhered to in one of our releases, please open an issue.
 
-# v2.1.2 (TODO)
+# v2.1.2 (2025-04-15)
 
 Changes:
 
-- All dependencies were updated to their latest versions. Because of dependencies, Go 1.22 is now required.
+- All dependencies were updated to their latest versions. Because of dependencies, Go 1.24 is now required.
 
 # v2.1.1 (2023-12-30)
 
