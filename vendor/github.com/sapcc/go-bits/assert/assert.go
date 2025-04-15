@@ -31,7 +31,7 @@ import (
 
 // DeepEqual checks if the actual and expected value are equal as
 // determined by reflect.DeepEqual(), and t.Error()s otherwise.
-func DeepEqual(t *testing.T, variable string, actual, expected any) bool {
+func DeepEqual[V any](t *testing.T, variable string, actual, expected V) bool {
 	t.Helper()
 	if reflect.DeepEqual(actual, expected) {
 		return true
@@ -48,7 +48,7 @@ func DeepEqual(t *testing.T, variable string, actual, expected any) bool {
 	if osext.GetenvBool("GOBITS_PRETTY_DIFF") {
 		dmp := diffmatchpatch.New()
 		diffs := dmp.DiffMain(fmt.Sprintf("%#v\n", actual), fmt.Sprintf("%#v\n", expected), false)
-		t.Logf(dmp.DiffPrettyText(diffs))
+		t.Log(dmp.DiffPrettyText(diffs))
 	} else {
 		t.Logf("\texpected = %#v\n", expected)
 		t.Logf("\t  actual = %#v\n", actual)
