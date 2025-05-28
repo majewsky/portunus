@@ -9,8 +9,8 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.4.0
 	github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25
-	github.com/sapcc/go-bits v0.0.0-20250410003731-7b4174e5d933
-	golang.org/x/crypto v0.37.0
+	github.com/sapcc/go-bits v0.0.0-20250523091838-d2760e792019
+	golang.org/x/crypto v0.38.0
 )
 
 require (
@@ -19,5 +19,5 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/sergi/go-diff v1.3.1 // indirect
-	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
 )
