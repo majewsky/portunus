@@ -69,7 +69,7 @@ func securityHeadersMiddleware(inner http.Handler) http.Handler {
 		hdr.Set("X-Frame-Options", "SAMEORIGIN")
 		hdr.Set("X-XSS-Protection", "1; mode=block")
 		hdr.Set("X-Content-Type-Options", "nosniff")
-		hdr.Set("Referrer-Policy", "no-referrer")
+		hdr.Set("Referrer-Policy", "strict-origin")
 		hdr.Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data:;")
 		inner.ServeHTTP(w, r)
 	})
