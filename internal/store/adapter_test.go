@@ -75,7 +75,9 @@ func TestReadExistingStore(t *testing.T) {
 	defer cancel()
 
 	dirPath, storePath := setupTempDir(t)
-	defer os.RemoveAll(dirPath)
+	defer func() {
+		_ = os.RemoveAll(dirPath)
+	}()
 
 	//before starting, there are already contents in the database store
 	test.ExpectNoError(t, os.WriteFile(storePath, []byte(db1Representation), 0666))
@@ -200,7 +202,9 @@ func TestInitializeMissingStore(t *testing.T) {
 	defer cancel()
 
 	dirPath, storePath := setupTempDir(t)
-	defer os.RemoveAll(dirPath)
+	defer func() {
+		os.RemoveAll(dirPath)
+	}()
 
 	//when the adapter starts up and finds no store...
 	var wg1 sync.WaitGroup

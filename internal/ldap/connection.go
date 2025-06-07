@@ -64,9 +64,9 @@ func (c *connectionImpl) getConn(retryCounter int, sleepInterval time.Duration) 
 	time.Sleep(sleepInterval)
 
 	if c.opts.TLSDomainName != "" {
-		c.conn, err = goldap.DialTLS("tcp", c.opts.TLSDomainName+":ldaps", nil)
+		c.conn, err = goldap.DialURL(c.opts.TLSDomainName + ":ldaps")
 	} else {
-		c.conn, err = goldap.Dial("tcp", ":ldap")
+		c.conn, err = goldap.DialURL(":ldap")
 	}
 	if err == nil {
 		err = c.conn.Bind(c.userDN, c.opts.Password)

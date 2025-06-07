@@ -89,7 +89,7 @@ func readConfig() (environment map[string]string, ids map[string]int) {
 			}
 		}
 		environment[key] = value
-		os.Unsetenv(key) //avoid unintentional leakage of env vars to child processes
+		_ = os.Unsetenv(key) //avoid unintentional leakage of env vars to child processes
 	}
 
 	//resolve user/group names into IDs
