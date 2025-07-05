@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/majewsky/portunus/internal/core"
@@ -53,7 +54,9 @@ func main() {
 		must.Succeed(ldapAdapter.Run(ctx))
 	}()
 
-	handler := frontend.HTTPHandler(nexus, os.Getenv("PORTUNUS_SERVER_HTTP_SECURE") == "true")
+	trustedOrigins := strings.Split(os.Getenv("PORTUNUS_SERVER_TRUSTED_ORIGINS"), ",")
+	httpSecure := os.Getenv("PORTUNUS_SERVER_HTTP_SECURE") == "true"
+	handler := frontend.HTTPHandler(nexus, httpSecure, trustedOrigins)
 	logg.Fatal(http.ListenAndServe(os.Getenv("PORTUNUS_SERVER_HTTP_LISTEN"), handler).Error())
 }
 

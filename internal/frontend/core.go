@@ -24,7 +24,7 @@ import (
 )
 
 // HTTPHandler returns the main http.Handler.
-func HTTPHandler(nexus core.Nexus, isBehindTLSProxy bool) http.Handler {
+func HTTPHandler(nexus core.Nexus, isBehindTLSProxy bool, trustedOrigins []string) http.Handler {
 	r := mux.NewRouter()
 	r.Methods("GET").Path(`/`).Handler(getToplevelHandler(nexus))
 	r.Methods("GET").Path(`/static/{path:.+}`).Handler(http.StripPrefix("/static/", http.FileServer(http.FS(static.FS))))
@@ -54,7 +54,7 @@ func HTTPHandler(nexus core.Nexus, isBehindTLSProxy bool) http.Handler {
 
 	//setup CSRF with maxAge = 30 minutes
 	csrfKey := core.GenerateRandomKey(32)
-	csrfMiddleware := csrf.Protect(csrfKey, csrf.MaxAge(1800), csrf.Secure(isBehindTLSProxy))
+	csrfMiddleware := csrf.Protect(csrfKey, csrf.MaxAge(1800), csrf.Secure(isBehindTLSProxy), csrf.TrustedOrigins(trustedOrigins))
 	handler := csrfMiddleware(r)
 
 	//add various security headers via middleware

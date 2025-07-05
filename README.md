@@ -63,6 +63,7 @@ following environment variables:
 | `PORTUNUS_SERVER_GROUP`<br>`PORTUNUS_SERVER_USER` | `portunus` each | The Unix user/group that Portunus' own server will be run as. |
 | `PORTUNUS_SERVER_HTTP_LISTEN` | `127.0.0.1:8080` | Listen address where Portunus' HTTP server shall be running. |
 | `PORTUNUS_SERVER_HTTP_SECURE` | `true` | **Do not unset this flag in productive deployments.** In test deployments, this can be set to `false` so that the web GUI works without TLS. |
+| `PORTUNUS_SERVER_TRUSTED_ORIGINS` | `` | If running Portunus's HTTP server behind a reverse proxy, set this to a comma-delimited list of domain names it should serve its interface on. For example, `dir.mydomain.com,dir.myotherdomain.com`. |
 | `PORTUNUS_SERVER_STATE_DIR` | `/var/lib/portunus` | The path where Portunus stores its database. **Set up a backup for this directory.** |
 | `PORTUNUS_SLAPD_BINARY` | `slapd` | Where to find the binary of slapd (the OpenLDAP server). Semantics match those of `execvp(3)`: If the supplied value is not a path containing slashes, `$PATH` will be searched for it. The slapd binary must link against the same libcrypt as the Portunus binaries, otherwise there will be disagreement between both parties on how password hashes work. |
 | `PORTUNUS_SLAPD_GROUP`<br>`PORTUNUS_SLAPD_USER` | `ldap` each | The Unix user/group that slapd will be run as. |
