@@ -29,17 +29,17 @@ github.com/gorilla/sessions
 # github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25
 ## explicit
 github.com/majewsky/xyrillian.css
-# github.com/sapcc/go-bits v0.0.0-20250523091838-d2760e792019
+# github.com/sapcc/go-bits v0.0.0-20250707110230-434311affb05
 ## explicit; go 1.24
 github.com/sapcc/go-bits/assert
 github.com/sapcc/go-bits/errext
 github.com/sapcc/go-bits/logg
 github.com/sapcc/go-bits/must
 github.com/sapcc/go-bits/osext
-# github.com/sergi/go-diff v1.3.1
-## explicit; go 1.12
+# github.com/sergi/go-diff v1.4.0
+## explicit; go 1.13
 github.com/sergi/go-diff/diffmatchpatch
-# golang.org/x/crypto v0.38.0
+# golang.org/x/crypto v0.39.0
 ## explicit; go 1.23.0
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/chacha20
