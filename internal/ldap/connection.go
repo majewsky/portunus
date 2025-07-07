@@ -9,6 +9,7 @@ package ldap
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 
 	goldap "github.com/go-ldap/ldap/v3"
@@ -63,11 +64,11 @@ func (c *connectionImpl) getConn(retryCounter int, sleepInterval time.Duration) 
 	}
 	time.Sleep(sleepInterval)
 
+	u := url.URL{Scheme: "ldap", Host: "localhost"}
 	if c.opts.TLSDomainName != "" {
-		c.conn, err = goldap.DialTLS("tcp", c.opts.TLSDomainName+":ldaps", nil)
-	} else {
-		c.conn, err = goldap.Dial("tcp", ":ldap")
+		u = url.URL{Scheme: "ldaps", Host: c.opts.TLSDomainName}
 	}
+	c.conn, err = goldap.DialURL(u.String(), nil)
 	if err == nil {
 		err = c.conn.Bind(c.userDN, c.opts.Password)
 	}

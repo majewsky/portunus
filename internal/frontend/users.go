@@ -312,7 +312,7 @@ func loadTargetUser(n core.Nexus) HandlerStep {
 		user, exists := n.FindUser(func(u core.User) bool { return u.LoginName == userLoginName })
 		if exists {
 			i.TargetUser = &user.User
-			i.TargetRef = user.User.Ref()
+			i.TargetRef = user.Ref()
 		} else {
 			msg := fmt.Sprintf("User %q does not exist.", userLoginName)
 			i.RedirectWithFlashTo("/users", Flash{"danger", msg})
