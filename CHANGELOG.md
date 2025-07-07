@@ -1,6 +1,10 @@
 This project follows [semantic versioning](https://semver.org/spec/v2.0.0.html). If you believe that
 SemVer was not adhered to in one of our releases, please open an issue.
 
+# v2.1.4 (2025-07-07)
+
+- Fix a regression crash on startup in v2.1.3.
+
 # v2.1.3 (2025-07-07)
 
 Changes:
