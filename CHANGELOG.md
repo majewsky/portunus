@@ -1,6 +1,13 @@
 This project follows [semantic versioning](https://semver.org/spec/v2.0.0.html). If you believe that
 SemVer was not adhered to in one of our releases, please open an issue.
 
+# v2.1.3 (2025-07-07)
+
+Changes:
+
+- All dependencies were updated to their latest versions.
+- The `Referrer-Policy` was relaxed from `no-referrer` to `strict-origin`.
+
 # v2.1.2 (2025-04-15)
 
 Changes:
