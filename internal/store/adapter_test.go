@@ -143,7 +143,7 @@ func TestReadSideloadedStore(t *testing.T) {
 	//verify that the sideloaded change was not overwritten by the adapter
 	buf, err := os.ReadFile(storePath)
 	test.ExpectNoError(t, err)
-	assert.DeepEqual(t, "database contents after write", string(buf), db2Representation)
+	assert.Equal(t, string(buf), db2Representation)
 }
 
 func TestWriteStore(t *testing.T) {
@@ -190,7 +190,7 @@ func TestWriteStore(t *testing.T) {
 	wg.Wait()
 	buf, err := os.ReadFile(storePath)
 	test.ExpectNoError(t, err)
-	assert.DeepEqual(t, "database contents after write", string(buf), db2Representation)
+	assert.Equal(t, string(buf), db2Representation)
 }
 
 func TestInitializeMissingStore(t *testing.T) {
@@ -236,7 +236,7 @@ func TestInitializeMissingStore(t *testing.T) {
 	buf, err := os.ReadFile(storePath)
 	test.ExpectNoError(t, err)
 	repr := strings.Replace(string(buf), realPasswordHash, "<variable>", 1)
-	assert.DeepEqual(t, "database contents after write", repr, autoinitDBRepresentation)
+	assert.Equal(t, repr, autoinitDBRepresentation)
 }
 
 func setupTempDir(t *testing.T) (dirPath, storePath string) {

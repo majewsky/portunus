@@ -45,7 +45,7 @@ func TestDryRun(t *testing.T) {
 	}
 	errs := nexus.Update(actionLoadEmpty, nil)
 	expectNoErrors(t, errs)
-	assert.DeepEqual(t, "user given name", actualDB.Users[0].FullName(), "Minimal User")
+	assert.Equal(t, actualDB.Users[0].FullName(), "Minimal User")
 
 	//an action that fails...
 	actionFail := func(db *Database) (errs errext.ErrorSet) {
@@ -57,11 +57,11 @@ func TestDryRun(t *testing.T) {
 	//...will behave the same with DryRun and without
 	errs = nexus.Update(actionFail, &UpdateOptions{DryRun: true})
 	expectTheseErrors(t, errs, "error from action")
-	assert.DeepEqual(t, "user given name", actualDB.Users[0].FullName(), "Minimal User")
+	assert.Equal(t, actualDB.Users[0].FullName(), "Minimal User")
 
 	errs = nexus.Update(actionFail, nil)
 	expectTheseErrors(t, errs, "error from action")
-	assert.DeepEqual(t, "user given name", actualDB.Users[0].FullName(), "Minimal User")
+	assert.Equal(t, actualDB.Users[0].FullName(), "Minimal User")
 
 	//an action that succeeds...
 	counter := 0
@@ -74,11 +74,11 @@ func TestDryRun(t *testing.T) {
 	//...will run, but not be committed under DryRun
 	errs = nexus.Update(actionSucceed, &UpdateOptions{DryRun: true})
 	expectNoErrors(t, errs)
-	assert.DeepEqual(t, "user given name", actualDB.Users[0].FullName(), "Minimal User")
-	assert.DeepEqual(t, "run counter", counter, 1)
+	assert.Equal(t, actualDB.Users[0].FullName(), "Minimal User")
+	assert.Equal(t, counter, 1)
 
 	errs = nexus.Update(actionSucceed, nil)
 	expectNoErrors(t, errs)
-	assert.DeepEqual(t, "user given name", actualDB.Users[0].FullName(), "Changed User")
-	assert.DeepEqual(t, "run counter", counter, 2)
+	assert.Equal(t, actualDB.Users[0].FullName(), "Changed User")
+	assert.Equal(t, counter, 2)
 }

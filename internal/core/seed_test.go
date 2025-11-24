@@ -242,7 +242,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 
 	expectedDB := dbWithBasicSeedApplied()
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
-	assert.DeepEqual(t, "update count", updateCount, 1)
+	assert.Equal(t, updateCount, 1)
 
 	//overwriting seeded attributes is not allowed
 	opts := UpdateOptions{ConflictWithSeedIsError: true}
@@ -264,13 +264,13 @@ func TestSeedEnforcementStrict(t *testing.T) {
 		`field "posix_shell" in user "maxuser" must be equal to the seeded value`,
 		`field "posix_gecos" in user "maxuser" must be equal to the seeded value`,
 	)
-	assert.DeepEqual(t, "update count", updateCount, 1) //same as before (listener was not called)
+	assert.Equal(t, updateCount, 1) //same as before (listener was not called)
 
 	errs = nexus.Update(reducerOverwriteSeededAttrs2, &opts)
 	expectTheseErrors(t, errs,
 		`field "posix" in user "maxuser" must be equal to the seeded value`,
 	)
-	assert.DeepEqual(t, "update count", updateCount, 1) //same as before (listener was not called)
+	assert.Equal(t, updateCount, 1) //same as before (listener was not called)
 
 	//renaming seeded objects is not allowed
 	errs = nexus.Update(reducerOverwriteSeededIdentifiers, &opts)
@@ -278,7 +278,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 		`group "maxgroup" is seeded and cannot be deleted`,
 		`user "maxuser" is seeded and cannot be deleted`,
 	)
-	assert.DeepEqual(t, "update count", updateCount, 1) //same as before (listener was not called)
+	assert.Equal(t, updateCount, 1) //same as before (listener was not called)
 
 	//overwriting seeded attributes in a compatible way is allowed
 	errs = nexus.Update(reducerOverwriteMalleableAttributes(hasher), &opts)
@@ -289,7 +289,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
-	assert.DeepEqual(t, "update count", updateCount, 2)
+	assert.Equal(t, updateCount, 2)
 
 	//overwriting unseeded attributes is always allowed
 	errs = nexus.Update(reducerOverwriteUnseededAttributes(hasher), &opts)
@@ -300,7 +300,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
-	assert.DeepEqual(t, "update count", updateCount, 3)
+	assert.Equal(t, updateCount, 3)
 }
 
 func TestSeedParseAndValidationErrors(t *testing.T) {
