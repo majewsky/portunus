@@ -1,11 +1,10 @@
 module github.com/majewsky/portunus
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-ldap/ldap/v3 v3.4.11
-	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.4.0
 	github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25

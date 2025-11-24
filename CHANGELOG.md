@@ -1,7 +1,15 @@
 This project follows [semantic versioning](https://semver.org/spec/v2.0.0.html). If you believe that
 SemVer was not adhered to in one of our releases, please open an issue.
 
+# v2.2.0 (TBD)
+
+Changes:
+
+- Instead of issuing CSRF tokens in its HTML forms, Portunus now expects `Sec-Fetch-Site: same-origin` on POST requests.
+
 # v2.1.4 (2025-07-07)
+
+Changes:
 
 - Fix a regression crash on startup in v2.1.3.
 

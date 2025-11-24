@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/majewsky/portunus/internal/core"
@@ -52,12 +51,8 @@ func HTTPHandler(nexus core.Nexus, isBehindTLSProxy bool) http.Handler {
 	r.Methods("GET").Path(`/groups/{name}/delete`).Handler(getGroupDeleteHandler(nexus))
 	r.Methods("POST").Path(`/groups/{name}/delete`).Handler(postGroupDeleteHandler(nexus))
 
-	//setup CSRF with maxAge = 30 minutes
-	csrfKey := core.GenerateRandomKey(32)
-	csrfMiddleware := csrf.Protect(csrfKey, csrf.MaxAge(1800), csrf.Secure(isBehindTLSProxy))
-	handler := csrfMiddleware(r)
-
-	//add various security headers via middleware
+	//add various security headers/checks via middleware
+	handler := http.NewCrossOriginProtection().Handler(r)
 	handler = securityHeadersMiddleware(handler)
 
 	return handler

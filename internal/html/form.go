@@ -10,7 +10,6 @@ import (
 	"html/template"
 	"net/http"
 
-	"github.com/gorilla/csrf"
 	"github.com/majewsky/portunus/internal/core"
 	"github.com/sapcc/go-bits/errext"
 )
@@ -120,11 +119,11 @@ func (f FormSpec) Render(r *http.Request, s FormState) template.HTML {
 		ErrorMessages []string
 	}{
 		Spec:          f,
-		Fields:        csrf.TemplateField(r),
+		Fields:        template.HTML(""),
 		ErrorMessages: s.ErrorMessages,
 	}
 	for _, field := range f.Fields {
-		data.Fields = data.Fields + field.RenderField(s)
+		data.Fields += field.RenderField(s)
 	}
 	return formSpecSnippet.Render(data)
 }
