@@ -214,7 +214,7 @@ func MustBeAbsolutePath(val string) error {
 // list of SSH public keys is expected. The result will have one public key per
 // array entry.
 func SplitSSHPublicKeys(val string) (result []string) {
-	for _, line := range strings.Split(val, "\n") {
+	for line := range strings.SplitSeq(val, "\n") {
 		line = strings.TrimSpace(line)
 		if line != "" {
 			result = append(result, line)

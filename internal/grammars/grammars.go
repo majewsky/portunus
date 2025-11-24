@@ -47,7 +47,7 @@ const (
 
 // IsLDAPSuffix returns whether the string matches LDAPSuffixRegex.
 func IsLDAPSuffix(input string) bool {
-	for _, field := range strings.Split(input, ",") {
+	for field := range strings.SplitSeq(input, ",") {
 		key, value, found := strings.Cut(field, "=")
 		if !found {
 			return false

@@ -167,7 +167,7 @@ func renderDBToLDAP(db core.Database, dnSuffix string) (result []Object) {
 		ldapViewerDNames = append(ldapViewerDNames, "cn=nobody,"+dnSuffix)
 	}
 	result = append(result, Object{
-		DN: fmt.Sprintf("cn=portunus-viewers,%s", dnSuffix),
+		DN: "cn=portunus-viewers," + dnSuffix,
 		Attributes: map[string][]string{
 			"cn":          {"portunus-viewers"},
 			"member":      ldapViewerDNames,

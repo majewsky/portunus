@@ -7,7 +7,6 @@
 package core
 
 import (
-	"context"
 	"testing"
 
 	"github.com/sapcc/go-bits/assert"
@@ -20,8 +19,7 @@ import (
 
 func TestDryRun(t *testing.T) {
 	//This test checks the behavior of the `UpdateOptions.DryRun` flag.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	vcfg := GetValidationConfigForTests()
 	hasher := &NoopHasher{}

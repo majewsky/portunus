@@ -109,7 +109,7 @@ func lookupID(databasePath, entityName string) (int, error) {
 	//- The first column has the entity name.
 	//- The third column has the entity's own numeric ID.
 	buf := must.Return(os.ReadFile(databasePath))
-	for _, line := range strings.Split(string(buf), "\n") {
+	for line := range strings.SplitSeq(string(buf), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue

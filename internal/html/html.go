@@ -25,7 +25,7 @@ func NewSnippet(input string) Snippet {
 }
 
 // Render renders the snippet with the given data.
-func (s Snippet) Render(data interface{}) template.HTML {
+func (s Snippet) Render(data any) template.HTML {
 	var buf bytes.Buffer
 	err := s.T.Execute(&buf, data)
 	if err != nil {

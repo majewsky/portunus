@@ -104,22 +104,22 @@ func renderSlapdConfig(environment map[string]string, hasher crypt.PasswordHashe
 	}
 	configTemplates = append(configTemplates, strings.TrimSpace(configTemplateDatabase))
 
-	return []byte(fmt.Sprintf(
+	return fmt.Appendf(nil,
 		strings.Join(configTemplates, "\n\n")+"\n",
 		environment["PORTUNUS_SLAPD_SCHEMA_DIR"],
 		environment["PORTUNUS_SLAPD_STATE_DIR"],
 		environment["PORTUNUS_LDAP_SUFFIX"],
 		environment["PORTUNUS_LDAP_PASSWORD_HASH"],
-	))
+	)
 }
 
 func generateServiceUserPassword() string {
 	buf := make([]byte, 32)
-	_, err := rand.Read(buf[:])
+	_, err := rand.Read(buf)
 	if err != nil {
 		logg.Fatal(err.Error())
 	}
-	return hex.EncodeToString(buf[:])
+	return hex.EncodeToString(buf)
 }
 
 // Does not return. Call with `go`.

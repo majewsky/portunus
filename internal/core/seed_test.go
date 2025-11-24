@@ -7,7 +7,6 @@
 package core
 
 import (
-	"context"
 	"sort"
 	"testing"
 
@@ -26,7 +25,7 @@ func dbWithBasicSeedApplied() Database {
 	//full possible set of seedable attributes). The minimal object is used to
 	//test how the unspecified fields are filled in on seeding, and to verify
 	//that the unspecified fields can be overridden manually. The maximal object
-	//is used to test that the specified fields cannot be overriden manually.
+	//is used to test that the specified fields cannot be overridden manually.
 	return Database{
 		Groups: []Group{
 			{
@@ -165,8 +164,7 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	//and then executes various reducers on it. This test is "relaxed" in the
 	//sense that updates do not use ConflictWithSeedIsError, so conflicts will be
 	//corrected silently and most reducers turn into no-ops.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	vcfg := GetValidationConfigForTests()
 	seed, errs := ReadDatabaseSeed("fixtures/seed-basic.json", vcfg)
@@ -222,8 +220,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	//Same as TestSeedEnforcementRelaxed, but this test is "strict" in the sense
 	//that all updates set ConflictWithSeedIsError. Therefore, most of them fail
 	//instead of turning into silent no-ops.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	vcfg := GetValidationConfigForTests()
 	seed, errs := ReadDatabaseSeed("fixtures/seed-basic.json", vcfg)
@@ -364,8 +361,7 @@ func TestSeedCryptoAgility(t *testing.T) {
 	//This test initializes a database from seed with one minimal user that has a
 	//seeded password. We then test how the seed application and verification
 	//behaves when the seeded password is hashed with different methods.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	vcfg := GetValidationConfigForTests()
 	seed, errs := ReadDatabaseSeed("fixtures/seed-one-user-with-password.json", vcfg)
