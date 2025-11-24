@@ -90,13 +90,18 @@ type FormSpec struct {
 
 // ReadState reads and validates the field value from r.PostForm, and stores it
 // in the given FormState.
-func (f FormSpec) ReadState(r *http.Request, s *FormState) {
+func (f FormSpec) ReadState(r *http.Request, s *FormState) error {
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
 	if s.Fields == nil {
 		s.Fields = make(map[string]*FieldState)
 	}
 	for _, field := range f.Fields {
 		field.ReadState(r, s)
 	}
+	return nil
 }
 
 var formSpecSnippet = NewSnippet(`

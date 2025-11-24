@@ -292,7 +292,10 @@ func ReadFormStateFromRequest(i *Interaction) {
 	if i.FormState == nil {
 		i.FormState = &h.FormState{}
 	}
-	i.FormSpec.ReadState(i.Req, i.FormState)
+	err := i.FormSpec.ReadState(i.Req, i.FormState)
+	if err != nil {
+		i.RedirectWithFlashTo("/self", Flash{"danger", "could not parse form submitted to POST /login: " + err.Error()})
+	}
 }
 
 // ShowForm is a final handler step that renders i.FormSpec with i.FormState.
