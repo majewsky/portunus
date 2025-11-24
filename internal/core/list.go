@@ -13,10 +13,6 @@ import (
 
 // Object is a trait for types that can be stored in type List.
 type Object[Self any] interface {
-	// List of permitted types. This is required for type inference, as explained here:
-	// <https://stackoverflow.com/a/73851453>
-	User | Group
-
 	// Returns a field from this struct that uniquely identifies it within the List.
 	Key() string
 	// Returns a deep copy of this struct.
