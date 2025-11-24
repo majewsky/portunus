@@ -4,11 +4,11 @@ go 1.25.0
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/go-ldap/ldap/v3 v3.4.11
+	github.com/go-ldap/ldap/v3 v3.4.12
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.4.0
 	github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25
-	github.com/sapcc/go-bits v0.0.0-20250707110230-434311affb05
+	github.com/sapcc/go-bits v0.0.0-20251119215428-a048ca8f6eba
 	golang.org/x/crypto v0.45.0
 )
 

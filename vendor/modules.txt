@@ -8,7 +8,7 @@ github.com/fsnotify/fsnotify/internal
 # github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667
 ## explicit; go 1.13
 github.com/go-asn1-ber/asn1-ber
-# github.com/go-ldap/ldap/v3 v3.4.11
+# github.com/go-ldap/ldap/v3 v3.4.12
 ## explicit; go 1.23.0
 github.com/go-ldap/ldap/v3
 # github.com/google/uuid v1.6.0
@@ -26,10 +26,11 @@ github.com/gorilla/sessions
 # github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25
 ## explicit
 github.com/majewsky/xyrillian.css
-# github.com/sapcc/go-bits v0.0.0-20250707110230-434311affb05
-## explicit; go 1.24
+# github.com/sapcc/go-bits v0.0.0-20251119215428-a048ca8f6eba
+## explicit; go 1.25
 github.com/sapcc/go-bits/assert
 github.com/sapcc/go-bits/errext
+github.com/sapcc/go-bits/internal/testdiff
 github.com/sapcc/go-bits/logg
 github.com/sapcc/go-bits/must
 github.com/sapcc/go-bits/osext
