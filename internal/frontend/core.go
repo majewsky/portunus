@@ -55,6 +55,10 @@ func HTTPHandler(nexus core.Nexus, isBehindTLSProxy bool) http.Handler {
 	handler := http.NewCrossOriginProtection().Handler(r)
 	handler = securityHeadersMiddleware(handler)
 
+	// if not on TLS (i.e. development setup that directly uses http://localhost:8080 or such),
+	// then we need to not set "Secure=true" on our session cookie
+	sessionStore.Options.Secure = false
+
 	return handler
 }
 
@@ -211,6 +215,7 @@ func init() {
 	}
 
 	sessionStore = sessions.NewCookieStore(keyBytes)
+	sessionStore.Options.SameSite = http.SameSiteStrictMode
 }
 
 // LoadSession is a handler step that loads the session or starts a new one if
