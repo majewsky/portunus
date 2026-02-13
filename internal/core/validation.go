@@ -130,6 +130,8 @@ var (
 	errNotDecimalNumber    = errors.New("is not a decimal number")
 	errNotPosixUIDorGID    = errors.New("is not a number between 0 and 65535 inclusive")
 
+	errNotLookLikeEMailAddress = errors.New("does not look like an e-mail address (must include an @ sign)")
+
 	errNotAbsolutePath = errors.New("must be an absolute path, i.e. start with a /")
 )
 
@@ -198,6 +200,14 @@ func MustBePosixUIDorGID(val string) error {
 		if err != nil {
 			return errNotPosixUIDorGID
 		}
+	}
+	return nil
+}
+
+// MustLookLikeEMailAddress is a h.ValidationRule.
+func MustLookLikeEMailAddress(val string) error {
+	if !strings.Contains(val, "@") {
+		return errNotLookLikeEMailAddress
 	}
 	return nil
 }

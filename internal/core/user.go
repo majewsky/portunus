@@ -83,7 +83,12 @@ func (u User) validateLocal(cfg *ValidationConfig) (errs errext.ErrorSet) {
 		MustNotBeEmpty(u.FamilyName),
 		MustNotHaveSurroundingSpaces(u.FamilyName),
 	))
-	errs.Add(ref.Field("email").Wrap(MustNotHaveSurroundingSpaces(u.EMailAddress)))
+	if u.EMailAddress != "" {
+		errs.Add(ref.Field("email").WrapFirst(
+			MustNotHaveSurroundingSpaces(u.EMailAddress),
+			MustLookLikeEMailAddress(u.EMailAddress),
+		))
+	}
 
 	for idx, key := range u.SSHPublicKeys {
 		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))

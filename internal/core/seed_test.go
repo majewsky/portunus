@@ -336,6 +336,8 @@ func TestSeedParseAndValidationErrors(t *testing.T) {
 		`field "given_name" in user "spaces-in-given-name" may not start with a space character`,
 		`field "family_name" in user "missing-family-name" is missing`,
 		`field "family_name" in user "spaces-in-family-name" may not end with a space character`,
+		`field "email" in user "spaces-in-email" may not end with a space character`,
+		`field "email" in user "malformed-email" does not look like an e-mail address (must include an @ sign)`,
 		`field "ssh_public_keys" in user "only-ssh-key-empty" must have a valid SSH public key on each line (parse error on line 1)`,
 		`field "ssh_public_keys" in user "some-ssh-key-empty" must have a valid SSH public key on each line (parse error on line 2)`,
 		`field "ssh_public_keys" in user "ssh-key-invalid" must have a valid SSH public key on each line (parse error on line 1)`,

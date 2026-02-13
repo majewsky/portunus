@@ -101,6 +101,18 @@
 			"family_name": "surrounding spaces in family name   "
 		},
 		{
+			"login_name": "spaces-in-email",
+			"given_name": "Problem is",
+			"family_name": "surrounding spaces in email address",
+			"email": "foo.bar@example.com\n"
+		},
+		{
+			"login_name": "malformed-email",
+			"given_name": "Problem is",
+			"family_name": "no at-sign in email address",
+			"email": "foo.example.com"
+		},
+		{
 			"login_name": "only-ssh-key-empty",
 			"given_name": "Problem is",
 			"family_name": "an empty SSH public key",

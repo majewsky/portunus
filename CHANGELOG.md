@@ -7,6 +7,7 @@ Changes:
 
 - Instead of issuing CSRF tokens in its HTML forms, Portunus now expects `Sec-Fetch-Site: same-origin` on POST requests.
 - The `portunus-login` cookie is now set with `SameSite=Strict`.
+- The `email` attribute of users now rejects values not containing an `@` sign.
 
 # v2.1.4 (2025-07-07)
 
