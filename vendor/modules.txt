@@ -1,6 +1,7 @@
-# github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358
-## explicit
+# github.com/Azure/go-ntlmssp v0.1.0
+## explicit; go 1.24
 github.com/Azure/go-ntlmssp
+github.com/Azure/go-ntlmssp/internal/md4
 # github.com/fsnotify/fsnotify v1.9.0
 ## explicit; go 1.17
 github.com/fsnotify/fsnotify
@@ -26,7 +27,7 @@ github.com/gorilla/sessions
 # github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25
 ## explicit
 github.com/majewsky/xyrillian.css
-# github.com/sapcc/go-bits v0.0.0-20251119215428-a048ca8f6eba
+# github.com/sapcc/go-bits v0.0.0-20260219121224-1c2b75dbf776
 ## explicit; go 1.25
 github.com/sapcc/go-bits/assert
 github.com/sapcc/go-bits/errext
@@ -37,7 +38,7 @@ github.com/sapcc/go-bits/osext
 # github.com/sergi/go-diff v1.4.0
 ## explicit; go 1.13
 github.com/sergi/go-diff/diffmatchpatch
-# golang.org/x/crypto v0.45.0
+# golang.org/x/crypto v0.48.0
 ## explicit; go 1.24.0
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/chacha20
@@ -47,7 +48,7 @@ golang.org/x/crypto/internal/poly1305
 golang.org/x/crypto/md4
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
-# golang.org/x/sys v0.38.0
+# golang.org/x/sys v0.41.0
 ## explicit; go 1.24.0
 golang.org/x/sys/cpu
 golang.org/x/sys/unix

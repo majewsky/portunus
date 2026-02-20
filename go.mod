@@ -8,15 +8,15 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.4.0
 	github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25
-	github.com/sapcc/go-bits v0.0.0-20251119215428-a048ca8f6eba
-	golang.org/x/crypto v0.45.0
+	github.com/sapcc/go-bits v0.0.0-20260219121224-1c2b75dbf776
+	golang.org/x/crypto v0.48.0
 )
 
 require (
-	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
+	github.com/Azure/go-ntlmssp v0.1.0 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
 )
