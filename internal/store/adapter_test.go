@@ -77,16 +77,16 @@ func TestReadExistingStore(t *testing.T) {
 	dirPath, storePath := setupTempDir(t)
 	defer os.RemoveAll(dirPath) //nolint:errcheck
 
-	//before starting, there are already contents in the database store
+	// before starting, there are already contents in the database store
 	test.ExpectNoError(t, os.WriteFile(storePath, []byte(db1Representation), 0666))
 
-	//when the adapter loads those contents, verify that they decode into the expected DB contents
+	// when the adapter loads those contents, verify that they decode into the expected DB contents
 	nexus.AddListener(ctx, func(actualDB core.Database) {
 		assert.DeepEqual(t, "database contents after load", actualDB, db1Contents)
-		cancel() //make adapter.Run() return
+		cancel() // make adapter.Run() return
 	})
 
-	//let the adapter load those contents
+	// let the adapter load those contents
 	adapter := NewAdapter(nexus, storePath)
 	test.ExpectNoError(t, adapter.Run(ctx))
 }
@@ -104,11 +104,11 @@ func TestReadSideloadedStore(t *testing.T) {
 	}()
 	storePath := filepath.Join(dirPath, "database.json")
 
-	//before starting, there are already contents in the database store
+	// before starting, there are already contents in the database store
 	test.ExpectNoError(t, os.WriteFile(storePath, []byte(db1Representation), 0666))
 
-	//when the adapter runs, we expect to see these contents on the first update,
-	//then the sideloaded contents on the second update
+	// when the adapter runs, we expect to see these contents on the first update,
+	// then the sideloaded contents on the second update
 	updateCount := 0
 	nexus.AddListener(ctx, func(actualDB core.Database) {
 		updateCount++
@@ -117,13 +117,13 @@ func TestReadSideloadedStore(t *testing.T) {
 			assert.DeepEqual(t, "database contents after initial load", actualDB, db1Contents)
 		case 2:
 			assert.DeepEqual(t, "database contents after sideload", actualDB, db2Contents)
-			cancel() //make adapter.Run() return
+			cancel() // make adapter.Run() return
 		default:
 			t.Error("too many updates")
 		}
 	})
 
-	//while the adapter is running...
+	// while the adapter is running...
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -132,15 +132,15 @@ func TestReadSideloadedStore(t *testing.T) {
 		test.ExpectNoError(t, adapter.Run(ctx))
 	}()
 
-	//...first we let it finish its startup...
+	// ...first we let it finish its startup...
 	time.Sleep(25 * time.Millisecond)
-	//...then we sideload different database contents into the store file
+	// ...then we sideload different database contents into the store file
 	test.ExpectNoError(t, os.WriteFile(storePath, []byte(db2Representation), 0666))
 
-	//the listener above should cancel() after this change, so the adapter should shutdown
+	// the listener above should cancel() after this change, so the adapter should shutdown
 	wg.Wait()
 
-	//verify that the sideloaded change was not overwritten by the adapter
+	// verify that the sideloaded change was not overwritten by the adapter
 	buf, err := os.ReadFile(storePath)
 	test.ExpectNoError(t, err)
 	assert.Equal(t, string(buf), db2Representation)
@@ -159,10 +159,10 @@ func TestWriteStore(t *testing.T) {
 	}()
 	storePath := filepath.Join(dirPath, "database.json")
 
-	//before starting, there are already contents in the database store
+	// before starting, there are already contents in the database store
 	test.ExpectNoError(t, os.WriteFile(storePath, []byte(db1Representation), 0666))
 
-	//we don't care about these initial contents, but we need the adapter running
+	// we don't care about these initial contents, but we need the adapter running
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -171,9 +171,9 @@ func TestWriteStore(t *testing.T) {
 		test.ExpectNoError(t, adapter.Run(ctx))
 	}()
 
-	//after the adapter has set up its listener...
+	// after the adapter has set up its listener...
 	time.Sleep(25 * time.Millisecond)
-	//...we update the database
+	// ...we update the database
 	action := func(db *core.Database) errext.ErrorSet {
 		*db = db2Contents.Cloned()
 		return nil
@@ -183,9 +183,9 @@ func TestWriteStore(t *testing.T) {
 		test.ExpectNoError(t, err)
 	}
 
-	//after the adapter has reacted to this update...
+	// after the adapter has reacted to this update...
 	time.Sleep(25 * time.Millisecond)
-	//...shut it down and check that it wrote the right data into the store
+	// ...shut it down and check that it wrote the right data into the store
 	cancel()
 	wg.Wait()
 	buf, err := os.ReadFile(storePath)
@@ -202,12 +202,12 @@ func TestInitializeMissingStore(t *testing.T) {
 	dirPath, storePath := setupTempDir(t)
 	defer os.RemoveAll(dirPath) //nolint:errcheck
 
-	//when the adapter starts up and finds no store...
+	// when the adapter starts up and finds no store...
 	var wg1 sync.WaitGroup
 	wg1.Add(1)
 	var realPasswordHash string
 	nexus.AddListener(ctx, func(actualDB core.Database) {
-		//...the nexus will auto-initialize a DB with an initial admin account
+		// ...the nexus will auto-initialize a DB with an initial admin account
 		for idx := range actualDB.Users {
 			realPasswordHash = actualDB.Users[idx].PasswordHash
 			actualDB.Users[idx].PasswordHash = "<variable>"
@@ -216,7 +216,7 @@ func TestInitializeMissingStore(t *testing.T) {
 		wg1.Done()
 	})
 
-	//let the adapter fulfil this promise
+	// let the adapter fulfil this promise
 	adapter := NewAdapter(nexus, storePath)
 	var wg2 sync.WaitGroup
 	wg2.Add(1)
@@ -225,14 +225,14 @@ func TestInitializeMissingStore(t *testing.T) {
 		test.ExpectNoError(t, adapter.Run(ctx))
 	}()
 
-	//wait for the load to be observed...
+	// wait for the load to be observed...
 	wg1.Wait()
-	//...then let the adapter finish its write and shut it down afterwards
+	// ...then let the adapter finish its write and shut it down afterwards
 	time.Sleep(25 * time.Millisecond)
 	cancel()
 	wg2.Wait()
 
-	//check that the newly initialized DB was written correctly
+	// check that the newly initialized DB was written correctly
 	buf, err := os.ReadFile(storePath)
 	test.ExpectNoError(t, err)
 	repr := strings.Replace(string(buf), realPasswordHash, "<variable>", 1)

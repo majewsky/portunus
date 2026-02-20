@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-//TODO: reevaluate LDAPSuffixRegex against current DNS RFCs
+// TODO: reevaluate LDAPSuffixRegex against current DNS RFCs
 
 const (
 	// LDAPSuffixRegex is a regex for matching LDAP suffixes like `dc=example,dc=com`.
@@ -41,9 +41,6 @@ const (
 	// This is only shown for documentation purposes here; use func IsPOSIXAccountName instead.
 	POSIXAccountNameRegex = `^[a-z_][a-z0-9_-]*\$?$`
 )
-
-//TODO There is also some `import "regexp"` in cmd/orchestrator/ldap.go to render
-//the LDAP config.
 
 // IsLDAPSuffix returns whether the string matches LDAPSuffixRegex.
 func IsLDAPSuffix(input string) bool {

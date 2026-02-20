@@ -21,12 +21,12 @@ const dummySSHPublicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGNvYUluYODNXoQKD
 // Returns the Database that results when applying `fixtures/seed-basic.json`
 // to an empty Database.
 func dbWithBasicSeedApplied() Database {
-	//For each object type, the basic seed contains one minimal object (with only
-	//the minimum set of required attributes) and one maximal object (with the
-	//full possible set of seedable attributes). The minimal object is used to
-	//test how the unspecified fields are filled in on seeding, and to verify
-	//that the unspecified fields can be overridden manually. The maximal object
-	//is used to test that the specified fields cannot be overridden manually.
+	// For each object type, the basic seed contains one minimal object (with only
+	// the minimum set of required attributes) and one maximal object (with the
+	// full possible set of seedable attributes). The minimal object is used to
+	// test how the unspecified fields are filled in on seeding, and to verify
+	// that the unspecified fields can be overridden manually. The maximal object
+	// is used to test that the specified fields cannot be overridden manually.
 	return Database{
 		Groups: []Group{
 			{
@@ -80,7 +80,7 @@ func reducerReturnEmpty(db *Database) errext.ErrorSet {
 func reducerOverwriteSeededAttrs1(hasher crypt.PasswordHasher) func(*Database) errext.ErrorSet {
 	return func(db *Database) errext.ErrorSet {
 		db.Groups[0].LongName += "-changed"
-		db.Groups[0].MemberLoginNames = GroupMemberNames{} //removing seeded members is not allowed
+		db.Groups[0].MemberLoginNames = GroupMemberNames{} // removing seeded members is not allowed
 		db.Groups[0].Permissions.Portunus.IsAdmin = true
 		db.Groups[0].Permissions.LDAP.CanRead = false
 		db.Groups[0].PosixGID = pointerTo(*db.Groups[0].PosixGID + 1)
@@ -113,7 +113,7 @@ func reducerOverwriteSeededIdentifiers(db *Database) errext.ErrorSet {
 	db.Groups[0].Name += "-renamed"
 	db.Users[0].LoginName += "-renamed"
 
-	//avoid complaints about an invalid group membership (that's not what we're testing here)
+	// avoid complaints about an invalid group membership (that's not what we're testing here)
 	db.Groups[0].MemberLoginNames[previousUserName] = false
 
 	return nil
@@ -142,7 +142,7 @@ func reducerOverwriteMalleableAttributes(hasher crypt.PasswordHasher) func(*Data
 // the normalization sorts by identifier.)
 func reducerOverwriteUnseededAttributes(hasher crypt.PasswordHasher) func(*Database) errext.ErrorSet {
 	return func(db *Database) errext.ErrorSet {
-		db.Groups[1].MemberLoginNames = GroupMemberNames{"minuser": true} //removing seeded members is not allowed
+		db.Groups[1].MemberLoginNames = GroupMemberNames{"minuser": true} // removing seeded members is not allowed
 		db.Groups[1].Permissions.Portunus.IsAdmin = true
 		db.Groups[1].Permissions.LDAP.CanRead = true
 		db.Groups[1].PosixGID = pointerTo(PosixID(123))
@@ -161,17 +161,17 @@ func reducerOverwriteUnseededAttributes(hasher crypt.PasswordHasher) func(*Datab
 }
 
 func TestSeedEnforcementRelaxed(t *testing.T) {
-	//This test initializes an empty database using `fixtures/seed-basic.json`
-	//and then executes various reducers on it. This test is "relaxed" in the
-	//sense that updates do not use ConflictWithSeedIsError, so conflicts will be
-	//corrected silently and most reducers turn into no-ops.
+	// This test initializes an empty database using `fixtures/seed-basic.json`
+	// and then executes various reducers on it. This test is "relaxed" in the
+	// sense that updates do not use ConflictWithSeedIsError, so conflicts will be
+	// corrected silently and most reducers turn into no-ops.
 	ctx := t.Context()
 
 	vcfg := GetValidationConfigForTests()
 	seed, errs := ReadDatabaseSeed("fixtures/seed-basic.json", vcfg)
 	expectNoErrors(t, errs)
 
-	//register a listener to observe the real DB changes
+	// register a listener to observe the real DB changes
 	hasher := &NoopHasher{}
 	nexus := NewNexus(seed, vcfg, hasher)
 	var actualDB Database
@@ -179,15 +179,15 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 		actualDB = db
 	})
 
-	//load an empty database (like on first startup) -> seed gets applied
+	// load an empty database (like on first startup) -> seed gets applied
 	errs = nexus.Update(reducerReturnEmpty, nil)
 	expectNoErrors(t, errs)
 
 	expectedDB := dbWithBasicSeedApplied()
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 
-	//overwriting seeded attributes is not allowed
-	//-> no change because seed gets reenforced
+	// overwriting seeded attributes is not allowed
+	// -> no change because seed gets reenforced
 	errs = nexus.Update(reducerOverwriteSeededAttrs1(hasher), nil)
 	expectNoErrors(t, errs)
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
@@ -196,7 +196,7 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	expectNoErrors(t, errs)
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 
-	//overwriting seeded attributes in a compatible way is allowed
+	// overwriting seeded attributes in a compatible way is allowed
 	errs = nexus.Update(reducerOverwriteMalleableAttributes(hasher), nil)
 	expectNoErrors(t, errs)
 
@@ -206,7 +206,7 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	}
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 
-	//overwriting unseeded attributes is always allowed
+	// overwriting unseeded attributes is always allowed
 	errs = nexus.Update(reducerOverwriteUnseededAttributes(hasher), nil)
 	expectNoErrors(t, errs)
 
@@ -218,16 +218,16 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 }
 
 func TestSeedEnforcementStrict(t *testing.T) {
-	//Same as TestSeedEnforcementRelaxed, but this test is "strict" in the sense
-	//that all updates set ConflictWithSeedIsError. Therefore, most of them fail
-	//instead of turning into silent no-ops.
+	// Same as TestSeedEnforcementRelaxed, but this test is "strict" in the sense
+	// that all updates set ConflictWithSeedIsError. Therefore, most of them fail
+	// instead of turning into silent no-ops.
 	ctx := t.Context()
 
 	vcfg := GetValidationConfigForTests()
 	seed, errs := ReadDatabaseSeed("fixtures/seed-basic.json", vcfg)
 	expectNoErrors(t, errs)
 
-	//register a listener to observe the real DB changes
+	// register a listener to observe the real DB changes
 	hasher := &NoopHasher{}
 	nexus := NewNexus(seed, vcfg, hasher)
 	var actualDB Database
@@ -237,7 +237,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 		updateCount++
 	})
 
-	//load an empty database (like on first startup) -> seed gets applied
+	// load an empty database (like on first startup) -> seed gets applied
 	errs = nexus.Update(reducerReturnEmpty, nil)
 	expectNoErrors(t, errs)
 
@@ -245,7 +245,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 	assert.Equal(t, updateCount, 1)
 
-	//overwriting seeded attributes is not allowed
+	// overwriting seeded attributes is not allowed
 	opts := UpdateOptions{ConflictWithSeedIsError: true}
 	errs = nexus.Update(reducerOverwriteSeededAttrs1(hasher), &opts)
 	expectTheseErrors(t, errs,
@@ -265,23 +265,23 @@ func TestSeedEnforcementStrict(t *testing.T) {
 		`field "posix_shell" in user "maxuser" must be equal to the seeded value`,
 		`field "posix_gecos" in user "maxuser" must be equal to the seeded value`,
 	)
-	assert.Equal(t, updateCount, 1) //same as before (listener was not called)
+	assert.Equal(t, updateCount, 1) // same as before (listener was not called)
 
 	errs = nexus.Update(reducerOverwriteSeededAttrs2, &opts)
 	expectTheseErrors(t, errs,
 		`field "posix" in user "maxuser" must be equal to the seeded value`,
 	)
-	assert.Equal(t, updateCount, 1) //same as before (listener was not called)
+	assert.Equal(t, updateCount, 1) // same as before (listener was not called)
 
-	//renaming seeded objects is not allowed
+	// renaming seeded objects is not allowed
 	errs = nexus.Update(reducerOverwriteSeededIdentifiers, &opts)
 	expectTheseErrors(t, errs,
 		`group "maxgroup" is seeded and cannot be deleted`,
 		`user "maxuser" is seeded and cannot be deleted`,
 	)
-	assert.Equal(t, updateCount, 1) //same as before (listener was not called)
+	assert.Equal(t, updateCount, 1) // same as before (listener was not called)
 
-	//overwriting seeded attributes in a compatible way is allowed
+	// overwriting seeded attributes in a compatible way is allowed
 	errs = nexus.Update(reducerOverwriteMalleableAttributes(hasher), &opts)
 	expectNoErrors(t, errs)
 
@@ -292,7 +292,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 	assert.Equal(t, updateCount, 2)
 
-	//overwriting unseeded attributes is always allowed
+	// overwriting unseeded attributes is always allowed
 	errs = nexus.Update(reducerOverwriteUnseededAttributes(hasher), &opts)
 	expectNoErrors(t, errs)
 
@@ -307,24 +307,24 @@ func TestSeedEnforcementStrict(t *testing.T) {
 func TestSeedParseAndValidationErrors(t *testing.T) {
 	vcfg := GetValidationConfigForTests()
 
-	//test a seed file with unknown attributes (we parse with strict rules)
+	// test a seed file with unknown attributes (we parse with strict rules)
 	_, errs := ReadDatabaseSeed("fixtures/seed-parse-error-1.json", vcfg)
 	expectTheseErrors(t, errs,
 		`while parsing fixtures/seed-parse-error-1.json: json: unknown field "unknown_attribute"`,
 	)
 
-	//test a seed file with a malformatted command substitution
+	// test a seed file with a malformatted command substitution
 	_, errs = ReadDatabaseSeed("fixtures/seed-parse-error-2.json", vcfg)
 	expectTheseErrors(t, errs,
 		`while parsing fixtures/seed-parse-error-2.json: json: cannot unmarshal object into Go struct field UserSeed.users.password of type string`,
 	)
 
-	//NOTE: We trust all other parse-level errors (e.g. GIDs/UIDs longer than 16
-	//bit) to be caught by the JSON parser, since these constraints are all
-	//expressed in the type system.
+	// NOTE: We trust all other parse-level errors (e.g. GIDs/UIDs longer than 16
+	// bit) to be caught by the JSON parser, since these constraints are all
+	// expressed in the type system.
 
-	//test a seed file with every possible validation error (each user and group
-	//has one validation error, as indicated in their name fields)
+	// test a seed file with every possible validation error (each user and group
+	// has one validation error, as indicated in their name fields)
 	_, errs = ReadDatabaseSeed("fixtures/seed-validation-errors.json", vcfg)
 	expectTheseErrors(t, errs,
 		`field "login_name" in user "" is missing`,
@@ -362,16 +362,16 @@ func TestSeedParseAndValidationErrors(t *testing.T) {
 }
 
 func TestSeedCryptoAgility(t *testing.T) {
-	//This test initializes a database from seed with one minimal user that has a
-	//seeded password. We then test how the seed application and verification
-	//behaves when the seeded password is hashed with different methods.
+	// This test initializes a database from seed with one minimal user that has a
+	// seeded password. We then test how the seed application and verification
+	// behaves when the seeded password is hashed with different methods.
 	ctx := t.Context()
 
 	vcfg := GetValidationConfigForTests()
 	seed, errs := ReadDatabaseSeed("fixtures/seed-one-user-with-password.json", vcfg)
 	expectNoErrors(t, errs)
 
-	//register a listener to observe the real DB changes
+	// register a listener to observe the real DB changes
 	hasher := &NoopHasher{}
 	nexus := NewNexus(seed, vcfg, hasher)
 	var actualDB Database
@@ -379,7 +379,7 @@ func TestSeedCryptoAgility(t *testing.T) {
 		actualDB = db
 	})
 
-	//load an empty database (like on first startup) -> seed gets applied
+	// load an empty database (like on first startup) -> seed gets applied
 	errs = nexus.Update(reducerReturnEmpty, nil)
 	expectNoErrors(t, errs)
 
@@ -394,8 +394,8 @@ func TestSeedCryptoAgility(t *testing.T) {
 	}
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 
-	//change to a different hash method, but the hash still matches the password
-	//-> this will be accepted since this hash method is not considered weak
+	// change to a different hash method, but the hash still matches the password
+	// -> this will be accepted since this hash method is not considered weak
 	errs = nexus.Update(func(db *Database) errext.ErrorSet {
 		db.Users[0].PasswordHash = "{WEAK-PLAINTEXT}swordfish"
 		return nil
@@ -405,8 +405,8 @@ func TestSeedCryptoAgility(t *testing.T) {
 	expectedDB.Users[0].PasswordHash = "{WEAK-PLAINTEXT}swordfish"
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 
-	//if the hash method is considered weak, DatabaseSeed.ApplyTo() will rehash
-	//using a stronger method
+	// if the hash method is considered weak, DatabaseSeed.ApplyTo() will rehash
+	// using a stronger method
 	hasher.UpgradeWeakHashes = true
 	errs = nexus.Update(func(db *Database) errext.ErrorSet { return nil }, nil)
 	expectNoErrors(t, errs)
@@ -428,12 +428,12 @@ func TestSeedPasswordRepresentations(t *testing.T) {
 	seed, errs := ReadDatabaseSeed("fixtures/seed-users-with-all-password-formats.json", vcfg)
 	expectNoErrors(t, errs)
 
-	//register a listener to observe the real DB changes
+	// register a listener to observe the real DB changes
 	hasher := &NoopHasher{}
 	hasher.RealHasher = must.ReturnT(crypt.NewPasswordHasher())(t)
 	nexus := NewNexus(seed, vcfg, hasher)
 
-	//load an empty database (like on first startup) -> seed gets applied
+	// load an empty database (like on first startup) -> seed gets applied
 	errs = nexus.Update(reducerReturnEmpty, nil)
 	expectNoErrors(t, errs)
 

@@ -20,7 +20,7 @@ import (
 // FormState describes the state of an HTML form.
 type FormState struct {
 	Fields        map[string]*FieldState
-	ErrorMessages []string //errors that do not apply to specific fields
+	ErrorMessages []string // errors that do not apply to specific fields
 }
 
 // IsValid returns false if any field has a validation error.
@@ -57,9 +57,9 @@ func (s *FormState) FillErrorsFrom(errs errext.ErrorSet, oref core.ObjectRef) {
 
 // FieldState describes the state of an <input> field within type FormState.
 type FieldState struct {
-	Value        string          //only used by InputFieldSpec
-	Selected     map[string]bool //only used by SelectFieldSpec
-	IsUnfolded   bool            //only used by FieldSet
+	Value        string          // only used by InputFieldSpec
+	Selected     map[string]bool // only used by SelectFieldSpec
+	IsUnfolded   bool            // only used by FieldSet
 	ErrorMessage string
 }
 

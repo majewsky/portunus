@@ -24,14 +24,14 @@ func setupAdapterTest(t *testing.T) (conn *test.LDAPConnectionDouble, updateDBWi
 	conn = test.NewLDAPConnectionDouble("dc=example,dc=org")
 	adapter := NewAdapter(nexus, conn)
 
-	//This can be used by the test to update the database while adapter.Run() is
-	//running in a separate goroutine. This function takes care to shutdown
-	//adapter.Run() before it returns, thus ensuring that all effects of the
-	//action on the LDAPConnectionDouble have been observed.
+	// This can be used by the test to update the database while adapter.Run() is
+	// running in a separate goroutine. This function takes care to shutdown
+	// adapter.Run() before it returns, thus ensuring that all effects of the
+	// action on the LDAPConnectionDouble have been observed.
 	updateDBWithRunningAdapter = func(action core.UpdateAction) errext.ErrorSet {
-		//This log is a breadcrumb for associating a failed adapter.Run() with the
-		//respective updateDBWithRunningAdapter() callsite. We cannot use the
-		//default callsite attribution through a goroutine boundary.
+		// This log is a breadcrumb for associating a failed adapter.Run() with the
+		// respective updateDBWithRunningAdapter() callsite. We cannot use the
+		// default callsite attribution through a goroutine boundary.
 		t.Helper()
 		t.Log("updateDBWithRunningAdapter running")
 
@@ -46,14 +46,14 @@ func setupAdapterTest(t *testing.T) (conn *test.LDAPConnectionDouble, updateDBWi
 		}()
 
 		errs := nexus.Update(action, nil)
-		time.Sleep(10 * time.Millisecond) //give the Adapter some time to complete outstanding actions
+		time.Sleep(10 * time.Millisecond) // give the Adapter some time to complete outstanding actions
 		cancel()
 		wg.Wait()
 		return errs
 	}
 
-	//When adapter.Run() is first executed, we will observe the following
-	//requests to build the topmost part of the object hierarchy.
+	// When adapter.Run() is first executed, we will observe the following
+	// requests to build the topmost part of the object hierarchy.
 	conn.ExpectAdd(goldap.AddRequest{
 		DN: "dc=example,dc=org",
 		Attributes: []goldap.Attribute{
@@ -104,12 +104,12 @@ func setupAdapterTest(t *testing.T) (conn *test.LDAPConnectionDouble, updateDBWi
 }
 
 func TestBasicOperations(t *testing.T) {
-	//The focus of this test is just to see that basic add/modify/delete
-	//operations work. If possible, please add a new test instead of extending
-	//this one.
+	// The focus of this test is just to see that basic add/modify/delete
+	// operations work. If possible, please add a new test instead of extending
+	// this one.
 	conn, updateDBWithRunningAdapter := setupAdapterTest(t)
 
-	//when we add a user and group...
+	// when we add a user and group...
 	action := func(db *core.Database) errext.ErrorSet {
 		db.Users = []core.User{{
 			LoginName:    "alice",
@@ -124,8 +124,8 @@ func TestBasicOperations(t *testing.T) {
 		return nil
 	}
 
-	//...one LDAP object should be created for both of them (also, since this is
-	//our first actual DB update, the "portunus-viewers" group is created empty)
+	// ...one LDAP object should be created for both of them (also, since this is
+	// our first actual DB update, the "portunus-viewers" group is created empty)
 	conn.ExpectAdd(goldap.AddRequest{
 		DN: "uid=alice,ou=users,dc=example,dc=org",
 		Attributes: []goldap.Attribute{
@@ -141,7 +141,7 @@ func TestBasicOperations(t *testing.T) {
 		DN: "cn=grafana-users,ou=groups,dc=example,dc=org",
 		Attributes: []goldap.Attribute{
 			{Type: "cn", Vals: []string{"grafana-users"}},
-			{Type: "member", Vals: []string{"cn=nobody,dc=example,dc=org"}}, //placeholder because attribute is required
+			{Type: "member", Vals: []string{"cn=nobody,dc=example,dc=org"}}, // placeholder because attribute is required
 			{Type: "objectClass", Vals: []string{"groupOfNames", "top"}},
 		},
 	})
@@ -149,20 +149,20 @@ func TestBasicOperations(t *testing.T) {
 		DN: "cn=portunus-viewers,dc=example,dc=org",
 		Attributes: []goldap.Attribute{
 			{Type: "cn", Vals: []string{"portunus-viewers"}},
-			{Type: "member", Vals: []string{"cn=nobody,dc=example,dc=org"}}, //placeholder because attribute is required
+			{Type: "member", Vals: []string{"cn=nobody,dc=example,dc=org"}}, // placeholder because attribute is required
 			{Type: "objectClass", Vals: []string{"groupOfNames", "top"}},
 		},
 	})
 	test.ExpectNoErrors(t, updateDBWithRunningAdapter(action))
 	conn.CheckAllExecuted(t)
 
-	//there is no rename operation: when we change the RDN of an object...
+	// there is no rename operation: when we change the RDN of an object...
 	action = func(db *core.Database) errext.ErrorSet {
 		db.Groups[0].Name = "grafana-admins"
 		return nil
 	}
 
-	//...the old object is deleted and a new object is created
+	// ...the old object is deleted and a new object is created
 	conn.ExpectDelete(goldap.DelRequest{
 		DN: "cn=grafana-users,ou=groups,dc=example,dc=org",
 	})
@@ -170,20 +170,20 @@ func TestBasicOperations(t *testing.T) {
 		DN: "cn=grafana-admins,ou=groups,dc=example,dc=org",
 		Attributes: []goldap.Attribute{
 			{Type: "cn", Vals: []string{"grafana-admins"}},
-			{Type: "member", Vals: []string{"cn=nobody,dc=example,dc=org"}}, //placeholder because attribute is required
+			{Type: "member", Vals: []string{"cn=nobody,dc=example,dc=org"}}, // placeholder because attribute is required
 			{Type: "objectClass", Vals: []string{"groupOfNames", "top"}},
 		},
 	})
 	test.ExpectNoErrors(t, updateDBWithRunningAdapter(action))
 	conn.CheckAllExecuted(t)
 
-	//we can test object updates by adding the user to the group...
+	// we can test object updates by adding the user to the group...
 	action = func(db *core.Database) errext.ErrorSet {
 		db.Groups[0].MemberLoginNames = core.GroupMemberNames{db.Users[0].LoginName: true}
 		return nil
 	}
 
-	//...this should modify the member references on both the user and the group
+	// ...this should modify the member references on both the user and the group
 	conn.ExpectModify(goldap.ModifyRequest{
 		DN: "cn=grafana-admins,ou=groups,dc=example,dc=org",
 		Changes: []goldap.Change{{
@@ -201,13 +201,13 @@ func TestBasicOperations(t *testing.T) {
 	test.ExpectNoErrors(t, updateDBWithRunningAdapter(action))
 	conn.CheckAllExecuted(t)
 
-	//by deleting the group...
+	// by deleting the group...
 	action = func(db *core.Database) errext.ErrorSet {
 		db.Groups = nil
 		return nil
 	}
 
-	//...we can test both object deletion (on the group) and attribute deletion (on the user)
+	// ...we can test both object deletion (on the group) and attribute deletion (on the user)
 	conn.ExpectModify(goldap.ModifyRequest{
 		DN: "uid=alice,ou=users,dc=example,dc=org",
 		Changes: []goldap.Change{{
@@ -228,11 +228,11 @@ const dummySSHPublicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGNvYUluYODNXoQKD
 const dummyPasswordHash = "$6$sxI7hpdrkEHuquNj$6zcRp52hrMXSFeF1EOrdETuVYmAmOsYCiG7sCCP54CoX8vHwCEUURWxY5Si0LyvRoC/oZPDaNjUh4DDFBO/Wi/"
 
 func TestAllFieldsFilled(t *testing.T) {
-	//This test puts values into all user/group fields, including the optional
-	//ones, to check how those are rendered in the directory.
+	// This test puts values into all user/group fields, including the optional
+	// ones, to check how those are rendered in the directory.
 	conn, updateDBWithRunningAdapter := setupAdapterTest(t)
 
-	//put one user and one group in the database
+	// put one user and one group in the database
 	action := func(db *core.Database) errext.ErrorSet {
 		db.Users = []core.User{{
 			LoginName:     "alice",
@@ -263,9 +263,9 @@ func TestAllFieldsFilled(t *testing.T) {
 		return nil
 	}
 
-	//check their rendering (because "all fields" includes
-	//Group.Permissions.LDAP.CanRead, our test user ends up in the
-	//"portunus-viewers" group)
+	// check their rendering (because "all fields" includes
+	// Group.Permissions.LDAP.CanRead, our test user ends up in the
+	// "portunus-viewers" group)
 	conn.ExpectAdd(goldap.AddRequest{
 		DN: "uid=alice,ou=users,dc=example,dc=org",
 		Attributes: []goldap.Attribute{
@@ -315,11 +315,11 @@ func TestAllFieldsFilled(t *testing.T) {
 }
 
 func TestTypeChanges(t *testing.T) {
-	//This test checks how changes of regular users/groups into POSIX
-	//users/groups and vice versa are reflected in the directory.
+	// This test checks how changes of regular users/groups into POSIX
+	// users/groups and vice versa are reflected in the directory.
 	conn, updateDBWithRunningAdapter := setupAdapterTest(t)
 
-	//first we set up a regular user and group...
+	// first we set up a regular user and group...
 	action := func(db *core.Database) errext.ErrorSet {
 		db.Users = []core.User{{
 			LoginName:    "alice",
@@ -335,9 +335,9 @@ func TestTypeChanges(t *testing.T) {
 		return nil
 	}
 
-	//...so these objects should only be created with the default sets of object
-	//classes, and the group only gets created in ou=groups (this first DB update
-	//also creates the "portunus-viewers" group)
+	// ...so these objects should only be created with the default sets of object
+	// classes, and the group only gets created in ou=groups (this first DB update
+	// also creates the "portunus-viewers" group)
 	conn.ExpectAdd(goldap.AddRequest{
 		DN: "uid=alice,ou=users,dc=example,dc=org",
 		Attributes: []goldap.Attribute{
@@ -362,21 +362,21 @@ func TestTypeChanges(t *testing.T) {
 		DN: "cn=portunus-viewers,dc=example,dc=org",
 		Attributes: []goldap.Attribute{
 			{Type: "cn", Vals: []string{"portunus-viewers"}},
-			{Type: "member", Vals: []string{"cn=nobody,dc=example,dc=org"}}, //placeholder because attribute is required
+			{Type: "member", Vals: []string{"cn=nobody,dc=example,dc=org"}}, // placeholder because attribute is required
 			{Type: "objectClass", Vals: []string{"groupOfNames", "top"}},
 		},
 	})
 	test.ExpectNoErrors(t, updateDBWithRunningAdapter(action))
 	conn.CheckAllExecuted(t)
 
-	//changing the regular group into a POSIX group...
+	// changing the regular group into a POSIX group...
 	action = func(db *core.Database) errext.ErrorSet {
 		gid := core.PosixID(100)
 		db.Groups[0].PosixGID = &gid
 		return nil
 	}
 
-	//...creates an alternate representation of this group in ou=posix-groups
+	// ...creates an alternate representation of this group in ou=posix-groups
 	conn.ExpectAdd(goldap.AddRequest{
 		DN: "cn=admins,ou=posix-groups,dc=example,dc=org",
 		Attributes: []goldap.Attribute{
@@ -389,7 +389,7 @@ func TestTypeChanges(t *testing.T) {
 	test.ExpectNoErrors(t, updateDBWithRunningAdapter(action))
 	conn.CheckAllExecuted(t)
 
-	//changing the regular user into a POSIX user...
+	// changing the regular user into a POSIX user...
 	action = func(db *core.Database) errext.ErrorSet {
 		db.Users[0].POSIX = &core.UserPosixAttributes{
 			UID:           1000,
@@ -399,7 +399,7 @@ func TestTypeChanges(t *testing.T) {
 		return nil
 	}
 
-	//...adds the objectClass "posixAccount" and the respective attributes
+	// ...adds the objectClass "posixAccount" and the respective attributes
 	conn.ExpectModify(goldap.ModifyRequest{
 		DN: "uid=alice,ou=users,dc=example,dc=org",
 		Changes: []goldap.Change{
@@ -430,28 +430,28 @@ func TestTypeChanges(t *testing.T) {
 	test.ExpectNoErrors(t, updateDBWithRunningAdapter(action))
 	conn.CheckAllExecuted(t)
 
-	//we are going to change the group back first in order to cover every pairing
-	//of user type and group type -- changing the POSIX group back into a regular
-	//group...
+	// we are going to change the group back first in order to cover every pairing
+	// of user type and group type -- changing the POSIX group back into a regular
+	// group...
 	action = func(db *core.Database) errext.ErrorSet {
 		db.Groups[0].PosixGID = nil
 		return nil
 	}
 
-	//...removes the alternate representation in ou=posix-groups, keeping only the default representation in ou=groups
+	// ...removes the alternate representation in ou=posix-groups, keeping only the default representation in ou=groups
 	conn.ExpectDelete(goldap.DelRequest{
 		DN: "cn=admins,ou=posix-groups,dc=example,dc=org",
 	})
 	test.ExpectNoErrors(t, updateDBWithRunningAdapter(action))
 	conn.CheckAllExecuted(t)
 
-	//changing the POSIX user back into a regular user...
+	// changing the POSIX user back into a regular user...
 	action = func(db *core.Database) errext.ErrorSet {
 		db.Users[0].POSIX = nil
 		return nil
 	}
 
-	//...removes that objectClass and its attributes again
+	// ...removes that objectClass and its attributes again
 	conn.ExpectModify(goldap.ModifyRequest{
 		DN: "uid=alice,ou=users,dc=example,dc=org",
 		Changes: []goldap.Change{
@@ -472,11 +472,11 @@ func TestTypeChanges(t *testing.T) {
 }
 
 func TestLDAPViewerPermission(t *testing.T) {
-	//This test checks that flipping Permissions.LDAP.CanRead on an existing
-	//group populates the virtual group correctly.
+	// This test checks that flipping Permissions.LDAP.CanRead on an existing
+	// group populates the virtual group correctly.
 	conn, updateDBWithRunningAdapter := setupAdapterTest(t)
 
-	//first we set up a user and group without LDAP permissions...
+	// first we set up a user and group without LDAP permissions...
 	action := func(db *core.Database) errext.ErrorSet {
 		db.Users = []core.User{{
 			LoginName:    "alice",
@@ -492,7 +492,7 @@ func TestLDAPViewerPermission(t *testing.T) {
 		return nil
 	}
 
-	//...so the "portunus-viewers" group will be empty
+	// ...so the "portunus-viewers" group will be empty
 	conn.ExpectAdd(goldap.AddRequest{
 		DN: "uid=alice,ou=users,dc=example,dc=org",
 		Attributes: []goldap.Attribute{
@@ -517,22 +517,22 @@ func TestLDAPViewerPermission(t *testing.T) {
 		DN: "cn=portunus-viewers,dc=example,dc=org",
 		Attributes: []goldap.Attribute{
 			{Type: "cn", Vals: []string{"portunus-viewers"}},
-			{Type: "member", Vals: []string{"cn=nobody,dc=example,dc=org"}}, //placeholder because attribute is required
+			{Type: "member", Vals: []string{"cn=nobody,dc=example,dc=org"}}, // placeholder because attribute is required
 			{Type: "objectClass", Vals: []string{"groupOfNames", "top"}},
 		},
 	})
 	test.ExpectNoErrors(t, updateDBWithRunningAdapter(action))
 	conn.CheckAllExecuted(t)
 
-	//adding the LDAP permission on the group...
+	// adding the LDAP permission on the group...
 	action = func(db *core.Database) errext.ErrorSet {
 		db.Groups[0].Permissions.LDAP.CanRead = true
 		return nil
 	}
 
-	//...should add the user in that group to the "portunus-viewers" group
-	//(since "portunus-viewers" is a virtual group, it does not appear in the
-	//"isMemberOf" attribute of the user)
+	// ...should add the user in that group to the "portunus-viewers" group
+	// (since "portunus-viewers" is a virtual group, it does not appear in the
+	// "isMemberOf" attribute of the user)
 	conn.ExpectModify(goldap.ModifyRequest{
 		DN: "cn=portunus-viewers,dc=example,dc=org",
 		Changes: []goldap.Change{{

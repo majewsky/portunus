@@ -51,9 +51,9 @@ func llCrypt(phrase, setting string) (string, error) {
 	settingInput := C.CString(setting)
 	defer C.free(unsafe.Pointer(settingInput))
 
-	//We call crypt_r() through a wrapper that ensures that the return value is
-	//allocated on the heap. We don't use crypt_ra() since it's easier to deal
-	//with an individual C string than an entire struct crypt_data.
+	// We call crypt_r() through a wrapper that ensures that the return value is
+	// allocated on the heap. We don't use crypt_ra() since it's easier to deal
+	// with an individual C string than an entire struct crypt_data.
 	output, err := C.wrap_crypt_r(phraseInput, settingInput)
 	defer C.free(unsafe.Pointer(output))
 	if err != nil {

@@ -21,15 +21,15 @@ import (
 
 // Adapter translates between the Portunus database and the disk store.
 type Adapter struct {
-	//NOTE: No mutex here. All FS access is done by the goroutine that calls
-	//Run(), so we don't have any concurrency to deal with.
+	// NOTE: No mutex here. All FS access is done by the goroutine that calls
+	// Run(), so we don't have any concurrency to deal with.
 	nexus     core.Nexus
 	storePath string
-	//This contains the known contents of the store file. We maintain this to
-	//avoid useless roundtrip writes from disk -> nexus -> disk.
+	// This contains the known contents of the store file. We maintain this to
+	// avoid useless roundtrip writes from disk -> nexus -> disk.
 	diskState []byte
-	//This is set when we signal ErrDatabaseNeedsInitialization to the nexus, to
-	//instruct Run() to wait for the response before continuing.
+	// This is set when we signal ErrDatabaseNeedsInitialization to the nexus, to
+	// instruct Run() to wait for the response before continuing.
 	initPending bool
 }
 
@@ -42,27 +42,27 @@ func NewAdapter(nexus core.Nexus, storePath string) *Adapter {
 // store until `ctx` expires. An error is returned if any write into the LDAP
 // database fails.
 func (a *Adapter) Run(ctx context.Context) error {
-	//first read initializes the internal database from the pre-existing store
-	//file (or marks that initialization is required)
+	// first read initializes the internal database from the pre-existing store
+	// file (or marks that initialization is required)
 	errs := a.nexus.Update(a.updateNexusByLoadingFromDisk, nil)
 	if !errs.IsEmpty() {
 		return fmt.Errorf("while loading database from disk store: %s", errs.Join(", "))
 	}
 
-	//we need to be able to explicitly cancel the nexus listener to avoid it
-	//deadlocking on `writeChan` not being listened to anymore
+	// we need to be able to explicitly cancel the nexus listener to avoid it
+	// deadlocking on `writeChan` not being listened to anymore
 	ctxListen, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	//writes get sent to us from whatever goroutine the nexus update is running on
+	// writes get sent to us from whatever goroutine the nexus update is running on
 	writeChan := make(chan core.Database, 1)
 	a.nexus.AddListener(ctxListen, func(db core.Database) {
 		writeChan <- db
 	})
 
-	//if we instructed the nexus to perform first-time initialization, we need to
-	//collect the respective update immediately; otherwise the file watcher setup
-	//will fail on ENOENT
+	// if we instructed the nexus to perform first-time initialization, we need to
+	// collect the respective update immediately; otherwise the file watcher setup
+	// will fail on ENOENT
 	if a.initPending {
 		select {
 		case <-ctx.Done():
@@ -75,7 +75,7 @@ func (a *Adapter) Run(ctx context.Context) error {
 		}
 	}
 
-	//for further reads, we need a file watcher
+	// for further reads, we need a file watcher
 	watcher, err := NewWatcher(a.storePath)
 	if err != nil {
 		return err
@@ -89,23 +89,23 @@ LOOP:
 		case err := <-watcher.Backend.Errors:
 			return fmt.Errorf("error while watching %s for changes: %w", a.storePath, err)
 		case <-watcher.Backend.Events:
-			//wait for whatever is updating the file to complete
+			// wait for whatever is updating the file to complete
 			time.Sleep(25 * time.Millisecond)
 
-			//load updated version of database from file
+			// load updated version of database from file
 			errs := a.nexus.Update(a.updateNexusByLoadingFromDisk, nil)
 			if !errs.IsEmpty() {
 				return fmt.Errorf("while loading database from disk store: %s", errs.Join(", "))
 			}
 
-			//recreate the watcher (the original file might be gone if it was updated
-			//by an atomic rename like we do in writeStoreFile())
+			// recreate the watcher (the original file might be gone if it was updated
+			// by an atomic rename like we do in writeStoreFile())
 			err = watcher.WhileSuspended(func() error { return nil })
 			if err != nil {
 				return err
 			}
 		case db := <-writeChan:
-			//stop the watch while writing, to avoid picking up our own change
+			// stop the watch while writing, to avoid picking up our own change
 			err = watcher.WhileSuspended(func() error {
 				return a.writeDatabase(db)
 			})
@@ -167,15 +167,15 @@ func (a *Adapter) writeDatabase(db core.Database) error {
 	if err != nil {
 		return err
 	}
-	buf = append(buf, '\n') //follow the Unix convention of having a NL at the end of the file
+	buf = append(buf, '\n') // follow the Unix convention of having a NL at the end of the file
 	return a.writeStoreFile(buf)
 }
 
 func (a *Adapter) readStoreFile() ([]byte, error) {
 	buf, err := os.ReadFile(a.storePath)
 	if err == nil {
-		//remember the contents that were read to avoid a useless rewrite after
-		//roundtrip into our own listener
+		// remember the contents that were read to avoid a useless rewrite after
+		// roundtrip into our own listener
 		a.diskState = buf
 	}
 	return buf, err
@@ -183,7 +183,7 @@ func (a *Adapter) readStoreFile() ([]byte, error) {
 
 func (a *Adapter) writeStoreFile(buf []byte) error {
 	if bytes.Equal(buf, a.diskState) {
-		//avoid pointless writes
+		// avoid pointless writes
 		return nil
 	}
 

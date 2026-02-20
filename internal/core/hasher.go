@@ -51,7 +51,7 @@ func (n *NoopHasher) CheckPasswordHash(password, passwordHash string) bool {
 
 // IsWeakHash implements the crypt.PasswordHasher interface.
 func (n *NoopHasher) IsWeakHash(passwordHash string) bool {
-	//Well, technically all hashes from this PasswordHasher are weak :)
-	//But we specifically want to test the machinery for upgrading weak into strong hashes.
+	// Well, technically all hashes from this PasswordHasher are weak :)
+	// But we specifically want to test the machinery for upgrading weak into strong hashes.
 	return n.UpgradeWeakHashes && !strings.HasPrefix(passwordHash, "{PLAINTEXT}")
 }

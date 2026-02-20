@@ -51,7 +51,7 @@ func HTTPHandler(nexus core.Nexus, isBehindTLSProxy bool) http.Handler {
 	r.Methods("GET").Path(`/groups/{name}/delete`).Handler(getGroupDeleteHandler(nexus))
 	r.Methods("POST").Path(`/groups/{name}/delete`).Handler(postGroupDeleteHandler(nexus))
 
-	//add various security headers/checks via middleware
+	// add various security headers/checks via middleware
 	handler := http.NewCrossOriginProtection().Handler(r)
 	handler = securityHeadersMiddleware(handler)
 
@@ -119,15 +119,15 @@ type HandlerStep func(i *Interaction)
 type Interaction struct {
 	Req    *http.Request
 	writer http.ResponseWriter
-	//Slots for data associated with a request, which may be stored by one step
-	//and then used by later steps.
+	// Slots for data associated with a request, which may be stored by one step
+	// and then used by later steps.
 	Session     *sessions.Session
 	CurrentUser *core.UserWithPerms
 	FormSpec    *h.FormSpec
 	FormState   *h.FormState
-	TargetUser  *core.User     //only used by CRUD views editing a single user
-	TargetGroup *core.Group    //only used by CRUD views editing a single group
-	TargetRef   core.ObjectRef //refers to TargetGroup/TargetUser (for admin forms) or CurrentUser (for selfservice forms)
+	TargetUser  *core.User     // only used by CRUD views editing a single user
+	TargetGroup *core.Group    // only used by CRUD views editing a single group
+	TargetRef   core.ObjectRef // refers to TargetGroup/TargetUser (for admin forms) or CurrentUser (for selfservice forms)
 }
 
 // WriteError wraps http.Error().
@@ -224,7 +224,7 @@ func LoadSession(i *Interaction) {
 	var err error
 	i.Session, err = sessionStore.Get(i.Req, "portunus-login")
 	if err != nil {
-		//the session is broken - start a fresh one
+		// the session is broken - start a fresh one
 		logg.Error("could not decode user session cookie: " + err.Error())
 		i.Req.Header.Del("Cookie")
 		i.Session, err = sessionStore.New(i.Req, "portunus-login")

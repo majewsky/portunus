@@ -76,7 +76,7 @@ var mainSnippet = h.NewSnippet(`
 
 // Flash is a flash message.
 type Flash struct {
-	Type    string //either "danger" or "success"
+	Type    string // either "danger" or "success"
 	Message string
 }
 

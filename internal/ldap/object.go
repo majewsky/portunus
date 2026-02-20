@@ -29,9 +29,9 @@ func renderGroup(g core.Group, dnSuffix string) []Object {
 		}
 	}
 	if len(memberDNames) == 0 {
-		//The OpenLDAP core.schema requires that `groupOfNames` contain at least
-		//one `member` attribute. If the group does not have any proper members,
-		//add the dummy user account "nobody" to it.
+		// The OpenLDAP core.schema requires that `groupOfNames` contain at least
+		// one `member` attribute. If the group does not have any proper members,
+		// add the dummy user account "nobody" to it.
 		memberDNames = append(memberDNames, "cn=nobody,"+dnSuffix)
 	}
 

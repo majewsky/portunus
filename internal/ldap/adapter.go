@@ -22,7 +22,7 @@ type Adapter struct {
 	nexus        core.Nexus
 	conn         Connection
 	init         sync.Once
-	objects      []Object //persisted objects, key = object DN
+	objects      []Object // persisted objects, key = object DN
 	objectsMutex sync.Mutex
 }
 
@@ -34,10 +34,10 @@ func NewAdapter(nexus core.Nexus, conn Connection) *Adapter {
 // Run listens for changes to the Portunus database until `ctx` expires.
 // An error is returned if any write into the LDAP database fails.
 func (a *Adapter) Run(ctx context.Context) error {
-	//create main directory structure, but only when Run() is called for the first time
-	//(this precaution is not relevant for regular execution because main() calls
-	//Run() exactly once anyway; however, unit tests call Run() multiple times to
-	//test LDAP activity with fine granularity)
+	// create main directory structure, but only when Run() is called for the first time
+	// (this precaution is not relevant for regular execution because main() calls
+	// Run() exactly once anyway; however, unit tests call Run() multiple times to
+	// test LDAP activity with fine granularity)
 	isFirstRun := false
 	a.init.Do(func() { isFirstRun = true })
 	if isFirstRun {
@@ -49,12 +49,12 @@ func (a *Adapter) Run(ctx context.Context) error {
 		}
 	}
 
-	//we need to be able to explicitly cancel the nexus listener to avoid it
-	//deadlocking on `operationsChan` not being listened to anymore
+	// we need to be able to explicitly cancel the nexus listener to avoid it
+	// deadlocking on `operationsChan` not being listened to anymore
 	ctxListen, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	//writes get sent to us from whatever goroutine the nexus update is running on
+	// writes get sent to us from whatever goroutine the nexus update is running on
 	writeChan := make(chan core.Database, 1)
 	a.nexus.AddListener(ctxListen, func(db core.Database) {
 		writeChan <- db
@@ -89,12 +89,12 @@ func (a *Adapter) computeUpdates(db core.Database) []operation {
 // Renders the static objects that we need to establish our basic LDAP
 // directory structure.
 func makeStaticObjects(dnSuffix string) (result []goldap.AddRequest) {
-	//shorthand for obtaining a goldap.Attribute object
+	// shorthand for obtaining a goldap.Attribute object
 	attr := func(typeName string, values ...string) goldap.Attribute {
 		return goldap.Attribute{Type: typeName, Vals: values}
 	}
 
-	//domain-component object
+	// domain-component object
 	suffixRDNs := strings.Split(dnSuffix, ",")
 	dcName := strings.TrimPrefix(suffixRDNs[0], "dc=")
 	result = append(result, goldap.AddRequest{
@@ -106,7 +106,7 @@ func makeStaticObjects(dnSuffix string) (result []goldap.AddRequest) {
 		},
 	})
 
-	//organizational units
+	// organizational units
 	for _, ouName := range []string{"users", "groups", "posix-groups"} {
 		result = append(result, goldap.AddRequest{
 			DN: fmt.Sprintf("ou=%s,%s", ouName, dnSuffix),
@@ -117,7 +117,7 @@ func makeStaticObjects(dnSuffix string) (result []goldap.AddRequest) {
 		})
 	}
 
-	//service user account
+	// service user account
 	result = append(result, goldap.AddRequest{
 		DN: "cn=portunus," + dnSuffix,
 		Attributes: []goldap.Attribute{
@@ -127,7 +127,7 @@ func makeStaticObjects(dnSuffix string) (result []goldap.AddRequest) {
 		},
 	})
 
-	//dummy user account for empty groups
+	// dummy user account for empty groups
 	result = append(result, goldap.AddRequest{
 		DN: "cn=nobody," + dnSuffix,
 		Attributes: []goldap.Attribute{
@@ -149,8 +149,8 @@ func renderDBToLDAP(db core.Database, dnSuffix string) (result []Object) {
 		result = append(result, renderGroup(g, dnSuffix)...)
 	}
 
-	//render the virtual group that controls read access to the LDAP server (this
-	//group is hardcoded in the LDAP server's ACL)
+	// render the virtual group that controls read access to the LDAP server (this
+	// group is hardcoded in the LDAP server's ACL)
 	var ldapViewerDNames []string
 	for _, group := range db.Groups {
 		if group.Permissions.LDAP.CanRead {
@@ -163,7 +163,7 @@ func renderDBToLDAP(db core.Database, dnSuffix string) (result []Object) {
 		}
 	}
 	if len(ldapViewerDNames) == 0 {
-		//groups need to have at least one member
+		// groups need to have at least one member
 		ldapViewerDNames = append(ldapViewerDNames, "cn=nobody,"+dnSuffix)
 	}
 	result = append(result, Object{

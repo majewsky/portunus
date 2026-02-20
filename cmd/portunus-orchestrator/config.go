@@ -25,7 +25,7 @@ type valueCheck struct {
 var (
 	userOrGroupPattern = `^[a-z_][a-z0-9_-]*\$?$`
 	envDefaults        = map[string]string{
-		//empty value = not optional
+		// empty value = not optional
 		"PORTUNUS_DEBUG":              "false",
 		"PORTUNUS_GROUP_NAME_REGEX":   userOrGroupPattern,
 		"PORTUNUS_LDAP_SUFFIX":        "",
@@ -65,7 +65,7 @@ func isStrictBool(input string) bool {
 }
 
 func readConfig() (environment map[string]string, ids map[string]int) {
-	//last-minute initializations in envDefaults
+	// last-minute initializations in envDefaults
 	if os.Getenv("PORTUNUS_SLAPD_TLS_CERTIFICATE") != "" {
 		envDefaults["PORTUNUS_SLAPD_TLS_CERTIFICATE"] = ""
 		envDefaults["PORTUNUS_SLAPD_TLS_DOMAIN_NAME"] = ""
@@ -73,7 +73,7 @@ func readConfig() (environment map[string]string, ids map[string]int) {
 		envDefaults["PORTUNUS_SLAPD_TLS_CA_CERTIFICATE"] = ""
 	}
 
-	//read and validate all relevant environment variables
+	// read and validate all relevant environment variables
 	environment = make(map[string]string)
 	for key, defaultValue := range envDefaults {
 		value := os.Getenv(key)
@@ -89,10 +89,10 @@ func readConfig() (environment map[string]string, ids map[string]int) {
 			}
 		}
 		environment[key] = value
-		must.Succeed(os.Unsetenv(key)) //avoid unintentional leakage of env vars to child processes
+		must.Succeed(os.Unsetenv(key)) // avoid unintentional leakage of env vars to child processes
 	}
 
-	//resolve user/group names into IDs
+	// resolve user/group names into IDs
 	ids = map[string]int{
 		"PORTUNUS_SERVER_UID": must.Return(lookupID("/etc/passwd", environment["PORTUNUS_SERVER_USER"])),
 		"PORTUNUS_SERVER_GID": must.Return(lookupID("/etc/group", environment["PORTUNUS_SERVER_GROUP"])),
@@ -104,10 +104,10 @@ func readConfig() (environment map[string]string, ids map[string]int) {
 }
 
 func lookupID(databasePath, entityName string) (int, error) {
-	//In both `/etc/passwd` and `/etc/passwd`:
-	//- The columns are colon-separated.
-	//- The first column has the entity name.
-	//- The third column has the entity's own numeric ID.
+	// In both `/etc/passwd` and `/etc/passwd`:
+	// - The columns are colon-separated.
+	// - The first column has the entity name.
+	// - The third column has the entity's own numeric ID.
 	buf := must.Return(os.ReadFile(databasePath))
 	for line := range strings.SplitSeq(string(buf), "\n") {
 		line = strings.TrimSpace(line)

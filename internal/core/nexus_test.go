@@ -18,7 +18,7 @@ import (
 // irrelevant to the seeding, but important for UI workflows.
 
 func TestDryRun(t *testing.T) {
-	//This test checks the behavior of the `UpdateOptions.DryRun` flag.
+	// This test checks the behavior of the `UpdateOptions.DryRun` flag.
 	ctx := t.Context()
 
 	vcfg := GetValidationConfigForTests()
@@ -29,7 +29,7 @@ func TestDryRun(t *testing.T) {
 		actualDB = db
 	})
 
-	//load a minimal database
+	// load a minimal database
 	actionLoadEmpty := func(db *Database) errext.ErrorSet {
 		db.Users = []User{{
 			LoginName:  "minuser",
@@ -47,14 +47,14 @@ func TestDryRun(t *testing.T) {
 	expectNoErrors(t, errs)
 	assert.Equal(t, actualDB.Users[0].FullName(), "Minimal User")
 
-	//an action that fails...
+	// an action that fails...
 	actionFail := func(db *Database) (errs errext.ErrorSet) {
 		db.Users[0].GivenName = "Changed"
 		errs.Addf("error from action")
 		return
 	}
 
-	//...will behave the same with DryRun and without
+	// ...will behave the same with DryRun and without
 	errs = nexus.Update(actionFail, &UpdateOptions{DryRun: true})
 	expectTheseErrors(t, errs, "error from action")
 	assert.Equal(t, actualDB.Users[0].FullName(), "Minimal User")
@@ -63,7 +63,7 @@ func TestDryRun(t *testing.T) {
 	expectTheseErrors(t, errs, "error from action")
 	assert.Equal(t, actualDB.Users[0].FullName(), "Minimal User")
 
-	//an action that succeeds...
+	// an action that succeeds...
 	counter := 0
 	actionSucceed := func(db *Database) (errs errext.ErrorSet) {
 		db.Users[0].GivenName = "Changed"
@@ -71,7 +71,7 @@ func TestDryRun(t *testing.T) {
 		return
 	}
 
-	//...will run, but not be committed under DryRun
+	// ...will run, but not be committed under DryRun
 	errs = nexus.Update(actionSucceed, &UpdateOptions{DryRun: true})
 	expectNoErrors(t, errs)
 	assert.Equal(t, actualDB.Users[0].FullName(), "Minimal User")

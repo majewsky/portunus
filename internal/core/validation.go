@@ -20,8 +20,8 @@ import (
 
 // ObjectRef identifies a User or Group. It appears in type FieldRef.
 type ObjectRef struct {
-	Type string //either "user" or "group"
-	Name string //the LoginName for users or the Name for groups
+	Type string // either "user" or "group"
+	Name string // the LoginName for users or the Name for groups
 }
 
 // Field constructs a FieldRef for this object.
@@ -32,14 +32,14 @@ func (r ObjectRef) Field(name string) FieldRef {
 // FieldRef identifies a field within a User or Group. It appears in type ValidationError.
 type FieldRef struct {
 	Object ObjectRef
-	Name   string //e.g. "surname" or "posix_gid", matches the input element name in the respective HTML forms
+	Name   string // e.g. "surname" or "posix_gid", matches the input element name in the respective HTML forms
 }
 
 // ValidationError is a structured error type that describes an unacceptable
 // field value in a User or Group. The generic type is either User or Group.
 type ValidationError struct {
 	FieldRef   FieldRef
-	FieldError error //sentence without subject, e.g. "may not be missing"
+	FieldError error // sentence without subject, e.g. "may not be missing"
 }
 
 // Wrap converts an error into a ValidationError.
@@ -71,8 +71,8 @@ func (e ValidationError) Error() string {
 
 // ValidationConfig contains runtime configuration for user/group validation.
 type ValidationConfig struct {
-	GroupNameRegex *regexp.Regexp //from PORTUNUS_GROUP_NAME_REGEX
-	UserNameRegex  *regexp.Regexp //from PORTUNUS_USER_NAME_REGEX
+	GroupNameRegex *regexp.Regexp // from PORTUNUS_GROUP_NAME_REGEX
+	UserNameRegex  *regexp.Regexp // from PORTUNUS_USER_NAME_REGEX
 }
 
 // ReadValidationConfigFromEnvironment builds a ValidationConfig from the
@@ -93,9 +93,9 @@ func ReadValidationConfigFromEnvironment() (result *ValidationConfig, err error)
 // GetValidationConfigForTests returns a specific hard-coded ValidationConfig
 // that can be used in unit tests to ensure that all branches can be tested.
 func GetValidationConfigForTests() *ValidationConfig {
-	//Unlike POSIXAccountNameRegex, this accepts e.g. `john.doe`, but rejects e.g. `bob$`.
-	//Also, this accepts e.g. `john,doe`, even though Portunus rejects characters with special
-	//meaning in LDAP DNs.
+	// Unlike POSIXAccountNameRegex, this accepts e.g. `john.doe`, but rejects e.g. `bob$`.
+	// Also, this accepts e.g. `john,doe`, even though Portunus rejects characters with special
+	// meaning in LDAP DNs.
 	rx := regexp.MustCompile(`^[a-z0-9.,-]+$`)
 	return &ValidationConfig{
 		GroupNameRegex: rx,

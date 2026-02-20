@@ -165,7 +165,7 @@ func executeSelfService(db *core.Database, i *Interaction, hasher crypt.Password
 			user.PasswordHash = hasher.HashPassword(fs.Fields["new_password"].Value)
 		}
 		user.SSHPublicKeys = core.SplitSSHPublicKeys(fs.Fields["ssh_public_keys"].Value)
-		db.Users[idx] = user //`user` copies by value, so we need to write the changes back explicitly
+		db.Users[idx] = user // `user` copies by value, so we need to write the changes back explicitly
 	}
 	return
 }

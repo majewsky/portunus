@@ -52,13 +52,13 @@ type Nexus interface {
 
 // UpdateOptions controls optional behavior in Nexus.Update().
 type UpdateOptions struct {
-	//If true, conflicts with the seed will be reported as validation errors.
-	//If false (default), conflicts with the seed will be corrected silently.
+	// If true, conflicts with the seed will be reported as validation errors.
+	// If false (default), conflicts with the seed will be corrected silently.
 	ConflictWithSeedIsError bool
 
-	//If true, the updated database will be computed and validated, but not
-	//saved. This is used to obtain a more complete set of errors for the UI
-	//after a preliminary validation step already failed.
+	// If true, the updated database will be computed and validated, but not
+	// saved. This is used to obtain a more complete set of errors for the UI
+	// after a preliminary validation step already failed.
 	DryRun bool
 }
 
@@ -75,7 +75,7 @@ func NewNexus(d *DatabaseSeed, cfg *ValidationConfig, hasher crypt.PasswordHashe
 type nexusImpl struct {
 	hasher crypt.PasswordHasher
 	vcfg   *ValidationConfig
-	//The mutex guards access to all fields listed below it in this struct.
+	// The mutex guards access to all fields listed below it in this struct.
 	mutex     sync.RWMutex
 	seed      *DatabaseSeed
 	db        Database
@@ -131,8 +131,8 @@ func (n *nexusImpl) AddListener(ctx context.Context, callback func(Database)) {
 	defer n.mutex.Unlock()
 	n.listeners = append(n.listeners, listener{ctx, callback})
 
-	//if the DB has already been filled before AddListener(), tell the listener
-	//about the current DB contents right away
+	// if the DB has already been filled before AddListener(), tell the listener
+	// about the current DB contents right away
 	if !n.db.IsEmpty() && ctx.Err() == nil {
 		callback(n.db.Cloned())
 	}
@@ -148,23 +148,23 @@ func (n *nexusImpl) Update(action UpdateAction, optsPtr *UpdateOptions) (errs er
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 
-	//compute new DB by applying the reducer to a clone of the old DB
+	// compute new DB by applying the reducer to a clone of the old DB
 	newDB := n.db.Cloned()
 	errs = action(&newDB)
 	if len(errs) == 1 && errs[0] == ErrDatabaseNeedsInitialization {
 		newDB = initializeDatabase(n.seed, n.hasher)
 		errs = nil
 	}
-	//^ NOTE: We do not return early on error here. For interactive updates,
-	//we want to report as many errors as possible in a single go,
-	//without differentiating between errors from the UpdateAction
-	//and validation errors from the core logic.
+	// ^ NOTE: We do not return early on error here. For interactive updates,
+	// we want to report as many errors as possible in a single go,
+	// without differentiating between errors from the UpdateAction
+	// and validation errors from the core logic.
 	//
-	//This is important for a consistent user experience because some
-	//validation errors cannot be generated in the core and must come
-	//from the UpdateAction (e.g. any checks involving unhashed passwords).
+	// This is important for a consistent user experience because some
+	// validation errors cannot be generated in the core and must come
+	// from the UpdateAction (e.g. any checks involving unhashed passwords).
 
-	//normalize the DB and validate it against common rules and the seed
+	// normalize the DB and validate it against common rules and the seed
 	newDB.Normalize()
 	errs.Append(newDB.Validate(n.vcfg))
 	if n.seed != nil {
@@ -175,13 +175,13 @@ func (n *nexusImpl) Update(action UpdateAction, optsPtr *UpdateOptions) (errs er
 		}
 	}
 
-	//do we have a reason to not update the DB for real?
+	// do we have a reason to not update the DB for real?
 	if opts.DryRun || !errs.IsEmpty() {
 		return errs
 	}
 
-	//new DB looks good -> store it and inform our listeners *if* it actually
-	//represents a change
+	// new DB looks good -> store it and inform our listeners *if* it actually
+	// represents a change
 	if reflect.DeepEqual(n.db, newDB) {
 		return nil
 	}

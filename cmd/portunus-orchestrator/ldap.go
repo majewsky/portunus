@@ -88,8 +88,8 @@ var customSchema = `
 
 `
 
-//^ The trailing empty line is important, otherwise slapd cannot correctly
-//parse this file. ikr?
+// ^ The trailing empty line is important, otherwise slapd cannot correctly
+// parse this file. ikr?
 
 func renderSlapdConfig(environment map[string]string, hasher crypt.PasswordHasher) []byte {
 	password := generateServiceUserPassword()
@@ -126,9 +126,9 @@ func generateServiceUserPassword() string {
 func runLDAPServer(environment map[string]string) {
 	debugLogFlags := uint64(0)
 	if logg.ShowDebug {
-		//with PORTUNUS_DEBUG=true, turn on all debug logging except for package
-		//traces (those might reveal user passwords in the logfile when bind
-		//requests are logged)
+		// with PORTUNUS_DEBUG=true, turn on all debug logging except for package
+		// traces (those might reveal user passwords in the logfile when bind
+		// requests are logged)
 		debugLogFlags = 0xFFFF &^ 0x12
 	}
 
@@ -138,14 +138,14 @@ func runLDAPServer(environment map[string]string) {
 	}
 
 	logg.Info("starting LDAP server")
-	//run slapd
+	// run slapd
 	cmd := exec.Command(environment["PORTUNUS_SLAPD_BINARY"],
 		"-u", environment["PORTUNUS_SLAPD_USER"],
 		"-g", environment["PORTUNUS_SLAPD_GROUP"],
 		"-h", bindURL,
 		"-f", filepath.Join(environment["PORTUNUS_SLAPD_STATE_DIR"], "slapd.conf"),
-		//even for debugLogFlags == 0, giving `-d` is still important because its
-		//presence keeps slapd from daemonizing)
+		// even for debugLogFlags == 0, giving `-d` is still important because its
+		// presence keeps slapd from daemonizing)
 		"-d", strconv.FormatUint(debugLogFlags, 10),
 	)
 	cmd.Stdin = nil

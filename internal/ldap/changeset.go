@@ -10,7 +10,7 @@ import goldap "github.com/go-ldap/ldap/v3"
 
 // A sum type of all possible requests that we can send to the server.
 type operation struct {
-	//Exactly one of these must be non-nil.
+	// Exactly one of these must be non-nil.
 	AddRequest    *goldap.AddRequest
 	ModifyRequest *goldap.ModifyRequest
 	DeleteRequest *goldap.DelRequest

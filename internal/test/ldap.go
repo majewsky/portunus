@@ -53,7 +53,7 @@ func (d *LDAPConnectionDouble) Delete(req goldap.DelRequest) error {
 func removeIfExpected[R any](pool *[]R, req R) error {
 	for idx := range *pool {
 		if reflect.DeepEqual((*pool)[idx], req) {
-			//this request was expected - remove it from the pool of expected requests
+			// this request was expected - remove it from the pool of expected requests
 			*pool = append(append([]R(nil), (*pool)[0:idx]...), (*pool)[idx+1:]...)
 			return nil
 		}
@@ -99,14 +99,14 @@ func (d *LDAPConnectionDouble) CheckAllExecuted(t *testing.T) {
 }
 
 func normalizeAddRequest(req goldap.AddRequest) goldap.AddRequest {
-	//normalize the request to enable deterministic matching
+	// normalize the request to enable deterministic matching
 	attrs := req.Attributes
 	sort.Slice(attrs, func(i, j int) bool { return attrs[i].Type < attrs[j].Type })
 	return req
 }
 
 func normalizeModifyRequest(req goldap.ModifyRequest) goldap.ModifyRequest {
-	//normalize the request to enable deterministic matching
+	// normalize the request to enable deterministic matching
 	changes := req.Changes
 	sort.Slice(changes, func(i, j int) bool { return changes[i].Modification.Type < changes[j].Modification.Type })
 	return req

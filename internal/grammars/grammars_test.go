@@ -19,53 +19,53 @@ func TestGrammars(t *testing.T) {
 		"dc=1,dc=example,dc=org",
 		// invalid LDAP suffixes
 		"",
-		",dc=example,dc=com",         //empty segment
-		"dc=example,dc=com,",         //empty segment
-		"ou=users,dc=example,dc=com", //only dc= allowed
-		"=example,dc=com",            //empty key
-		"dc=example,dc=",             //empty value
-		"dc=example!,dc=com",         //invalid chars in value
-		"dc=ldap,dc=example.com",     //invalid chars in value
-		"example,dc=com",             //missing key
+		",dc=example,dc=com",         // empty segment
+		"dc=example,dc=com,",         // empty segment
+		"ou=users,dc=example,dc=com", // only dc= allowed
+		"=example,dc=com",            // empty key
+		"dc=example,dc=",             // empty value
+		"dc=example!,dc=com",         // invalid chars in value
+		"dc=ldap,dc=example.com",     // invalid chars in value
+		"example,dc=com",             // missing key
 
-		//valid listen addresses
+		// valid listen addresses
 		"1.2.3.4:5",
-		"151587081:53", //single-number IP notation (same as 9.9.9.9:53)
+		"151587081:53", // single-number IP notation (same as 9.9.9.9:53)
 		"[::1]:8000",
 		"[2001:db08:ac10:fe01::]:8000",
-		//invalid listen addresses
+		// invalid listen addresses
 		"",
-		":8080",          //our grammar requires an explicit IP
-		"1.2.3.4",        //no port
-		"1.2.3.4:",       //empty port
-		"example.com:53", //hostnames are not allowed
-		"[:0",            //found by fuzzing
+		":8080",          // our grammar requires an explicit IP
+		"1.2.3.4",        // no port
+		"1.2.3.4:",       // empty port
+		"example.com:53", // hostnames are not allowed
+		"[:0",            // found by fuzzing
 
-		//valid POSIX account names
+		// valid POSIX account names
 		"john_doe",
 		"john-doe",
 		"bob$",
 		"user17",
-		//invalid POSIX account names
+		// invalid POSIX account names
 		"",
-		"JohnDoe",  //uppercase not allowed
-		"john.doe", //dot not allowed
-		"jöhn_döe", //Unicode chars not allowed
-		"$bob",     //dollar only allowed at end
-		"-johndoe", //dash not allowed at start
-		"17users",  //number not allowed at start
-		"a-",       //found by fuzzing
+		"JohnDoe",  // uppercase not allowed
+		"john.doe", // dot not allowed
+		"jöhn_döe", // Unicode chars not allowed
+		"$bob",     // dollar only allowed at end
+		"-johndoe", // dash not allowed at start
+		"17users",  // number not allowed at start
+		"a-",       // found by fuzzing
 
-		//valid non-negative integers
+		// valid non-negative integers
 		"0",
 		"42",
 		"503",
-		//invalid non-negative integers
+		// invalid non-negative integers
 		"",
-		"00",  //superfluous zeroes
-		"080", //leading zero
-		"0.5", //invalid characters
-		"a+2", //invalid characters
+		"00",  // superfluous zeroes
+		"080", // leading zero
+		"0.5", // invalid characters
+		"a+2", // invalid characters
 	}
 
 	// The test checks that the Is...() functions return the same results as

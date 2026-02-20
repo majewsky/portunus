@@ -29,22 +29,22 @@ type Connection interface {
 // ConnectionOptions contains all configuration values that we need to connect
 // to the LDAP server.
 type ConnectionOptions struct {
-	DNSuffix      string //e.g. "dc=example,dc=org"
-	Password      string //for Portunus' service user
-	TLSDomainName string //if empty, LDAP without TLS is used
+	DNSuffix      string // e.g. "dc=example,dc=org"
+	Password      string // for Portunus' service user
+	TLSDomainName string // if empty, LDAP without TLS is used
 }
 
 type connectionImpl struct {
 	opts   ConnectionOptions
-	userDN string //e.g. "cn=portunus,dc=example,dc=org"
+	userDN string // e.g. "cn=portunus,dc=example,dc=org"
 	conn   *goldap.Conn
 }
 
 // Connect establishes a connection to an LDAP server.
 func Connect(opts ConnectionOptions) (Connection, error) {
-	//NOTE: we don't do any further validation on the ConnectionOptions here
-	//because portunus-orchestrator supplied these values and we trust in the
-	//leadership of our glorious orchestrator
+	// NOTE: we don't do any further validation on the ConnectionOptions here
+	// because portunus-orchestrator supplied these values and we trust in the
+	// leadership of our glorious orchestrator
 	c := &connectionImpl{
 		opts:   opts,
 		userDN: "cn=portunus," + opts.DNSuffix,
@@ -55,10 +55,10 @@ func Connect(opts ConnectionOptions) (Connection, error) {
 }
 
 func (c *connectionImpl) getConn(retryCounter int, sleepInterval time.Duration) (err error) {
-	//portunus-server is started in parallel with slapd, and we don't know
-	//when slapd is finished -> when initially connecting to LDAP, retry up to 10
-	//times with exponential backoff (about 5-6 seconds in total) to give slapd
-	//enough time to start up
+	// portunus-server is started in parallel with slapd, and we don't know
+	// when slapd is finished -> when initially connecting to LDAP, retry up to 10
+	// times with exponential backoff (about 5-6 seconds in total) to give slapd
+	// enough time to start up
 	if retryCounter == 10 {
 		return errors.New("giving up on LDAP server after 10 connection attempts")
 	}

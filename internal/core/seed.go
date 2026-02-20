@@ -62,14 +62,14 @@ func ReadDatabaseSeed(path string, cfg *ValidationConfig) (result *DatabaseSeed,
 
 // Validate returns an error if the seed contains any invalid or missing values.
 func (d DatabaseSeed) Validate(cfg *ValidationConfig) (errs errext.ErrorSet) {
-	//most validation can be performed by Database.Validate() by applying the
-	//seed to a fresh database
+	// most validation can be performed by Database.Validate() by applying the
+	// seed to a fresh database
 	var db Database
 	d.ApplyTo(&db, &NoopHasher{})
 	errs = db.Validate(cfg)
 
-	//the duplicate checks must be done differently for seeds because ApplyTo()
-	//will not create duplicate users or groups
+	// the duplicate checks must be done differently for seeds because ApplyTo()
+	// will not create duplicate users or groups
 	groupNameCounts := make(map[string]int)
 	for _, groupSeed := range d.Groups {
 		groupNameCounts[string(groupSeed.Name)]++
@@ -118,9 +118,9 @@ func (d DatabaseSeed) Validate(cfg *ValidationConfig) (errs errext.ErrorSet) {
 
 // ApplyTo changes the given database to conform to the seed.
 func (d DatabaseSeed) ApplyTo(db *Database, hasher crypt.PasswordHasher) {
-	//for each group seed...
+	// for each group seed...
 	for _, groupSeed := range d.Groups {
-		//...either the group exists already...
+		// ...either the group exists already...
 		hasGroup := false
 		for idx, group := range db.Groups {
 			if group.Name == string(groupSeed.Name) {
@@ -130,7 +130,7 @@ func (d DatabaseSeed) ApplyTo(db *Database, hasher crypt.PasswordHasher) {
 			}
 		}
 
-		//...or it needs to be created
+		// ...or it needs to be created
 		if !hasGroup {
 			group := Group{Name: string(groupSeed.Name)}
 			groupSeed.ApplyTo(&group)
@@ -138,7 +138,7 @@ func (d DatabaseSeed) ApplyTo(db *Database, hasher crypt.PasswordHasher) {
 		}
 	}
 
-	//same for the user seeds
+	// same for the user seeds
 	for _, userSeed := range d.Users {
 		hasUser := false
 		for idx, user := range db.Users {
@@ -163,16 +163,16 @@ var errSeededField = errors.New("must be equal to the seeded value")
 // CheckConflicts returns errors for all ways in which the Database deviates
 // from the seed's expectation.
 func (d DatabaseSeed) CheckConflicts(db Database, hasher crypt.PasswordHasher) (errs errext.ErrorSet) {
-	//if there are conflicts, then applying the seed to a copy of the DB will
-	//result in a different DB -- we will call the original DB "left-hand side"
-	//and its clone with the seed applied "right-hand side"
+	// if there are conflicts, then applying the seed to a copy of the DB will
+	// result in a different DB -- we will call the original DB "left-hand side"
+	// and its clone with the seed applied "right-hand side"
 	leftDB := db
 	rightDB := db.Cloned()
-	d.ApplyTo(&rightDB, hasher) //includes Normalize
+	d.ApplyTo(&rightDB, hasher) // includes Normalize
 
-	//NOTE: We do not need to check for users/groups that exist on the left but
-	//not on the right, because seeding only ever creates and updates objects,
-	//but never deletes any objects.
+	// NOTE: We do not need to check for users/groups that exist on the left but
+	// not on the right, because seeding only ever creates and updates objects,
+	// but never deletes any objects.
 
 	for _, rightGroup := range rightDB.Groups {
 		leftGroup, exists := leftDB.Groups.Find(func(g Group) bool { return g.Name == rightGroup.Name })
@@ -195,8 +195,8 @@ func (d DatabaseSeed) CheckConflicts(db Database, hasher crypt.PasswordHasher) (
 			errs.Add(ref.Field("posix_gid").Wrap(errSeededField))
 		}
 
-		//NOTE: Same logic as above. Seeds only ever add group memberships and
-		//never remove them, so we only need to check in one direction.
+		// NOTE: Same logic as above. Seeds only ever add group memberships and
+		// never remove them, so we only need to check in one direction.
 		for loginName, isRightMember := range rightGroup.MemberLoginNames {
 			if isRightMember && !leftGroup.MemberLoginNames[loginName] {
 				err := fmt.Errorf("must contain user %q because of seeded group membership", loginName)
@@ -259,8 +259,8 @@ func (d DatabaseSeed) CheckConflicts(db Database, hasher crypt.PasswordHasher) (
 // Initializes the Database from the given seed on first use.
 // If the seed is nil, the default initialization behavior is used.
 func initializeDatabase(d *DatabaseSeed, hasher crypt.PasswordHasher) Database {
-	//if no seed has been given, create the "admin" user with access to the
-	//Portunus UI and log the password once
+	// if no seed has been given, create the "admin" user with access to the
+	// Portunus UI and log the password once
 	if d == nil {
 		password := hex.EncodeToString(GenerateRandomKey(16))
 		passwordHash := hasher.HashPassword(password)
@@ -283,7 +283,7 @@ func initializeDatabase(d *DatabaseSeed, hasher crypt.PasswordHasher) Database {
 		}
 	}
 
-	//otherwise, initialize the DB from the seed
+	// otherwise, initialize the DB from the seed
 	var db Database
 	d.ApplyTo(&db, hasher)
 	return db
@@ -310,7 +310,7 @@ type GroupSeed struct {
 
 // ApplyTo changes the attributes of this group to conform to the given seed.
 func (g GroupSeed) ApplyTo(target *Group) {
-	//consistency check (the caller must ensure that the seed matches the object)
+	// consistency check (the caller must ensure that the seed matches the object)
 	if target.Name != string(g.Name) {
 		panic(fmt.Sprintf("cannot apply seed with Name = %q to group with Name = %q",
 			string(g.Name), target.Name))
@@ -359,7 +359,7 @@ type UserSeed struct {
 
 // ApplyTo changes the attributes of this group to conform to the given seed.
 func (u UserSeed) ApplyTo(target *User, hasher crypt.PasswordHasher) {
-	//consistency check (the caller must ensure that the seed matches the object)
+	// consistency check (the caller must ensure that the seed matches the object)
 	if target.LoginName != string(u.LoginName) {
 		panic(fmt.Sprintf("cannot apply seed with LoginName = %q to user with LoginName = %q",
 			string(u.LoginName), target.LoginName))
@@ -379,10 +379,10 @@ func (u UserSeed) ApplyTo(target *User, hasher crypt.PasswordHasher) {
 	}
 
 	if u.Password != "" {
-		//to avoid useless rehashing, the password is only applied:
-		//- on creation (when no PasswordHash exists),
-		//- on method mismatch (i.e. when the hasher wants us to change hash methods), or
-		//- on password mismatch (i.e. when the password is updated in the seed)
+		// to avoid useless rehashing, the password is only applied:
+		// - on creation (when no PasswordHash exists),
+		// - on method mismatch (i.e. when the hasher wants us to change hash methods), or
+		// - on password mismatch (i.e. when the password is updated in the seed)
 		pw := string(u.Password)
 		hash := target.PasswordHash
 		if hash == "" || hasher.IsWeakHash(hash) || !hasher.CheckPasswordHash(pw, hash) {
@@ -399,9 +399,9 @@ func (u UserSeed) ApplyTo(target *User, hasher crypt.PasswordHasher) {
 			target.POSIX = &UserPosixAttributes{}
 		}
 		p := *u.POSIX
-		//NOTE: The nil checks on p.UID and p.GID will never fire for valid
-		//UserSeed objects, but we need to do them because this method is also
-		//called during Validate() on possibly invalid UserSeed objects.
+		// NOTE: The nil checks on p.UID and p.GID will never fire for valid
+		// UserSeed objects, but we need to do them because this method is also
+		// called during Validate() on possibly invalid UserSeed objects.
 		if p.UID != nil {
 			target.POSIX.UID = *p.UID
 		}
@@ -426,7 +426,7 @@ type StringSeed string
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (s *StringSeed) UnmarshalJSON(buf []byte) error {
-	//common case: unmarshal from string
+	// common case: unmarshal from string
 	var val string
 	err1 := json.Unmarshal(buf, &val)
 	if err1 == nil {
@@ -434,15 +434,15 @@ func (s *StringSeed) UnmarshalJSON(buf []byte) error {
 		return nil
 	}
 
-	//alternative case: perform command substitution
+	// alternative case: perform command substitution
 	var obj struct {
 		Command []string `json:"from_command"`
 	}
 	err := json.Unmarshal(buf, &obj)
 	if err != nil {
-		//if this object syntax does not fit, return the original error where we
-		//tried to unmarshal into a string value, since that probably makes more
-		//sense in context
+		// if this object syntax does not fit, return the original error where we
+		// tried to unmarshal into a string value, since that probably makes more
+		// sense in context
 		return err1
 	}
 	if len(obj.Command) == 0 {

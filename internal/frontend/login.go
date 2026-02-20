@@ -75,7 +75,7 @@ func postLoginHandler(n core.Nexus) http.Handler {
 func checkLogin(n core.Nexus) HandlerStep {
 	return func(i *Interaction) {
 		fs := i.FormState
-		userIdent := fs.Fields["user_ident"].GetValueOrSetError() //either uid or email address
+		userIdent := fs.Fields["user_ident"].GetValueOrSetError() // either uid or email address
 		pwd := fs.Fields["password"].GetValueOrSetError()
 
 		if fs.IsValid() {
@@ -100,8 +100,8 @@ func checkLogin(n core.Nexus) HandlerStep {
 			i.Session.Values["uid"] = user.LoginName
 
 			if hasher.IsWeakHash(passwordHash) {
-				//since the last login of this user, the hasher started preferring a different method
-				//-> we do have the user password right now, so we can rehash it transparently
+				// since the last login of this user, the hasher started preferring a different method
+				// -> we do have the user password right now, so we can rehash it transparently
 				newPasswordHash := hasher.HashPassword(pwd)
 				errs := n.Update(func(db *core.Database) (errs errext.ErrorSet) {
 					for idx, dbUser := range db.Users {
