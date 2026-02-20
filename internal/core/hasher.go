@@ -6,18 +6,28 @@
 
 package core
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/majewsky/portunus/internal/crypt"
+)
 
 // NoopHasher is a crypt.PasswordHasher that does not do any hashing. This
 // dummy implementation is used when constructing temporary Database objects
 // out of seeds, such as for seed validation, and also in unit tests.
 type NoopHasher struct {
 	UpgradeWeakHashes bool
+	RealHasher        crypt.PasswordHasher
 }
 
 // HashPassword implements the crypt.PasswordHasher interface.
 func (n *NoopHasher) HashPassword(password string) string {
 	return "{PLAINTEXT}" + password
+}
+
+// WrapPasswordHash implements the crypt.PasswordHasher interface.
+func (n *NoopHasher) WrapPasswordHash(hash string) string {
+	return "{CRYPT}" + hash
 }
 
 // CheckPasswordHash implements the crypt.PasswordHasher interface.
@@ -29,6 +39,13 @@ func (n *NoopHasher) CheckPasswordHash(password, passwordHash string) bool {
 			return true
 		}
 	}
+
+	// we also accept the {CRYPT} prefix with the same semantics as slapd, for
+	// checking user seeds with password hashes in them
+	if n.RealHasher != nil && strings.HasPrefix(passwordHash, "{CRYPT}") {
+		return n.RealHasher.CheckPasswordHash(password, passwordHash)
+	}
+
 	return false
 }
 

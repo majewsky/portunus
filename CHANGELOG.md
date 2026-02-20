@@ -3,11 +3,26 @@ SemVer was not adhered to in one of our releases, please open an issue.
 
 # v2.2.0 (TBD)
 
+New features:
+
+- User seeds can now provide the password in hashed form in the `password_hash` attribute.
+  Providing the password explicitly through the `password` attribute is discouraged, but remains supported.
+
 Changes:
 
+- The `email` attribute of users now rejects values not containing an `@` sign.
+  If you have existing user accounts breaking this rule, Portunus may fail on startup after upgrading.
+  The following shell commands can be used to edit all offending user accounts:
+  ```sh
+  cd /var/lib/portunus
+  jq <database.json >database.json.new '.users = (.users | map(if .email == null then . else .email = if .email | contains("@") then .email else .email + "@localhost" end end))'
+  diff -u database.json database.json.new # verify the changes before applying them!
+  mv database.json.new database.json
+  ```
+  This is considered a bugfix and not a backwards-incompatible change that would force a major version bump,
+  because illformatted `email` attribute values may break downstream users and should always have been rejected.
 - Instead of issuing CSRF tokens in its HTML forms, Portunus now expects `Sec-Fetch-Site: same-origin` on POST requests.
 - The `portunus-login` cookie is now set with `SameSite=Strict`.
-- The `email` attribute of users now rejects values not containing an `@` sign.
 
 # v2.1.4 (2025-07-07)
 

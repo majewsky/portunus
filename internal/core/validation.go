@@ -116,11 +116,12 @@ func compileRegexFromEnvironment(key string) (*regexp.Regexp, error) {
 }
 
 var (
-	errIsDuplicate       = errors.New("is already in use")
-	errIsDuplicateInSeed = errors.New("is defined multiple times")
-	errIsMissing         = errors.New("is missing")
-	errLeadingSpaces     = errors.New("may not start with a space character")
-	errTrailingSpaces    = errors.New("may not end with a space character")
+	errIsDuplicate               = errors.New("is already in use")
+	errIsDuplicateInSeed         = errors.New("is defined multiple times")
+	errPasswordIsDuplicateInSeed = errors.New("may not be given in both cleartext and hashed form")
+	errIsMissing                 = errors.New("is missing")
+	errLeadingSpaces             = errors.New("may not start with a space character")
+	errTrailingSpaces            = errors.New("may not end with a space character")
 
 	errMalformedGroupName       = errors.New("is not an acceptable group name")
 	errMalformedUserLoginName   = errors.New("is not an acceptable user name")

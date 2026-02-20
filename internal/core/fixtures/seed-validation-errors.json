@@ -138,6 +138,13 @@
 			]
 		},
 		{
+			"login_name": "password-ambiguous",
+			"given_name": "Problem is",
+			"family_name": "password given in both cleartext and hashed form (it does not matter that both agree)",
+			"password": "swordfish",
+			"password_hash": "$y$j9T$NztaCux8U3YfHDSn3vRCd/$V/ZNzWRBJA/0cNFh9.mmaueWDIqvOHHkZZIIprfs.6."
+		},
+		{
 			"login_name": "posix-no-uid",
 			"given_name": "Problem is",
 			"family_name": "POSIX account without UID",

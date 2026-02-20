@@ -13,6 +13,7 @@ import (
 	"github.com/majewsky/portunus/internal/crypt"
 	"github.com/sapcc/go-bits/assert"
 	"github.com/sapcc/go-bits/errext"
+	"github.com/sapcc/go-bits/must"
 )
 
 const dummySSHPublicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGNvYUluYODNXoQKDGG+pTEigpsvJP2SHfMz0a+Hl2xO maxuser@example.org"
@@ -341,6 +342,7 @@ func TestSeedParseAndValidationErrors(t *testing.T) {
 		`field "ssh_public_keys" in user "only-ssh-key-empty" must have a valid SSH public key on each line (parse error on line 1)`,
 		`field "ssh_public_keys" in user "some-ssh-key-empty" must have a valid SSH public key on each line (parse error on line 2)`,
 		`field "ssh_public_keys" in user "ssh-key-invalid" must have a valid SSH public key on each line (parse error on line 1)`,
+		`field "password" in user "password-ambiguous" may not be given in both cleartext and hashed form`,
 		`field "posix_uid" in user "posix-no-uid" is missing`,
 		`field "posix_gid" in user "posix-no-gid" is missing`,
 		`field "posix_home" in user "posix-no-home" is missing`,
@@ -368,7 +370,6 @@ func TestSeedCryptoAgility(t *testing.T) {
 	vcfg := GetValidationConfigForTests()
 	seed, errs := ReadDatabaseSeed("fixtures/seed-one-user-with-password.json", vcfg)
 	expectNoErrors(t, errs)
-	_ = seed
 
 	//register a listener to observe the real DB changes
 	hasher := &NoopHasher{}
@@ -412,6 +413,57 @@ func TestSeedCryptoAgility(t *testing.T) {
 
 	expectedDB.Users[0].PasswordHash = "{PLAINTEXT}swordfish"
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
+}
+
+func TestSeedPasswordRepresentations(t *testing.T) {
+	// This test initializes a database from a seed where various users are
+	// seeded with every possible method of seeding a password:
+	//
+	// - user1: password "number1" as cleartext in file
+	// - user2: password "number2" as cleartext from command
+	// - user3: password "number3" as hash in file
+	// - user4: password "number4" as hash from command
+	// - user5: no password given (i.e. user exists, but login not possible)
+	vcfg := GetValidationConfigForTests()
+	seed, errs := ReadDatabaseSeed("fixtures/seed-users-with-all-password-formats.json", vcfg)
+	expectNoErrors(t, errs)
+
+	//register a listener to observe the real DB changes
+	hasher := &NoopHasher{}
+	hasher.RealHasher = must.ReturnT(crypt.NewPasswordHasher())(t)
+	nexus := NewNexus(seed, vcfg, hasher)
+
+	//load an empty database (like on first startup) -> seed gets applied
+	errs = nexus.Update(reducerReturnEmpty, nil)
+	expectNoErrors(t, errs)
+
+	// check that users can log in with the expected passwords
+	expectPassword := func(loginName, password string) {
+		t.Helper()
+		u, ok := nexus.FindUser(func(u User) bool {
+			return u.LoginName == loginName
+		})
+		if !ok {
+			t.Errorf("user %q does not exist", loginName)
+		}
+		if !hasher.CheckPasswordHash(password, u.PasswordHash) {
+			t.Errorf("password %q not accepted for user %q with password hash %q",
+				password, loginName, u.PasswordHash)
+		}
+	}
+	expectPassword("user1", "number1")
+	expectPassword("user2", "number2")
+	expectPassword("user3", "number3")
+	expectPassword("user4", "number4")
+
+	// check that user5 cannot log in
+	u, ok := nexus.FindUser(func(u User) bool {
+		return u.LoginName == "user5"
+	})
+	if !ok {
+		t.Errorf("user %q does not exist", "user5")
+	}
+	assert.Equal(t, u.PasswordHash, "")
 }
 
 func expectNoErrors(t *testing.T, errs errext.ErrorSet) {

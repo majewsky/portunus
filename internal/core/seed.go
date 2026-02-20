@@ -92,10 +92,12 @@ func (d DatabaseSeed) Validate(cfg *ValidationConfig) (errs errext.ErrorSet) {
 		}
 	}
 
-	//non-nil-ness of posix.uid and posix.gid on UserSeeds cannot be checked in
-	//Database.Validate() because those fields are not pointers on type User
+	// checks for UserSeed attributes that are not covered by Database.Validate()
 	for _, userSeed := range d.Users {
 		ref := User{LoginName: string(userSeed.LoginName)}.Ref()
+
+		// non-nil-ness of posix.uid and posix.gid on UserSeeds cannot be checked in
+		// Database.Validate() because those fields are not pointers on type User
 		if userSeed.POSIX != nil {
 			if userSeed.POSIX.UID == nil {
 				errs.Add(ref.Field("posix_uid").Wrap(errIsMissing))
@@ -103,6 +105,11 @@ func (d DatabaseSeed) Validate(cfg *ValidationConfig) (errs errext.ErrorSet) {
 			if userSeed.POSIX.GID == nil {
 				errs.Add(ref.Field("posix_gid").Wrap(errIsMissing))
 			}
+		}
+
+		// additional rules for password seeds that User.validateLocal() cannot cover
+		if userSeed.Password != "" && userSeed.PasswordHash != "" {
+			errs.Add(ref.Field("password").Wrap(errPasswordIsDuplicateInSeed))
 		}
 	}
 
@@ -340,6 +347,7 @@ type UserSeed struct {
 	EMailAddress  StringSeed   `json:"email"`
 	SSHPublicKeys []StringSeed `json:"ssh_public_keys"`
 	Password      StringSeed   `json:"password"`
+	PasswordHash  StringSeed   `json:"password_hash"`
 	POSIX         *struct {
 		UID           *PosixID   `json:"uid"`
 		GID           *PosixID   `json:"gid"`
@@ -380,6 +388,10 @@ func (u UserSeed) ApplyTo(target *User, hasher crypt.PasswordHasher) {
 		if hash == "" || hasher.IsWeakHash(hash) || !hasher.CheckPasswordHash(pw, hash) {
 			target.PasswordHash = hasher.HashPassword(pw)
 		}
+	}
+
+	if u.PasswordHash != "" {
+		target.PasswordHash = hasher.WrapPasswordHash(string(u.PasswordHash))
 	}
 
 	if u.POSIX != nil {
