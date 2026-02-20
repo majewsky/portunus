@@ -1,7 +1,7 @@
 This project follows [semantic versioning](https://semver.org/spec/v2.0.0.html). If you believe that
 SemVer was not adhered to in one of our releases, please open an issue.
 
-# v2.2.0 (TBD)
+# v2.2.0 (2026-02-20)
 
 New features:
 
@@ -23,6 +23,7 @@ Changes:
   because illformatted `email` attribute values may break downstream users and should always have been rejected.
 - Instead of issuing CSRF tokens in its HTML forms, Portunus now expects `Sec-Fetch-Site: same-origin` on POST requests.
 - The `portunus-login` cookie is now set with `SameSite=Strict`.
+- All dependencies were updated to their latest versions. Because of dependencies, Go 1.25 is now required.
 
 # v2.1.4 (2025-07-07)
 
