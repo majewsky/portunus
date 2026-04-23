@@ -1,4 +1,4 @@
-# github.com/Azure/go-ntlmssp v0.1.0
+# github.com/Azure/go-ntlmssp v0.1.1
 ## explicit; go 1.24
 github.com/Azure/go-ntlmssp
 github.com/Azure/go-ntlmssp/internal/md4
