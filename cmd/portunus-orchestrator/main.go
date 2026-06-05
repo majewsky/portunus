@@ -73,9 +73,17 @@ func main() {
 		"PORTUNUS_SERVER_HTTP_LISTEN="+environment["PORTUNUS_SERVER_HTTP_LISTEN"],
 		"PORTUNUS_SERVER_HTTP_SECURE="+environment["PORTUNUS_SERVER_HTTP_SECURE"],
 		"PORTUNUS_SERVER_STATE_DIR="+environment["PORTUNUS_SERVER_STATE_DIR"],
+		"PORTUNUS_SERVER_TRACER_LISTEN="+environment["PORTUNUS_SERVER_TRACER_LISTEN"],
 		"PORTUNUS_SLAPD_TLS_DOMAIN_NAME="+environment["PORTUNUS_SLAPD_TLS_DOMAIN_NAME"],
 		"PORTUNUS_USER_NAME_REGEX="+environment["PORTUNUS_USER_NAME_REGEX"],
 	)
+	if environment["PORTUNUS_SLAPD_TLS_CERTIFICATE"] != "" && environment["PORTUNUS_SERVER_TRACER_LISTEN"] != "" {
+		cmd.Env = append(cmd.Env,
+			"PORTUNUS_SLAPD_TLS_CERTIFICATE="+environment["PORTUNUS_SLAPD_TLS_CERTIFICATE"],
+			"PORTUNUS_SLAPD_TLS_PRIVATE_KEY="+environment["PORTUNUS_SLAPD_TLS_PRIVATE_KEY"],
+			"PORTUNUS_SLAPD_TLS_CA_CERTIFICATE="+environment["PORTUNUS_SLAPD_TLS_CA_CERTIFICATE"],
+		)
+	}
 	err := cmd.Run()
 	if err != nil {
 		logg.Fatal("error encountered while running portunus-server: " + err.Error())

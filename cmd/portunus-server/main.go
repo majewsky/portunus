@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -24,6 +25,15 @@ import (
 
 func main() {
 	logg.ShowDebug = os.Getenv("PORTUNUS_DEBUG") == "true"
+
+	// if we run the tracer, and we do so with TLS, then we need to
+	// read the respective credentials before dropping privileges;
+	// later, we likely won't have access to those files
+	var tracerTLSConfig *tls.Config
+	if os.Getenv("PORTUNUS_SERVER_TRACER_LISTEN") != "" {
+		tracerTLSConfig = readLDAPTracerTLSConfig()
+	}
+
 	dropPrivileges()
 
 	vcfg := must.Return(core.ReadValidationConfigFromEnvironment())
@@ -49,6 +59,10 @@ func main() {
 	go func() {
 		must.Succeed(ldapAdapter.Run(ctx))
 	}()
+
+	if os.Getenv("PORTUNUS_SERVER_TRACER_LISTEN") != "" {
+		go runLDAPTracer(ctx, tracerTLSConfig)
+	}
 
 	handler := frontend.HTTPHandler(nexus, os.Getenv("PORTUNUS_SERVER_HTTP_SECURE") == "true")
 	logg.Fatal(http.ListenAndServe(os.Getenv("PORTUNUS_SERVER_HTTP_LISTEN"), handler).Error())

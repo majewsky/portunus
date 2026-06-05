@@ -22,22 +22,25 @@ type valueCheck struct {
 var (
 	userOrGroupPattern = `^[a-z_][a-z0-9_-]*\$?$`
 	envDefaults        = map[string]string{
-		// empty value = not optional
-		"PORTUNUS_DEBUG":              "false",
-		"PORTUNUS_GROUP_NAME_REGEX":   userOrGroupPattern,
-		"PORTUNUS_LDAP_SUFFIX":        "",
-		"PORTUNUS_SERVER_BINARY":      "portunus-server",
-		"PORTUNUS_SERVER_GROUP":       "portunus",
-		"PORTUNUS_SERVER_HTTP_LISTEN": "127.0.0.1:8080",
-		"PORTUNUS_SERVER_HTTP_SECURE": "true",
-		"PORTUNUS_SERVER_STATE_DIR":   "/var/lib/portunus",
-		"PORTUNUS_SERVER_USER":        "portunus",
-		"PORTUNUS_SLAPD_BINARY":       "slapd",
-		"PORTUNUS_SLAPD_GROUP":        "ldap",
-		"PORTUNUS_SLAPD_SCHEMA_DIR":   "/etc/openldap/schema",
-		"PORTUNUS_SLAPD_STATE_DIR":    "/var/run/portunus-slapd",
-		"PORTUNUS_SLAPD_USER":         "ldap",
-		"PORTUNUS_USER_NAME_REGEX":    userOrGroupPattern,
+		"PORTUNUS_DEBUG":                "false",
+		"PORTUNUS_GROUP_NAME_REGEX":     userOrGroupPattern,
+		"PORTUNUS_LDAP_SUFFIX":          "",
+		"PORTUNUS_SERVER_BINARY":        "portunus-server",
+		"PORTUNUS_SERVER_GROUP":         "portunus",
+		"PORTUNUS_SERVER_HTTP_LISTEN":   "127.0.0.1:8080",
+		"PORTUNUS_SERVER_HTTP_SECURE":   "true",
+		"PORTUNUS_SERVER_STATE_DIR":     "/var/lib/portunus",
+		"PORTUNUS_SERVER_TRACER_LISTEN": "", // not enabled by default
+		"PORTUNUS_SERVER_USER":          "portunus",
+		"PORTUNUS_SLAPD_BINARY":         "slapd",
+		"PORTUNUS_SLAPD_GROUP":          "ldap",
+		"PORTUNUS_SLAPD_SCHEMA_DIR":     "/etc/openldap/schema",
+		"PORTUNUS_SLAPD_STATE_DIR":      "/var/run/portunus-slapd",
+		"PORTUNUS_SLAPD_USER":           "ldap",
+		"PORTUNUS_USER_NAME_REGEX":      userOrGroupPattern,
+	}
+	envIsOptional = map[string]bool{
+		"PORTUNUS_SERVER_TRACER_LISTEN": true,
 	}
 
 	strictBoolCheck    = valueCheck{isStrictBool, `either "true" or "false"`}
@@ -46,14 +49,15 @@ var (
 	posixAcctNameCheck = valueCheck{grammars.IsPOSIXAccountName, "a POSIX account name (see `man 8 useradd` for format description)"}
 
 	envFormats = map[string]valueCheck{
-		"PORTUNUS_DEBUG":              strictBoolCheck,
-		"PORTUNUS_LDAP_SUFFIX":        ldapSuffixCheck,
-		"PORTUNUS_SERVER_GROUP":       posixAcctNameCheck,
-		"PORTUNUS_SERVER_HTTP_LISTEN": listenAddressCheck,
-		"PORTUNUS_SERVER_HTTP_SECURE": strictBoolCheck,
-		"PORTUNUS_SERVER_USER":        posixAcctNameCheck,
-		"PORTUNUS_SLAPD_GROUP":        posixAcctNameCheck,
-		"PORTUNUS_SLAPD_USER":         posixAcctNameCheck,
+		"PORTUNUS_DEBUG":                strictBoolCheck,
+		"PORTUNUS_LDAP_SUFFIX":          ldapSuffixCheck,
+		"PORTUNUS_SERVER_GROUP":         posixAcctNameCheck,
+		"PORTUNUS_SERVER_HTTP_LISTEN":   listenAddressCheck,
+		"PORTUNUS_SERVER_HTTP_SECURE":   strictBoolCheck,
+		"PORTUNUS_SERVER_TRACER_LISTEN": listenAddressCheck,
+		"PORTUNUS_SERVER_USER":          posixAcctNameCheck,
+		"PORTUNUS_SLAPD_GROUP":          posixAcctNameCheck,
+		"PORTUNUS_SLAPD_USER":           posixAcctNameCheck,
 	}
 )
 
@@ -78,9 +82,10 @@ func readConfig() (environment map[string]string, ids map[string]int) {
 			value = defaultValue
 		}
 		if value == "" {
-			logg.Fatal("missing required environment variable: " + key)
-		}
-		if check := envFormats[key]; check.Checker != nil {
+			if !envIsOptional[key] {
+				logg.Fatal("missing required environment variable: " + key)
+			}
+		} else if check := envFormats[key]; check.Checker != nil {
 			if !check.Checker(value) {
 				logg.Fatal("malformed environment variable: %s must be %s", value, check.FormatDesc)
 			}
