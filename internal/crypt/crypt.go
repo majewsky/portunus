@@ -1,8 +1,5 @@
-/*******************************************************************************
-* Copyright 2023 Stefan Majewsky <majewsky@gmx.net>
-* SPDX-License-Identifier: GPL-3.0-only
-* Refer to the file "LICENSE" for details.
-*******************************************************************************/
+// SPDX-FileCopyrightText: 2023 Stefan Majewsky <majewsky@gmx.net>
+// SPDX-License-Identifier: GPL-3.0-only
 
 // Package crypt provides a type-safe interface to the password hashing
 // functionality in libxcrypt.

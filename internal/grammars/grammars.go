@@ -1,8 +1,5 @@
-/*******************************************************************************
-* Copyright 2023 Stefan Majewsky <majewsky@gmx.net>
-* SPDX-License-Identifier: GPL-3.0-only
-* Refer to the file "LICENSE" for details.
-*******************************************************************************/
+// SPDX-FileCopyrightText: 2023 Stefan Majewsky <majewsky@gmx.net>
+// SPDX-License-Identifier: GPL-3.0-only
 
 // Package grammars contains explicit implementations of several regex grammars.
 //
