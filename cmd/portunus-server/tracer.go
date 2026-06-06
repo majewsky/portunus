@@ -6,9 +6,11 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -115,11 +117,39 @@ func handleLDAPTracerProxying(ctx context.Context, cancel func(), connIdx int64,
 		if msgLen == 0 {
 			continue
 		}
-		logg.Info("LDAP tracer: connection %d: forwarding %d bytes from %s to %s: %v", connIdx, msgLen, readerName, writerName, reqBuf[:msgLen])
+		logg.Info("LDAP tracer: connection %d: forwarding %d bytes from %s to %s: %v", connIdx, msgLen, readerName, writerName, formatMessageBytesForDisplay(reqBuf[:msgLen]))
 		_, err = writer.Write(reqBuf[:msgLen])
 		if err != nil {
 			logg.Error("LDAP tracer: connection %d: write to %s failed: %s", connIdx, writerName, err.Error())
 			cancel()
 		}
 	}
+}
+
+// Formats arbitrary bytes from an LDAP message into a printable form, representing printable ASCII characters as themselves and all other bytes by their hexcode.
+func formatMessageBytesForDisplay(buf []byte) string {
+	var (
+		out       strings.Builder
+		isColored bool
+	)
+	for _, b := range buf {
+		if b > 0x20 && b < 0x7F { // printable characters (not including space = 0x20)
+			if isColored {
+				_, _ = out.WriteString("\x1B[0m")
+				isColored = false
+			}
+			_ = out.WriteByte(b)
+		} else {
+			if !isColored {
+				_, _ = out.WriteString("\x1B[0;36m")
+				isColored = true
+			}
+			fmt.Fprintf(&out, "{%02x}", b)
+		}
+	}
+
+	if isColored {
+		_, _ = out.WriteString("\x1B[0m")
+	}
+	return out.String()
 }
