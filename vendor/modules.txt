@@ -27,8 +27,8 @@ github.com/gorilla/sessions
 # github.com/majewsky/xyrillian.css v0.0.0-20220726195116-0374c0b40e25
 ## explicit
 github.com/majewsky/xyrillian.css
-# github.com/sapcc/go-bits v0.0.0-20260219121224-1c2b75dbf776
-## explicit; go 1.25
+# github.com/sapcc/go-bits v0.0.0-20260807114049-ed453da227d5
+## explicit; go 1.26
 github.com/sapcc/go-bits/errext
 github.com/sapcc/go-bits/logg
 github.com/sapcc/go-bits/must
@@ -38,17 +38,19 @@ github.com/sapcc/go-bits/osext
 go.xyrillian.de/gg/assert
 go.xyrillian.de/gg/internal/path
 go.xyrillian.de/gg/option
-# golang.org/x/crypto v0.52.0
+# golang.org/x/crypto v0.54.0
 ## explicit; go 1.25.0
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/chacha20
+golang.org/x/crypto/cryptobyte
+golang.org/x/crypto/cryptobyte/asn1
 golang.org/x/crypto/curve25519
 golang.org/x/crypto/internal/alias
 golang.org/x/crypto/internal/poly1305
 golang.org/x/crypto/md4
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
-# golang.org/x/sys v0.45.0
+# golang.org/x/sys v0.47.0
 ## explicit; go 1.25.0
 golang.org/x/sys/cpu
 golang.org/x/sys/unix
