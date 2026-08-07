@@ -116,12 +116,10 @@ func TestReadSideloadedStore(t *testing.T) {
 
 	// while the adapter is running...
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		adapter := NewAdapter(nexus, storePath)
 		test.ExpectNoError(t, adapter.Run(ctx))
-	}()
+	})
 
 	// ...first we let it finish its startup...
 	time.Sleep(25 * time.Millisecond)
@@ -150,12 +148,10 @@ func TestWriteStore(t *testing.T) {
 
 	// we don't care about these initial contents, but we need the adapter running
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		adapter := NewAdapter(nexus, storePath)
 		test.ExpectNoError(t, adapter.Run(ctx))
-	}()
+	})
 
 	// after the adapter has set up its listener...
 	time.Sleep(25 * time.Millisecond)
@@ -204,11 +200,9 @@ func TestInitializeMissingStore(t *testing.T) {
 	// let the adapter fulfil this promise
 	adapter := NewAdapter(nexus, storePath)
 	var wg2 sync.WaitGroup
-	wg2.Add(1)
-	go func() {
-		defer wg2.Done()
+	wg2.Go(func() {
 		test.ExpectNoError(t, adapter.Run(ctx))
-	}()
+	})
 
 	// wait for the load to be observed...
 	wg1.Wait()

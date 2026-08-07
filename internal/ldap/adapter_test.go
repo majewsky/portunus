@@ -36,11 +36,9 @@ func setupAdapterTest(t *testing.T) (conn *test.LDAPConnectionDouble, updateDBWi
 		defer cancel()
 
 		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			test.ExpectNoError(t, adapter.Run(ctx))
-		}()
+		})
 
 		errs := nexus.Update(action, nil)
 		time.Sleep(10 * time.Millisecond) // give the Adapter some time to complete outstanding actions

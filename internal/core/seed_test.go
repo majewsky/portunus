@@ -33,7 +33,7 @@ func dbWithBasicSeedApplied() Database {
 				Permissions: Permissions{
 					LDAP: LDAPPermissions{CanRead: true},
 				},
-				PosixGID: pointerTo(PosixID(23)),
+				PosixGID: new(PosixID(23)),
 			},
 			{
 				Name:             "mingroup",
@@ -80,7 +80,7 @@ func reducerOverwriteSeededAttrs1(hasher crypt.PasswordHasher) func(*Database) e
 		db.Groups[0].MemberLoginNames = GroupMemberNames{} // removing seeded members is not allowed
 		db.Groups[0].Permissions.Portunus.IsAdmin = true
 		db.Groups[0].Permissions.LDAP.CanRead = false
-		db.Groups[0].PosixGID = pointerTo(*db.Groups[0].PosixGID + 1)
+		db.Groups[0].PosixGID = new(*db.Groups[0].PosixGID + 1)
 		db.Users[0].GivenName += "-changed"
 		db.Users[0].FamilyName += "-changed"
 		db.Users[0].EMailAddress = "changed@example.org"
@@ -142,7 +142,7 @@ func reducerOverwriteUnseededAttributes(hasher crypt.PasswordHasher) func(*Datab
 		db.Groups[1].MemberLoginNames = GroupMemberNames{"minuser": true} // removing seeded members is not allowed
 		db.Groups[1].Permissions.Portunus.IsAdmin = true
 		db.Groups[1].Permissions.LDAP.CanRead = true
-		db.Groups[1].PosixGID = pointerTo(PosixID(123))
+		db.Groups[1].PosixGID = new(PosixID(123))
 		db.Users[1].EMailAddress = "minuser@example.org"
 		db.Users[1].SSHPublicKeys = []string{dummySSHPublicKey}
 		db.Users[1].PasswordHash = hasher.HashPassword("qwerty")
@@ -479,8 +479,4 @@ func expectTheseErrors(t *testing.T, errs errext.ErrorSet, expected ...string) {
 	sort.Strings(actual)
 	sort.Strings(expected)
 	assert.Equal(t, actual, expected)
-}
-
-func pointerTo[T any](val T) *T {
-	return &val
 }
