@@ -71,8 +71,7 @@ func TestReadExistingStore(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dirPath, storePath := setupTempDir(t)
-	defer os.RemoveAll(dirPath) //nolint:errcheck
+	storePath := filepath.Join(t.TempDir(), "database.json")
 
 	// before starting, there are already contents in the database store
 	test.ExpectNoError(t, os.WriteFile(storePath, []byte(db1Representation), 0666))
@@ -94,12 +93,7 @@ func TestReadSideloadedStore(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dirPath, err := os.MkdirTemp(os.TempDir(), "portunus-storetest-")
-	test.ExpectNoError(t, err)
-	defer func() {
-		test.ExpectNoError(t, os.RemoveAll(dirPath))
-	}()
-	storePath := filepath.Join(dirPath, "database.json")
+	storePath := filepath.Join(t.TempDir(), "database.json")
 
 	// before starting, there are already contents in the database store
 	test.ExpectNoError(t, os.WriteFile(storePath, []byte(db1Representation), 0666))
@@ -149,12 +143,7 @@ func TestWriteStore(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dirPath, err := os.MkdirTemp(os.TempDir(), "portunus-storetest-")
-	test.ExpectNoError(t, err)
-	defer func() {
-		test.ExpectNoError(t, os.RemoveAll(dirPath))
-	}()
-	storePath := filepath.Join(dirPath, "database.json")
+	storePath := filepath.Join(t.TempDir(), "database.json")
 
 	// before starting, there are already contents in the database store
 	test.ExpectNoError(t, os.WriteFile(storePath, []byte(db1Representation), 0666))
@@ -196,8 +185,7 @@ func TestInitializeMissingStore(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dirPath, storePath := setupTempDir(t)
-	defer os.RemoveAll(dirPath) //nolint:errcheck
+	storePath := filepath.Join(t.TempDir(), "database.json")
 
 	// when the adapter starts up and finds no store...
 	var wg1 sync.WaitGroup
@@ -234,10 +222,4 @@ func TestInitializeMissingStore(t *testing.T) {
 	test.ExpectNoError(t, err)
 	repr := strings.Replace(string(buf), realPasswordHash, "<variable>", 1)
 	assert.Equal(t, repr, autoinitDBRepresentation)
-}
-
-func setupTempDir(t *testing.T) (dirPath, storePath string) {
-	dirPath, err := os.MkdirTemp(os.TempDir(), "portunus-storetest-")
-	test.ExpectNoError(t, err)
-	return dirPath, filepath.Join(dirPath, "database.json")
 }
