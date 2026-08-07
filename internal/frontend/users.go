@@ -179,7 +179,7 @@ func buildUserMasterdataFieldset(n core.Nexus, u *core.User, state *h.FormState)
 	sort.Slice(allGroups, func(i, j int) bool {
 		return allGroups[i].LongName < allGroups[j].LongName
 	})
-	var groupOpts []h.SelectOptionSpec
+	groupOpts := make([]h.SelectOptionSpec, 0, len(allGroups))
 	isGroupSelected := make(map[string]bool)
 	for _, group := range allGroups {
 		groupOpts = append(groupOpts, h.SelectOptionSpec{

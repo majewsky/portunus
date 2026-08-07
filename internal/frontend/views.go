@@ -115,6 +115,7 @@ func (p Page) Render(w http.ResponseWriter, r *http.Request, currentUser *core.U
 	err := s.Save(r, w)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

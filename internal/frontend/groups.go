@@ -205,7 +205,7 @@ func buildGroupMemberFieldset(n core.Nexus, g *core.Group, state *h.FormState) h
 	sort.Slice(allUsers, func(i, j int) bool {
 		return allUsers[i].LoginName < allUsers[j].LoginName
 	})
-	var memberOpts []h.SelectOptionSpec
+	memberOpts := make([]h.SelectOptionSpec, 0, len(allUsers))
 	isUserSelected := make(map[string]bool)
 	for _, user := range allUsers {
 		memberOpts = append(memberOpts, h.SelectOptionSpec{

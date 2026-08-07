@@ -36,7 +36,7 @@ func useSelfServiceForm(n core.Nexus) HandlerStep {
 			return visibleGroups[i].LongName < visibleGroups[j].LongName
 		})
 
-		var memberships []h.SelectOptionSpec
+		memberships := make([]h.SelectOptionSpec, 0, len(visibleGroups))
 		isSelected := make(map[string]bool)
 		for _, group := range visibleGroups {
 			membership := h.SelectOptionSpec{

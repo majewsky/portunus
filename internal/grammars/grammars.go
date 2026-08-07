@@ -49,7 +49,7 @@ func IsLDAPSuffix(input string) bool {
 		if key != "dc" {
 			return false
 		}
-		if len(value) == 0 {
+		if value == "" {
 			return false
 		}
 		if !checkEachByte([]byte(value), checkByteInDomainComponent) {
@@ -120,7 +120,7 @@ func checkByteInPortNumber(idx, length int, b byte) bool {
 
 // IsNonnegativeInteger returns whether the string matches NonnegativeIntegerRegex.
 func IsNonnegativeInteger(input string) bool {
-	if len(input) == 0 {
+	if input == "" {
 		return false
 	}
 	if input == "0" {
@@ -143,7 +143,7 @@ func checkByteInPositiveInteger(idx, length int, b byte) bool {
 // IsPOSIXAccountName returns whether the string matches POSIXAccountNameRegex.
 func IsPOSIXAccountName(input string) bool {
 	input = strings.TrimSuffix(input, "$")
-	if len(input) == 0 {
+	if input == "" {
 		return false
 	}
 	return checkEachByte([]byte(input), checkByteInPOSIXAccountName)

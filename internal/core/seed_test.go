@@ -184,7 +184,7 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
 
 	// overwriting seeded attributes is not allowed
-	// -> no change because seed gets reenforced
+	// -> no change because seed gets re-enforced
 	errs = nexus.Update(reducerOverwriteSeededAttrs1(hasher), nil)
 	expectNoErrors(t, errs)
 	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
