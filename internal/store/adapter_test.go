@@ -15,8 +15,8 @@ import (
 
 	"github.com/majewsky/portunus/internal/core"
 	"github.com/majewsky/portunus/internal/test"
-	"github.com/sapcc/go-bits/assert"
 	"github.com/sapcc/go-bits/errext"
+	"go.xyrillian.de/gg/assert"
 )
 
 // NOTE: The database contents in these tests are all very minimal. The point
@@ -78,7 +78,7 @@ func TestReadExistingStore(t *testing.T) {
 
 	// when the adapter loads those contents, verify that they decode into the expected DB contents
 	nexus.AddListener(ctx, func(actualDB core.Database) {
-		assert.DeepEqual(t, "database contents after load", actualDB, db1Contents)
+		assert.Equal(t, actualDB, db1Contents)
 		cancel() // make adapter.Run() return
 	})
 
@@ -105,9 +105,9 @@ func TestReadSideloadedStore(t *testing.T) {
 		updateCount++
 		switch updateCount {
 		case 1:
-			assert.DeepEqual(t, "database contents after initial load", actualDB, db1Contents)
+			assert.Equal(t, actualDB, db1Contents)
 		case 2:
-			assert.DeepEqual(t, "database contents after sideload", actualDB, db2Contents)
+			assert.Equal(t, actualDB, db2Contents)
 			cancel() // make adapter.Run() return
 		default:
 			t.Error("too many updates")
@@ -197,7 +197,7 @@ func TestInitializeMissingStore(t *testing.T) {
 			realPasswordHash = actualDB.Users[idx].PasswordHash
 			actualDB.Users[idx].PasswordHash = "<variable>"
 		}
-		assert.DeepEqual(t, "database contents after load", actualDB, autoinitDBContents)
+		assert.Equal(t, actualDB, autoinitDBContents)
 		wg1.Done()
 	})
 

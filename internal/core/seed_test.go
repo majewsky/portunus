@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/majewsky/portunus/internal/crypt"
-	"github.com/sapcc/go-bits/assert"
 	"github.com/sapcc/go-bits/errext"
 	"github.com/sapcc/go-bits/must"
+	"go.xyrillian.de/gg/assert"
 )
 
 const dummySSHPublicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGNvYUluYODNXoQKDGG+pTEigpsvJP2SHfMz0a+Hl2xO maxuser@example.org"
@@ -181,17 +181,17 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	expectNoErrors(t, errs)
 
 	expectedDB := dbWithBasicSeedApplied()
-	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
+	assert.Equal(t, actualDB, expectedDB)
 
 	// overwriting seeded attributes is not allowed
 	// -> no change because seed gets re-enforced
 	errs = nexus.Update(reducerOverwriteSeededAttrs1(hasher), nil)
 	expectNoErrors(t, errs)
-	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
+	assert.Equal(t, actualDB, expectedDB)
 
 	errs = nexus.Update(reducerOverwriteSeededAttrs2, nil)
 	expectNoErrors(t, errs)
-	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
+	assert.Equal(t, actualDB, expectedDB)
 
 	// overwriting seeded attributes in a compatible way is allowed
 	errs = nexus.Update(reducerOverwriteMalleableAttributes(hasher), nil)
@@ -201,7 +201,7 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
+	assert.Equal(t, actualDB, expectedDB)
 
 	// overwriting unseeded attributes is always allowed
 	errs = nexus.Update(reducerOverwriteUnseededAttributes(hasher), nil)
@@ -211,7 +211,7 @@ func TestSeedEnforcementRelaxed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
+	assert.Equal(t, actualDB, expectedDB)
 }
 
 func TestSeedEnforcementStrict(t *testing.T) {
@@ -239,7 +239,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	expectNoErrors(t, errs)
 
 	expectedDB := dbWithBasicSeedApplied()
-	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
+	assert.Equal(t, actualDB, expectedDB)
 	assert.Equal(t, updateCount, 1)
 
 	// overwriting seeded attributes is not allowed
@@ -286,7 +286,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
+	assert.Equal(t, actualDB, expectedDB)
 	assert.Equal(t, updateCount, 2)
 
 	// overwriting unseeded attributes is always allowed
@@ -297,7 +297,7 @@ func TestSeedEnforcementStrict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
+	assert.Equal(t, actualDB, expectedDB)
 	assert.Equal(t, updateCount, 3)
 }
 
@@ -389,7 +389,7 @@ func TestSeedCryptoAgility(t *testing.T) {
 		}},
 		Groups: []Group{},
 	}
-	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
+	assert.Equal(t, actualDB, expectedDB)
 
 	// change to a different hash method, but the hash still matches the password
 	// -> this will be accepted since this hash method is not considered weak
@@ -400,7 +400,7 @@ func TestSeedCryptoAgility(t *testing.T) {
 	expectNoErrors(t, errs)
 
 	expectedDB.Users[0].PasswordHash = "{WEAK-PLAINTEXT}swordfish"
-	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
+	assert.Equal(t, actualDB, expectedDB)
 
 	// if the hash method is considered weak, DatabaseSeed.ApplyTo() will rehash
 	// using a stronger method
@@ -409,7 +409,7 @@ func TestSeedCryptoAgility(t *testing.T) {
 	expectNoErrors(t, errs)
 
 	expectedDB.Users[0].PasswordHash = "{PLAINTEXT}swordfish"
-	assert.DeepEqual(t, "database contents", actualDB, expectedDB)
+	assert.Equal(t, actualDB, expectedDB)
 }
 
 func TestSeedPasswordRepresentations(t *testing.T) {
@@ -478,7 +478,7 @@ func expectTheseErrors(t *testing.T, errs errext.ErrorSet, expected ...string) {
 	}
 	sort.Strings(actual)
 	sort.Strings(expected)
-	assert.DeepEqual(t, "error messages", actual, expected)
+	assert.Equal(t, actual, expected)
 }
 
 func pointerTo[T any](val T) *T {

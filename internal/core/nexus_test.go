@@ -6,8 +6,8 @@ package core
 import (
 	"testing"
 
-	"github.com/sapcc/go-bits/assert"
 	"github.com/sapcc/go-bits/errext"
+	"go.xyrillian.de/gg/assert"
 )
 
 // NOTE: Most actual test coverage for the Nexus (esp. the validation logic) is
