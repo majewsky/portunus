@@ -15,6 +15,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/majewsky/portunus/internal/ber"
+	"github.com/majewsky/portunus/internal/ldapproto"
 	"github.com/sapcc/go-bits/logg"
 	"github.com/sapcc/go-bits/must"
 )
@@ -117,7 +119,14 @@ func handleLDAPTracerProxying(ctx context.Context, cancel func(), connIdx int64,
 		if msgLen == 0 {
 			continue
 		}
-		logg.Info("LDAP tracer: connection %d: forwarding %d bytes from %s to %s: %v", connIdx, msgLen, readerName, writerName, formatMessageBytesForDisplay(reqBuf[:msgLen]))
+		logg.Info("LDAP tracer: connection %d: forwarding %d bytes from %s to %s: %s", connIdx, msgLen, readerName, writerName, formatMessageBytesForDisplay(reqBuf[:msgLen]))
+		logg.Info("LDAP tracer: connection %d: raw bytes from %s to %s: %q", connIdx, readerName, writerName, string(reqBuf[:msgLen]))
+		msg, err := ber.Unmarshal[ldapproto.Message](reqBuf[:msgLen])
+		if err == nil {
+			logg.Info("LDAP tracer: connection %d: decoded message from %s to %s: %#v", connIdx, readerName, writerName, msg)
+		} else {
+			logg.Info("LDAP tracer: connection %d: could not decode message from %s to %s: %s", connIdx, readerName, writerName, err.Error())
+		}
 		_, err = writer.Write(reqBuf[:msgLen])
 		if err != nil {
 			logg.Error("LDAP tracer: connection %d: write to %s failed: %s", connIdx, writerName, err.Error())
