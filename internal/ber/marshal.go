@@ -213,7 +213,7 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value, si structInfo, t tag) err
 	// marshal zero-field structs as NULL values [X.690, 8.8]
 	if len(si.Fields) == 0 {
 		_, err := marshalHeader(buf, header{
-			Tag:           tagNull,
+			Tag:           t,
 			IsConstructed: false,
 			Length:        Some(0),
 		})
@@ -221,7 +221,7 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value, si structInfo, t tag) err
 	}
 
 	// marshal all other sturcts as SEQUENCE values [X.690, 8.9]
-	offset, err := marshalHeader(buf, header{Tag: tagSequence, IsConstructed: true})
+	offset, err := marshalHeader(buf, header{Tag: t, IsConstructed: true})
 	if err != nil {
 		return err
 	}

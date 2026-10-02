@@ -128,7 +128,7 @@ func TestPrimitiveValues(t *testing.T) {
 		"error at byte 2: do not know how to decode into chan string")
 }
 
-func TestUnmarshalLDAPProtocolMessages(t *testing.T) {
+func TestLDAPProtocolMessages(t *testing.T) {
 	// This sequence of messages is a full request-response sequence for the command
 	// `ldapsearch -H ldap://localhost:389 -D uid=admin,ou=users,dc=example,dc=com -W -b dc=example,dc=com '(objectclass=person)'`
 	// on a minimal dev instance.
