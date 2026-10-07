@@ -246,22 +246,48 @@ func unmarshalInteger(pbuf *[]byte, hdr header, target reflect.Value, isSigned b
 
 // Unmarshals an OCTET STRING value [X.690, 8.7] into a string type.
 func unmarshalString(pbuf *[]byte, hdr header, target reflect.Value) error {
-	buf := *pbuf
-	defer func() {
-		*pbuf = buf
-	}()
-
 	err := hdr.ExpectTagFor(target, tagOctetString)
 	if err != nil {
 		return err
 	}
-	content, err := hdr.ExpectPrimitiveAndGetContent(&buf)
+	content, err := unmarshalStringContent(pbuf, hdr)
 	if err != nil {
 		return err
 	}
 
-	target.SetString(string(content))
+	target.SetString(content)
 	return nil
+}
+
+// Helper for unmarshalString(): Collect the content from an OCTET STRING value,
+// recursing into constructed encodings if necessary.
+func unmarshalStringContent(pbuf *[]byte, hdr header) (string, error) {
+	// primitive encoding [X.690, 8.7.2]
+	if !hdr.IsConstructed {
+		result, err := hdr.ExpectPrimitiveAndGetContent(pbuf)
+		if err != nil {
+			return "", err
+		}
+		return string(result), nil
+	}
+
+	// constructed encoding [X.690, 8.7.3]
+	var (
+		result  string
+		rvDummy = reflect.ValueOf("")
+	)
+	err := unmarshalConstructedSequence(pbuf, hdr, func(pbuf *[]byte, hdr header) error {
+		err := hdr.ExpectTagFor(rvDummy, tagOctetString)
+		if err != nil {
+			return err
+		}
+		content, err := unmarshalStringContent(pbuf, hdr)
+		if err == nil {
+			result += content
+		}
+		return err
+	})
+	return result, err
 }
 
 // Unmarshals a SEQUENCE OF value [X.690, 8.10] or SET OF value [X.690, 8.12] into a slice type.

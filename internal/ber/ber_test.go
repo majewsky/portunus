@@ -49,6 +49,24 @@ func expectParseError[T any](t *testing.T, encoding, expectedError string) {
 	assert.ErrEqual(t, err, fmt.Sprintf("while unmarshaling %T: %s", zero, expectedError))
 }
 
+type mockEnum int
+
+const (
+	mockEnumOne mockEnum = 1
+	mockEnumTwo mockEnum = 2
+)
+
+// IsEnum implements the [ber.Enum] interface.
+func (mockEnum) IsEnum() bool { return true }
+
+// Validate implements the [ber.Enum] interface.
+func (e mockEnum) Validate() error {
+	if e == mockEnumOne || e == mockEnumTwo {
+		return nil
+	}
+	return fmt.Errorf("expected mockEnum to have value 1 or 2, but got %d", e)
+}
+
 func TestPrimitiveValues(t *testing.T) {
 	// boolean [X.690, 8.2] [X.690, 11.1]
 	expectParses(t, false, "\x01\x01\x00")
@@ -97,7 +115,12 @@ func TestPrimitiveValues(t *testing.T) {
 
 	// NOTE: Beyond this point, we do not test all the different encodings of length octets again and again, and only use DER-compliant length octets.
 
-	// octet string [X.690, 8.7]
+	// enumerated integers [X.690, 8.4]
+	expectParses(t, mockEnumOne, "\x0A\x01\x01")
+	expectParses(t, mockEnumTwo, "\x0A\x01\x02")
+	expectParseError[mockEnum](t, "\x0A\x01\x03", "error at byte 3: expected mockEnum to have value 1 or 2, but got 3")
+
+	// octet string [X.690, 8.7.2]
 	expectParses(t, "", "\x04\x00")
 	expectParses(t, "Hello", "\x04\x05Hello")
 
@@ -135,6 +158,24 @@ func TestPrimitiveValues(t *testing.T) {
 		"error at byte 2: length is specified in indefinite form, which is not allowed for primitive encodings")
 	expectParseError[chan string](t, "\x01\x00",
 		"error at byte 2: do not know how to decode into chan string")
+}
+
+func TestConstructedValues(t *testing.T) {
+	// octet string [X.690, 8.7.3]
+	expectParses(t, "abcd",
+		// DER never uses constructed encoding for octet strings
+		"\x04\x04abcd",
+		// "a" + "bcd" with definite form on length octets of constructed encoding
+		"\x24\x08"+"\x04\x01a"+"\x04\x03bcd",
+		// "a" + "bc" + "d" with indefinite form on length octets of constructed encoding
+		"\x24\x80"+"\x04\x01a"+"\x04\x02bc"+"\x04\x01d"+"\x00\x00",
+		// "a" + ("b" + "cd") with nested constructed encoding
+		"\x24\x80"+"\x04\x01a"+"\x24\x07"+"\x04\x01b"+"\x04\x02cd"+"\x00\x00",
+	)
+
+	// TODO: sequence [X.690, 8.9]
+	// TODO: sequence-of [X.690, 8.10]
+	// TODO: set-of [X.690, 8.12]
 }
 
 func TestLDAPProtocolMessages(t *testing.T) {

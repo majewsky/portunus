@@ -17,6 +17,7 @@ import (
 // This function is the exact reverse of [Unmarshal]:
 //   - Only types that can be returned by [Unmarshal] may be given to this function.
 //   - All inputs will be serialized in a way that [Unmarshal] is able to parse.
+//   - All outputs will be valid DER encodings.
 func Marshal(data any) ([]byte, error) {
 	var buf bytes.Buffer
 	err := marshalValue(&buf, reflect.ValueOf(data), None[tag]())
