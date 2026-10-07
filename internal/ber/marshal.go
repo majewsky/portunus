@@ -163,8 +163,23 @@ func prepareLengthOctets(buf [9]byte, length uint64) []byte {
 		return buf[0:1]
 	} else {
 		// definite long form [X.690, 8.1.3.5]
-		payload := prepareIntegerRepresentation(buf[1:], uint64(length))
-		buf[0] = byte(len(payload))
+		payload := prepareIntegerRepresentation(buf[1:], length)
+
+		if payload[0] == 0x00 {
+			// prepareIntegerRepresentation() encodes signed integers and thus will leave a leading
+			// 0x00 on numbers that have a 1 in the highest bit of their most significant byte
+			// (e.g. 128 -> 0x00_00_00_00_00_00_00_80 -> 0x00_0x80, because 0x80 would decode to -127),
+			// but the integer in the definite long form is unsigned and thus needs to lose that leading 0x00
+			// for the shortest possible encoding that DER requires [X.690, 10.1]
+			payload = payload[1:]
+		}
+
+		if len(payload) != len(buf[1:]) {
+			// `payload` is right-aligned within `buf`, but we need the result to be left-aligned within `buf[1:]`
+			copy(buf[1:], payload)
+		}
+
+		buf[0] = 0b1000_0000 | byte(len(payload))
 		return buf[0 : 1+len(payload)]
 	}
 }

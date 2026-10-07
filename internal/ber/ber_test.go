@@ -5,6 +5,7 @@ package ber_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"go.xyrillian.de/gg/assert"
@@ -99,6 +100,14 @@ func TestPrimitiveValues(t *testing.T) {
 	// octet string [X.690, 8.7]
 	expectParses(t, "", "\x04\x00")
 	expectParses(t, "Hello", "\x04\x05Hello")
+
+	// beyond 127 bytes of payload, length octets must be in definite long form even for DER encoding
+	text := strings.Repeat("=", 127)
+	expectParses(t, text, "\x04\x7F"+text, "\x04\x81\x7F"+text, "\x04\x82\x00\x7F"+text)
+	text = strings.Repeat("=", 128)
+	expectParses(t, text, "\x04\x81\x80"+text, "\x04\x82\x00\x80"+text)
+	text = strings.Repeat("=", 129)
+	expectParses(t, text, "\x04\x81\x81"+text, "\x04\x82\x00\x81"+text)
 
 	// null [X.690, 8.8]
 	expectParses(t, struct{}{}, "\x05\x00")
