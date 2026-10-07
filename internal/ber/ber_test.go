@@ -114,6 +114,7 @@ func TestPrimitiveValues(t *testing.T) {
 	)
 
 	// NOTE: Beyond this point, we do not test all the different encodings of length octets again and again, and only use DER-compliant length octets.
+	//       This is acceptable because decoding for all types shares the same header parsing logic.
 
 	// enumerated integers [X.690, 8.4]
 	expectParses(t, mockEnumOne, "\x0A\x01\x01")
@@ -173,9 +174,55 @@ func TestConstructedValues(t *testing.T) {
 		"\x24\x80"+"\x04\x01a"+"\x24\x07"+"\x04\x01b"+"\x04\x02cd"+"\x00\x00",
 	)
 
-	// TODO: sequence [X.690, 8.9]
-	// TODO: sequence-of [X.690, 8.10]
-	// TODO: set-of [X.690, 8.12]
+	// sequence-of [X.690, 8.10]
+	sequenceEncodings := []string{
+		// DER encoding
+		"\x30\x0F" + "\x04\x03foo" + "\x04\x03bar" + "\x04\x03baz",
+		// nested constructed encoding: "bar" is encoded as "bar"+"" (an objectively insane, yet valid construction)
+		"\x30\x13" + "\x04\x03foo" + "\x24\x07\x04\x03bar\x04\x00" + "\x04\x03baz",
+		// indefinite form on length octets of outer constructed encoding
+		"\x30\x80" + "\x04\x03foo" + "\x24\x07\x04\x03bar\x04\x00" + "\x04\x03baz" + "\x00\x00",
+		// indefinite form on length octets of both constructed encodings
+		"\x30\x80" + "\x04\x03foo" + "\x24\x80\x04\x03bar\x04\x00\x00\x00" + "\x04\x03baz" + "\x00\x00",
+	}
+	expectParses(t, []string{"foo", "bar", "baz"}, sequenceEncodings...)
+
+	// set-of [X.690, 8.12] using the same examples as above, just a different tag value (0x11 instead of 0x10)
+	setEncodings := make([]string, len(sequenceEncodings))
+	for idx, value := range sequenceEncodings {
+		setEncodings[idx] = "\x31" + strings.TrimPrefix(value, "\x30")
+	}
+	expectParses(t, ber.SetOf[string]{"foo", "bar", "baz"}, setEncodings...)
+
+	// NOTE: Beyond this point, we do not test all the different encodings of length octets again and again, and only use DER-compliant length octets.
+	//       This is acceptable because decoding for all types shares the same header parsing logic.
+
+	// sequence [X.690, 8.9]
+	type simpleRecord struct {
+		ID       int
+		Category int    `ber:",optional"`
+		Name     string `ber:",optional"`
+	}
+	expectParses(t, simpleRecord{42, 5, "Alice"},
+		"\x30\x0D"+"\x02\x01\x2A"+"\x02\x01\x05"+"\x04\x05Alice",
+	)
+	expectParses(t, simpleRecord{23, 0, "Bob"},
+		// omitted zero value for optional field
+		"\x30\x08"+"\x02\x01\x17"+"\x04\x03Bob",
+		// explicit zero value for optional field
+		"\x30\x0B"+"\x02\x01\x17"+"\x02\x01\x00"+"\x04\x03Bob",
+	)
+	expectParses(t, simpleRecord{1337, 0, ""},
+		// multiple trailing optional fields omitted
+		"\x30\x04"+"\x02\x02\x05\x39",
+		// explicit zero values for all optional fields
+		"\x30\x09"+"\x02\x02\x05\x39"+"\x02\x01\x00"+"\x04\x00",
+	)
+
+	// TODO: choice [X.690, 8.13]
+	// TODO: test cases for `ber:"application:N"` and `ber:"context-specific:N"`
+	// TODO: test coverage for error paths
+	// TODO: find why TestLDAPProtocolMessages() fails
 }
 
 func TestLDAPProtocolMessages(t *testing.T) {

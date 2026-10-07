@@ -119,6 +119,8 @@ func (fi fieldInfo) acceptsTag(t tag) bool {
 	}
 }
 
+// TODO: upstream the memoization construct below into gg; reuse for oblast.buildPlan()
+
 var (
 	structInfoCache      = map[reflect.Type]structInfo{}
 	structInfoCacheMutex sync.Mutex
