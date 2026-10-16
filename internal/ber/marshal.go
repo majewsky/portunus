@@ -105,13 +105,16 @@ func finalizeLengthOctets(buf *bytes.Buffer, offset int) error {
 	if length < 0 {
 		panic(fmt.Sprintf("finalizeLengthOctets got invalid buffer state: buf.Len() = %d, offset = %d", buf.Len(), offset))
 	}
+	pbuf := buf.Bytes()
+	if pbuf[offset] != 0x80 {
+		panic(fmt.Sprintf("finalizeLengthOctets got invalid buffer state: buf.Len() = %d, offset = %d, buf[offset] = 0x%x (expected 0x80)", buf.Len(), offset, pbuf[offset]))
+	}
 
 	// prepare encoding of length octets
 	var ibuf [9]byte
 	payload := prepareLengthOctets(ibuf, uint64(length))
 
 	// insert into prepared location if possible
-	pbuf := buf.Bytes()
 	if len(payload) == 1 {
 		pbuf[offset] = payload[0]
 		return nil
@@ -125,7 +128,8 @@ func finalizeLengthOctets(buf *bytes.Buffer, offset int) error {
 		return err
 	}
 	newLen := buf.Len()
-	copy(pbuf[oldLen-length:oldLen], pbuf[newLen-length:newLen])
+	copy(pbuf[newLen-length:newLen], pbuf[oldLen-length:oldLen])
+	copy(pbuf[offset:offset+len(payload)], payload)
 	return nil
 }
 

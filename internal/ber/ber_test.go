@@ -283,6 +283,19 @@ func TestConstructedValues(t *testing.T) {
 		"error at byte 4: while unmarshaling ber_test.recordWithChoice: cannot decode value with tag context-specific:1 into field Choice",
 	)
 
+	// large nested constructed encodings that require definite long form for length octets
+	var (
+		str1 = strings.Repeat("a", 50)
+		str2 = strings.Repeat("b", 50)
+		str3 = strings.Repeat("c", 50)
+	)
+	type recordWithSet struct {
+		Data ber.SetOf[string]
+	}
+	expectParses(t, recordWithSet{ber.SetOf[string]{str1, str2, str3}},
+		"\x30\x81\x9F"+"\x31\x81\x9C"+("\x04\x32"+str1)+("\x04\x32"+str2)+("\x04\x32"+str3),
+	)
+
 	// TODO: test coverage for error paths
 	// TODO: find why TestLDAPProtocolMessages() fails
 }
