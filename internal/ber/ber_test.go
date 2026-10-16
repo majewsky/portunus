@@ -67,6 +67,36 @@ func (e mockEnum) Validate() error {
 	return fmt.Errorf("expected mockEnum to have value 1 or 2, but got %d", e)
 }
 
+type (
+	mockChoice struct {
+		mockChoiceString `ber:"application:0"`
+		mockChoiceInt    `ber:"application:1"`
+		mockChoiceStruct `ber:"application:2"`
+	}
+
+	mockChoiceString string
+	mockChoiceInt    int
+	mockChoiceStruct struct {
+		ID   int
+		Name string
+	}
+)
+
+var (
+	_ ber.ChoiceOf[mockChoice] = mockChoiceString("")
+	_ ber.ChoiceOf[mockChoice] = mockChoiceInt(0)
+	_ ber.ChoiceOf[mockChoice] = mockChoiceStruct{}
+)
+
+// Into implements the [ber.ChoiceOf] interface.
+func (c mockChoiceString) Into() mockChoice { return mockChoice{mockChoiceString: c} }
+
+// Into implements the [ber.ChoiceOf] interface.
+func (c mockChoiceInt) Into() mockChoice { return mockChoice{mockChoiceInt: c} }
+
+// Into implements the [ber.ChoiceOf] interface.
+func (c mockChoiceStruct) Into() mockChoice { return mockChoice{mockChoiceStruct: c} }
+
 func TestPrimitiveValues(t *testing.T) {
 	// boolean [X.690, 8.2] [X.690, 11.1]
 	expectParses(t, false, "\x01\x01\x00")
@@ -218,9 +248,41 @@ func TestConstructedValues(t *testing.T) {
 		// explicit zero values for all optional fields
 		"\x30\x09"+"\x02\x02\x05\x39"+"\x02\x01\x00"+"\x04\x00",
 	)
+	expectParseError[simpleRecord](t,
+		// first example again, but with the fields rearranged into the wrong order
+		"\x30\x0D"+"\x04\x05Alice"+"\x02\x01\x2A"+"\x02\x01\x05",
+		"error at byte 4: while unmarshaling ber_test.simpleRecord: cannot decode value with tag universal:4 into field ID",
+	)
+	expectParseError[simpleRecord](t,
+		// first example again, but with an unexpected custom tag
+		"\x30\x0D"+"\x02\x01\x2A"+"\x02\x01\x05"+"\xC4\x05Alice",
+		"error at byte 10: while unmarshaling ber_test.simpleRecord: no suitable target fields remain for tag private:4 after skipping [Name]",
+	)
+	expectParseError[simpleRecord](t,
+		// unexpected end of sequence
+		"\x30\x00",
+		`error at byte 2: while unmarshaling ber_test.simpleRecord: missing required field "ID"`,
+	)
 
-	// TODO: choice [X.690, 8.13]
-	// TODO: test cases for `ber:"application:N"` and `ber:"context-specific:N"`
+	// choice [X.690, 8.13]: the declared tag on the choice option overrides the native tag of the underlying type
+	type recordWithChoice struct {
+		// ^ this outer type is to force coercion of `mockChoiceFoo` values into the `ber.ChoiceOf[mockChoice]` interface type
+		Choice ber.ChoiceOf[mockChoice]
+	}
+	expectParses(t, recordWithChoice{mockChoiceString("Alice")},
+		"\x30\x07"+"\x40\x05Alice",
+	)
+	expectParses(t, recordWithChoice{mockChoiceInt(42)},
+		"\x30\x03"+"\x41\x01\x2A",
+	)
+	expectParses(t, recordWithChoice{mockChoiceStruct{42, "Alice"}},
+		"\x30\x0C"+"\x62\x0A"+"\x02\x01\x2A"+"\x04\x05Alice",
+	)
+	expectParseError[recordWithChoice](t,
+		"\x30\x03"+"\x81\x01\x2A", // Choice has unknown tag "context-specific:1"
+		"error at byte 4: while unmarshaling ber_test.recordWithChoice: cannot decode value with tag context-specific:1 into field Choice",
+	)
+
 	// TODO: test coverage for error paths
 	// TODO: find why TestLDAPProtocolMessages() fails
 }
@@ -307,7 +369,7 @@ func TestLDAPProtocolMessages(t *testing.T) {
 	)
 
 	// As a special case, this is the same SearchRequest as before, but with the filter wrapped in an additional NOT
-	// (i.e. filtering for `(!(objectclass=person))` instead of `(objectclass=person`).
+	// (i.e. filtering for `(!(objectclass=person))` instead of `(objectclass=person)`.
 	// This checks the special encoding for a Filter instantiated as a NotFilter containing another Filter.
 	expectParses(t,
 		ldapproto.Message{
