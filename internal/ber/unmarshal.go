@@ -20,7 +20,7 @@ import (
 //   - BOOLEAN into boolean types (T ~bool)
 //   - INTEGER into integer types (T interface { ~int | ~int8 | ... | ~uint64 }) that do not implement [Enum]
 //   - ENUMERATED into integer types (T interface { ~int | ~int8 | ... | ~uint64 }) that do implement [Enum]
-//   - OCTET STRING into string types (T ~string)
+//   - OCTET STRING into string types (T ~string or T ~[]byte)
 //   - NULL into empty struct types (T ~struct{})
 //
 // Constructed encodings with the tag SEQUENCE OF in the universal class may be unmarshaled into slice types that are not an instance of [SetOf].
@@ -70,8 +70,11 @@ func unmarshalValue(pbuf *[]byte, hdr header, target reflect.Value) error {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		return unmarshalInteger(pbuf, hdr, target, false)
 	case reflect.String:
-		return unmarshalString(pbuf, hdr, target)
+		return unmarshalString(pbuf, hdr, target, false)
 	case reflect.Slice:
+		if target.Type().Elem() == reflect.TypeFor[byte]() {
+			return unmarshalString(pbuf, hdr, target, true)
+		}
 		return unmarshalSlice(pbuf, hdr, target)
 	case reflect.Struct:
 		si := getStructInfo(target.Type())
@@ -245,7 +248,7 @@ func unmarshalInteger(pbuf *[]byte, hdr header, target reflect.Value, isSigned b
 }
 
 // Unmarshals an OCTET STRING value [X.690, 8.7] into a string type.
-func unmarshalString(pbuf *[]byte, hdr header, target reflect.Value) error {
+func unmarshalString(pbuf *[]byte, hdr header, target reflect.Value, isByteString bool) error {
 	err := hdr.ExpectTagFor(target, tagOctetString)
 	if err != nil {
 		return err
@@ -255,7 +258,11 @@ func unmarshalString(pbuf *[]byte, hdr header, target reflect.Value) error {
 		return err
 	}
 
-	target.SetString(content)
+	if isByteString {
+		target.Set(reflect.ValueOf([]byte(content)))
+	} else {
+		target.SetString(content)
+	}
 	return nil
 }
 
