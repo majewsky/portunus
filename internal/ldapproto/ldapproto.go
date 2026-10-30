@@ -5,6 +5,8 @@
 // Full LDAP messages map onto type [Message].
 package ldapproto
 
+import "github.com/majewsky/portunus/internal/ber"
+
 // TODO: replace string with []byte where the spec does not demand UTF-8
 // TODO: Validate() everywhere, but remove enforcement during unmarshaling (some validations require specific ResultCode responses)
 
@@ -39,4 +41,11 @@ type (
 type AttributeValueAssertion struct {
 	AttributeDescription AttributeDescription
 	AssertionValue       AssertionValue
+}
+
+// Attribute represents both the PartialAttribute and Attribute types defined in [RFC 4511, 4.1.7].
+// It appears in types [AddRequest], [Change] and [SearchResultEntry].
+type Attribute struct {
+	Type   String
+	Values ber.SetOf[string]
 }

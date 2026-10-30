@@ -9,7 +9,7 @@ import (
 	"github.com/majewsky/portunus/internal/ber"
 )
 
-// SearchRequest represents the SearchRequest type defined in [RFC 4511, 4.2].
+// SearchRequest represents the SearchRequest type defined in [RFC 4511, 4.5.1].
 // It is a choice for type [Operation].
 type SearchRequest struct {
 	BaseObject   DN
@@ -78,24 +78,18 @@ func (s DerefAliasesStrategy) Validate() error {
 	}
 }
 
-// SearchResultEntry represents the SearchResultEntry type defined in [RFC 4511, 4.2].
+// SearchResultEntry represents the SearchResultEntry type defined in [RFC 4511, 4.5.2].
 // It is a choice for type [Operation].
 type SearchResultEntry struct {
 	ObjectName DN
 	Attributes []Attribute
 }
 
-// Attribute appears in type [SearchResultEntry] (TODO: and more).
-type Attribute struct {
-	Type   String
-	Values ber.SetOf[string]
-}
-
-// SearchResultDone represents the SearchResultDone type defined in [RFC 4511, 4.2].
+// SearchResultDone represents the SearchResultDone type defined in [RFC 4511, 4.5.2].
 // It is a choice for type [Operation].
 type SearchResultDone Result
 
-// SearchResultReference represents the SearchResultReference type defined in [RFC 4511, 4.2].
+// SearchResultReference represents the SearchResultReference type defined in [RFC 4511, 4.5.2].
 // It is a choice for type [Operation].
 type SearchResultReference []URI
 
@@ -162,7 +156,6 @@ func (f ExtensibleMatchFilter) Into() Filter { return Filter{ExtensibleMatchFilt
 // AndFilter is a choice for type [Filter].
 type AndFilter []ber.SetOf[ber.ChoiceOf[Filter]]
 
-// OrFilter is a choice for type [Filter].
 // OrFilter is a choice for type [Filter].
 type OrFilter []ber.SetOf[ber.ChoiceOf[Filter]]
 
@@ -237,3 +230,14 @@ type MatchingRuleAssertion struct {
 	MatchValue   AssertionValue       `ber:"context-specific:3"`
 	DNAttributes bool                 `ber:"context-specific:4,optional"` // NOTE: actually declared with "DEFAULT FALSE"
 }
+
+// CompareRequest represents the ModifyRequest type defined in [RFC 4511, 4.10].
+// It is a choice for type [Operation].
+type CompareRequest struct {
+	ObjectName DN
+	Assertion  AttributeValueAssertion
+}
+
+// CompareResponse represents the CompareResponse type defined in [RFC 4511, 4.10].
+// It is a choice for type [Operation].
+type CompareResponse Result
