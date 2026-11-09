@@ -42,8 +42,8 @@ github.com/sapcc/go-bits v0.0.0-20260807114049-ed453da227d5 h1:GNKzSme3B3DWJe+lr
 github.com/sapcc/go-bits v0.0.0-20260807114049-ed453da227d5/go.mod h1:chN4NKgcfKa8+lmQxuG/ckDXNrQ60wC22vZtJyjhibo=
 github.com/stretchr/testify v1.8.1 h1:w7B6lhMri9wdJUVmEZPGGhZzrYTPvgJArz7wNPgYKsk=
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
-go.xyrillian.de/gg v1.13.3 h1:Ulz3+eZnO2OUl7Bv+SWaA5ufDmjeLwwmICPP4dCurxA=
-go.xyrillian.de/gg v1.13.3/go.mod h1:DoO4fQSWIrBRlNlCjVyrYM0kAEBt/Jg2GkMH+cGRZ0k=
+go.xyrillian.de/gg v1.19.0 h1:Y63LzuZ3xLRxDNU72SzrFPxehbrNmqBho5DE6C+0e8s=
+go.xyrillian.de/gg v1.19.0/go.mod h1:PKvYAyDk6S8cAvSZ87gxie1TIMXLajyN2dB8aE9iwBc=
 golang.org/x/crypto v0.54.0 h1:YLIA59K4fiNzHzjnZt2tUJQjQtUWfWbeHBqKtk3eScw=
 golang.org/x/crypto v0.54.0/go.mod h1:KWL8ny2AZdGR2cWmzeHrp2azQPGogOv+HeQaVEXC2dk=
 golang.org/x/net v0.57.0 h1:K5+3DljvIuDG9/Jv9rvyMywYNFCQ9RSUY6OOTTkT+tE=

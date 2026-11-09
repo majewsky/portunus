@@ -33,11 +33,12 @@ github.com/sapcc/go-bits/errext
 github.com/sapcc/go-bits/logg
 github.com/sapcc/go-bits/must
 github.com/sapcc/go-bits/osext
-# go.xyrillian.de/gg v1.13.3
+# go.xyrillian.de/gg v1.19.0
 ## explicit; go 1.26
 go.xyrillian.de/gg/assert
 go.xyrillian.de/gg/internal/path
 go.xyrillian.de/gg/option
+go.xyrillian.de/gg/testcapture
 # golang.org/x/crypto v0.54.0
 ## explicit; go 1.25.0
 golang.org/x/crypto/blowfish
