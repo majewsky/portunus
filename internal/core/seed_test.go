@@ -4,6 +4,7 @@
 package core
 
 import (
+	"regexp"
 	"sort"
 	"testing"
 
@@ -312,9 +313,10 @@ func TestSeedParseAndValidationErrors(t *testing.T) {
 
 	// test a seed file with a malformatted command substitution
 	_, errs = ReadDatabaseSeed("fixtures/seed-parse-error-2.json", vcfg)
-	expectTheseErrors(t, errs,
-		`while parsing fixtures/seed-parse-error-2.json: json: cannot unmarshal object into Go struct field UserSeed.users.password of type string`,
-	)
+	assert.ErrsEqual(t, errs, []any{
+		// TODO: simplify down to a string-match assertion again when removing support for Go 1.26 (which does not have encoding/json/v2)
+		regexp.MustCompile(`^while parsing fixtures/seed-parse-error-2.json: json: cannot unmarshal object into Go (struct field UserSeed.users.password|value) of type string$`),
+	})
 
 	// NOTE: We trust all other parse-level errors (e.g. GIDs/UIDs longer than 16
 	// bit) to be caught by the JSON parser, since these constraints are all
