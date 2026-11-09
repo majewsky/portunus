@@ -313,7 +313,7 @@ func TestSeedParseAndValidationErrors(t *testing.T) {
 	// test a seed file with a malformatted command substitution
 	_, errs = ReadDatabaseSeed("fixtures/seed-parse-error-2.json", vcfg)
 	expectTheseErrors(t, errs,
-		`while parsing fixtures/seed-parse-error-2.json: json: cannot unmarshal object into Go struct field UserSeed.users.password of type string`,
+		`while parsing fixtures/seed-parse-error-2.json: json: cannot unmarshal object into Go value of type string`,
 	)
 
 	// NOTE: We trust all other parse-level errors (e.g. GIDs/UIDs longer than 16
