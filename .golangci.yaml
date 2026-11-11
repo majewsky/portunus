@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Stefan Majewsky <majewsky@gmx.net>
+# SPDX-License-Identifier: Apache-2.0
+
+version: "2"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+linters:
+  default: standard
+  settings:
+    staticcheck:
+      dot-import-whitelist:
+        - go.xyrillian.de/gg/option
