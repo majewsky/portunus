@@ -9,7 +9,7 @@ import (
 	"github.com/majewsky/portunus/internal/ber"
 )
 
-// SearchRequest represents the SearchRequest type defined in [RFC 4511, 4.5.1].
+// SearchRequest represents the SearchRequest type defined in [RFC 4511, section 4.5.1].
 // It is a choice for type [Operation].
 type SearchRequest struct {
 	BaseObject   DN
@@ -19,7 +19,7 @@ type SearchRequest struct {
 	TimeLimit    uint32
 	TypesOnly    bool
 	Filter       ber.ChoiceOf[Filter]
-	Attributes   []String
+	Attributes   []AttributeSelector
 }
 
 // SearchScope is an enum appearing in type [SearchRequest].
@@ -78,18 +78,18 @@ func (s DerefAliasesStrategy) Validate() error {
 	}
 }
 
-// SearchResultEntry represents the SearchResultEntry type defined in [RFC 4511, 4.5.2].
+// SearchResultEntry represents the SearchResultEntry type defined in [RFC 4511, section 4.5.2].
 // It is a choice for type [Operation].
 type SearchResultEntry struct {
 	ObjectName DN
 	Attributes []Attribute
 }
 
-// SearchResultDone represents the SearchResultDone type defined in [RFC 4511, 4.5.2].
+// SearchResultDone represents the SearchResultDone type defined in [RFC 4511, section 4.5.2].
 // It is a choice for type [Operation].
 type SearchResultDone Result
 
-// SearchResultReference represents the SearchResultReference type defined in [RFC 4511, 4.5.2].
+// SearchResultReference represents the SearchResultReference type defined in [RFC 4511, section 4.5.2].
 // It is a choice for type [Operation].
 type SearchResultReference []URI
 
@@ -231,13 +231,13 @@ type MatchingRuleAssertion struct {
 	DNAttributes bool                 `ber:"context-specific:4,optional"` // NOTE: actually declared with "DEFAULT FALSE"
 }
 
-// CompareRequest represents the ModifyRequest type defined in [RFC 4511, 4.10].
+// CompareRequest represents the ModifyRequest type defined in [RFC 4511, section 4.10].
 // It is a choice for type [Operation].
 type CompareRequest struct {
 	ObjectName DN
 	Assertion  AttributeValueAssertion
 }
 
-// CompareResponse represents the CompareResponse type defined in [RFC 4511, 4.10].
+// CompareResponse represents the CompareResponse type defined in [RFC 4511, section 4.10].
 // It is a choice for type [Operation].
 type CompareResponse Result

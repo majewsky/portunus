@@ -9,7 +9,7 @@ import (
 	"github.com/majewsky/portunus/internal/ber"
 )
 
-// Result represents the LDAPResult type defined in [RFC 4511, 4.1.9].
+// Result represents the LDAPResult type defined in [RFC 4511, section 4.1.9].
 //
 // This type is embedded in various choices for type [Operation], such as [BindResponse].
 type Result struct {

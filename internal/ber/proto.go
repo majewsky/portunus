@@ -105,7 +105,9 @@ func nativeTagForInteger(t reflect.Type) tag {
 }
 
 func nativeTagForSlice(t reflect.Type) tag {
-	if t.Implements(reflect.TypeFor[encodesWithSetOf]()) {
+	if t.Elem() == reflect.TypeFor[byte]() {
+		return tagOctetString
+	} else if t.Implements(reflect.TypeFor[encodesWithSetOf]()) {
 		return tagSet
 	} else {
 		return tagSequence

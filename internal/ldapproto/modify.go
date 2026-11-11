@@ -5,7 +5,7 @@ package ldapproto
 
 import "github.com/majewsky/portunus/internal/ber"
 
-// ModifyRequest represents the ModifyRequest type defined in [RFC 4511, 4.6].
+// ModifyRequest represents the ModifyRequest type defined in [RFC 4511, section 4.6].
 // It is a choice for type [Operation].
 type ModifyRequest struct {
 	ObjectName DN
@@ -34,30 +34,30 @@ const (
 	ChangeOperationReplace SearchScope = 2
 )
 
-// ModifyResponse represents the ModifyResponse type defined in [RFC 4511, 4.6].
+// ModifyResponse represents the ModifyResponse type defined in [RFC 4511, section 4.6].
 // It is a choice for type [Operation].
 type ModifyResponse Result
 
-// AddRequest represents the AddRequest type defined in [RFC 4511, 4.7].
+// AddRequest represents the AddRequest type defined in [RFC 4511, section 4.7].
 // It is a choice for type [Operation].
 type AddRequest struct {
 	ObjectName DN
 	Attributes []Attribute
 }
 
-// AddResponse represents the ModifyResponse type defined in [RFC 4511, 4.7].
+// AddResponse represents the ModifyResponse type defined in [RFC 4511, section 4.7].
 // It is a choice for type [Operation].
 type AddResponse Result
 
-// DeleteRequest represents the DeleteRequest type defined in [RFC 4511, 4.8].
+// DeleteRequest represents the DeleteRequest type defined in [RFC 4511, section 4.8].
 // It is a choice for type [Operation].
 type DeleteRequest DN
 
-// DeleteResponse represents the ModifyResponse type defined in [RFC 4511, 4.8].
+// DeleteResponse represents the ModifyResponse type defined in [RFC 4511, section 4.8].
 // It is a choice for type [Operation].
 type DeleteResponse Result
 
-// ModifyDNRequest represents the ModifyDNRequest type defined in [RFC 4511, 4.9].
+// ModifyDNRequest represents the ModifyDNRequest type defined in [RFC 4511, section 4.9].
 // It is a choice for type [Operation].
 type ModifyDNRequest struct {
 	ObjectName          DN
@@ -66,6 +66,6 @@ type ModifyDNRequest struct {
 	NewSuperior         DN `ber:"context-specific:0,optional"`
 }
 
-// ModifyDNResponse represents the ModifyResponse type defined in [RFC 4511, 4.9].
+// ModifyDNResponse represents the ModifyResponse type defined in [RFC 4511, section 4.9].
 // It is a choice for type [Operation].
 type ModifyDNResponse Result

@@ -70,7 +70,7 @@ func TestLDAPProtocolMessages(t *testing.T) {
 			TypesOnly:    false,
 			Filter: ldapproto.EqualityMatchFilter{
 				AttributeDescription: "objectclass",
-				AssertionValue:       "person",
+				AssertionValue:       ldapproto.AssertionValue("person"),
 			},
 			Attributes: nil,
 		},
@@ -80,14 +80,14 @@ func TestLDAPProtocolMessages(t *testing.T) {
 		Operation: ldapproto.SearchResultEntry{
 			ObjectName: "uid=admin,ou=users,dc=example,dc=com",
 			Attributes: []ldapproto.Attribute{
-				{Type: "cn", Values: []string{"Initial Administrator"}},
-				{Type: "sn", Values: []string{"Administrator"}},
-				{Type: "givenName", Values: []string{"Initial"}},
+				{Type: "cn", Values: attributeValues("Initial Administrator")},
+				{Type: "sn", Values: attributeValues("Administrator")},
+				{Type: "givenName", Values: attributeValues("Initial")},
 				// NOTE: this does not leak a real password, the hashed value is just "1234"
-				{Type: "userPassword", Values: []string{"{CRYPT}$y$j9T$eq1Ue0u3wc35iB.Doc/Mo/$B65m87aCD8P9JOD9Pox.mCXPGxgESmZ.ks2WZYxyvv."}},
-				{Type: "isMemberOf", Values: []string{"cn=admins,ou=groups,dc=example,dc=com"}},
-				{Type: "objectClass", Values: []string{"portunusPerson", "inetOrgPerson", "organizationalPerson", "person", "top"}},
-				{Type: "uid", Values: []string{"admin"}},
+				{Type: "userPassword", Values: attributeValues("{CRYPT}$y$j9T$eq1Ue0u3wc35iB.Doc/Mo/$B65m87aCD8P9JOD9Pox.mCXPGxgESmZ.ks2WZYxyvv.")},
+				{Type: "isMemberOf", Values: attributeValues("cn=admins,ou=groups,dc=example,dc=com")},
+				{Type: "objectClass", Values: attributeValues("portunusPerson", "inetOrgPerson", "organizationalPerson", "person", "top")},
+				{Type: "uid", Values: attributeValues("admin")},
 			},
 		},
 	})
@@ -114,12 +114,19 @@ func TestLDAPProtocolMessages(t *testing.T) {
 			Filter: ldapproto.NotFilter{
 				Inner: ldapproto.EqualityMatchFilter{
 					AttributeDescription: "objectclass",
-					AssertionValue:       "person",
+					AssertionValue:       ldapproto.AssertionValue("person"),
 				},
 			},
 			Attributes: nil,
 		},
 	})
+}
+
+func attributeValues(inputs ...string) (result ber.SetOf[ldapproto.AttributeValue]) {
+	for _, input := range inputs {
+		result = append(result, ldapproto.AttributeValue(input))
+	}
+	return
 }
 
 func FuzzUnmarshaling(f *testing.F) {

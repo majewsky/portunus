@@ -5,7 +5,7 @@ package ldapproto
 
 import "github.com/majewsky/portunus/internal/ber"
 
-// BindRequest represents the BindRequest type defined in [RFC 4511, 4.2].
+// BindRequest represents the BindRequest type defined in [RFC 4511, section 4.2].
 // It is a choice for type [Operation].
 type BindRequest struct {
 	Version        uint8
@@ -40,16 +40,16 @@ type SimpleAuthentication string
 // SASLAuthentication is a choice for type [AuthenticationChoice].
 type SASLAuthentication struct {
 	Mechanism   String
-	Credentials string `ber:",optional"`
+	Credentials []byte `ber:",optional"`
 }
 
-// BindResponse represents the BindResponse type defined in [RFC 4511, 4.2].
+// BindResponse represents the BindResponse type defined in [RFC 4511, section 4.2].
 // It is a choice for type [Operation].
 type BindResponse struct {
 	Result                       // COMPONENTS OF...
-	ServerSASLCredentials string `ber:"context-specific:7,optional"`
+	ServerSASLCredentials []byte `ber:"context-specific:7,optional"`
 }
 
-// UnbindRequest represents the UnbindRequest type defined in [RFC 4511, 4.2].
+// UnbindRequest represents the UnbindRequest type defined in [RFC 4511, section 4.2].
 // It is a choice for type [Operation].
 type UnbindRequest struct{}

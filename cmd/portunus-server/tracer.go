@@ -128,7 +128,10 @@ func handleLDAPTracerProxying(ctx context.Context, cancel func(), connIdx int64,
 			for _, message := range messages {
 				var buf bytes.Buffer
 				formatStructuredValueForDisplay(&buf, reflect.ValueOf(message))
-				logg.Info("LDAP tracer: connection %d: decoded message from %s to %s: %s", connIdx, readerName, writerName, buf.Bytes())
+				str := buf.String()
+				str = strings.ReplaceAll(str, "github.com/majewsky/portunus/internal/ldapproto.", "")
+				str = strings.ReplaceAll(str, "ldapproto.", "")
+				logg.Info("LDAP tracer: connection %d: decoded message from %s to %s: %s", connIdx, readerName, writerName, str)
 			}
 		} else {
 			logg.Info("LDAP tracer: connection %d: could not decode messages from %s to %s: %s", connIdx, readerName, writerName, err.Error())
@@ -190,7 +193,25 @@ func formatStructuredValueForDisplay(w *bytes.Buffer, v reflect.Value) {
 		_ = w.WriteByte('}')
 
 	case reflect.Interface:
+		fmt.Fprintf(w, "%T(", v.Interface())
 		formatStructuredValueForDisplay(w, v.Elem())
+		_ = w.WriteByte(')')
+
+	case reflect.Slice:
+		if v.Type().Elem() == reflect.TypeFor[byte]() {
+			fmt.Fprintf(w, "%q", v.Interface())
+		} else {
+			fmt.Fprintf(w, "%T{", v.Interface())
+			first := true
+			for _, elem := range v.Seq2() {
+				if first {
+					first = false
+				} else {
+					_, _ = w.WriteString(", ")
+				}
+				formatStructuredValueForDisplay(w, elem)
+			}
+		}
 
 	default:
 		fmt.Fprintf(w, "%#v", v)

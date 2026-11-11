@@ -40,7 +40,7 @@ func marshalValue(buf *bytes.Buffer, v reflect.Value, t Option[tag]) error {
 		return marshalString(buf, v.String(), t.UnwrapOr(tagOctetString))
 	case reflect.Slice:
 		if v.Type().Elem() == reflect.TypeFor[byte]() {
-			return marshalString(buf, string(v.Interface().([]byte)), t.UnwrapOr(tagOctetString))
+			return marshalString(buf, string(v.Convert(reflect.TypeFor[[]byte]()).Interface().([]byte)), t.UnwrapOr(tagOctetString))
 		}
 		return marshalSlice(buf, v, t.UnwrapOr(nativeTagForSlice(v.Type())))
 	case reflect.Struct:

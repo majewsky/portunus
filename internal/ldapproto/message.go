@@ -5,7 +5,7 @@ package ldapproto
 
 import "github.com/majewsky/portunus/internal/ber"
 
-// Message contains a full LDAP message, corresponding to the LDAPMessage type defined in [RFC 4511, 4.1.1].
+// Message contains a full LDAP message, corresponding to the LDAPMessage type defined in [RFC 4511, section 4.1.1].
 type Message struct {
 	MessageID int
 	Operation ber.ChoiceOf[Operation]
@@ -133,10 +133,10 @@ func (r ExtendedResponse) Into() Operation { return Operation{ExtendedResponse: 
 // Into implements the [ber.ChoiceOf] interface.
 func (r IntermediateResponse) Into() Operation { return Operation{IntermediateResponse: r} }
 
-// Control represents the Control type defined in [RFC 4511, 4.1.11].
+// Control represents the Control type defined in [RFC 4511, section 4.1.11].
 // It appears in type [Message].
 type Control struct {
 	ControlType  OID
 	Criticiality bool   `ber:",optional"` // NOTE: actually declared with "DEFAULT FALSE"
-	ControlValue string `ber:",optional"`
+	ControlValue []byte `ber:",optional"`
 }

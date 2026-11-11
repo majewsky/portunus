@@ -386,3 +386,20 @@ func TestUnmarshalMany(t *testing.T) {
 	_, err = ber.UnmarshalMany[record]([]byte(msg1 + msg2 + msg3)[:len(msg1)+len(msg2)+len(msg3)-1])
 	assert.ErrEqual(t, err, `while unmarshaling []ber_test.record[0]: error at byte 24: header with tag universal:16 declares 10 bytes of content, but only 9 bytes remain to be unmarshaled`)
 }
+
+func TestBytestringTagRecognition(t *testing.T) {
+	// There used to be a bug where nativeTagFor() would not understand newtypes based on []byte.
+	type (
+		customString     string
+		customByteString []byte
+		record           struct {
+			First  string
+			Second []byte
+			Third  customString
+			Fourth customByteString
+		}
+	)
+	expectParses(t, record{"A", []byte("B"), "C", []byte("D")},
+		"\x30\x0C"+"\x04\x01A"+"\x04\x01B"+"\x04\x01C"+"\x04\x01D",
+	)
+}
