@@ -4,6 +4,8 @@
 package ldapproto
 
 import (
+	"fmt"
+
 	"github.com/majewsky/portunus/internal/ber"
 )
 
@@ -107,3 +109,16 @@ const (
 
 // IsEnum implements the [ber.Enum] interface.
 func (ResultCode) IsEnum() bool { return true }
+
+// Into is a shorthand for constructing a full [Result] with just this code and nothing else in it.
+func (c ResultCode) Into() Result {
+	return Result{ResultCode: c}
+}
+
+// With is a shorthand for constructing a full [Result] with this code and a diagnostic message.
+func (c ResultCode) With(msg string, args ...any) Result {
+	if len(args) > 0 {
+		msg = fmt.Sprintf(msg, args...)
+	}
+	return Result{ResultCode: c, DiagnosticMessage: String(msg)}
+}
