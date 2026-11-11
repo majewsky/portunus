@@ -7,7 +7,6 @@ Changes:
 
 - The environment variable `PORTUNUS_SERVER_TRACER_LISTEN` enables a new debugging facility (not intended for productive use)
   that allows logging messages that are exchanged between the LDAP server and its clients.
-  Even though it is a "feature", I hesitate to call it one, because it is probably only ever going to be useful to me personally.
 
 # v2.2.0 (2026-02-20)
 

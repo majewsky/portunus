@@ -64,7 +64,7 @@ following environment variables:
 | `PORTUNUS_SERVER_HTTP_LISTEN` | `127.0.0.1:8080` | Listen address where Portunus' HTTP server shall be running. |
 | `PORTUNUS_SERVER_HTTP_SECURE` | `true` | **Do not unset this flag in productive deployments.** In test deployments, this can be set to `false` so that the web GUI works without TLS. |
 | `PORTUNUS_SERVER_STATE_DIR` | `/var/lib/portunus` | The path where Portunus stores its database. **Set up a backup for this directory.** |
-| `PORTUNUS_SERVER_TRACER_LISTEN` | *(optional)* | This facility is currently intended for debugging purposes only. If a listen address like `127.0.0.1:3890` is given, portunus-server will listen on this address and proxy all incoming requests to the LDAP server verbatim. All requests and responses will appear in portunus-server's log, thus acting as a way to trace all LDAP protocol activity. If the LDAP server is configured to serve LDAPS, then this tracer will also serve LDAPS, using the same certificate and private key. **Do not use in productive deployments. This will leak credentials into the process log.** |
+| `PORTUNUS_SERVER_TRACER_LISTEN` | *(optional)* | Activates an optional tracing facility for LDAP traffic. [See below for details.](#tracer) |
 | `PORTUNUS_SLAPD_BINARY` | `slapd` | Where to find the binary of slapd (the OpenLDAP server). Semantics match those of `execvp(3)`: If the supplied value is not a path containing slashes, `$PATH` will be searched for it. The slapd binary must link against the same libcrypt as the Portunus binaries, otherwise there will be disagreement between both parties on how password hashes work. |
 | `PORTUNUS_SLAPD_GROUP`<br>`PORTUNUS_SLAPD_USER` | `ldap` each | The Unix user/group that slapd will be run as. |
 | `PORTUNUS_SLAPD_SCHEMA_DIR` | `/etc/openldap/schema` | Where to find OpenLDAP's schema definitions. |
@@ -91,6 +91,19 @@ change this initial password after the first login. This behavior is suppressed 
 
 In a productive environment, the HTTP frontend offered by `portunus-server` MUST be secured with TLS
 by putting it behind a TLS-capable reverse proxy such as httpd, nginx or haproxy.
+
+### Tracer
+
+**This facility is not subject to any stability guarantees and may change in backwards-incompatible ways at any point.**
+
+If a listen address like `127.0.0.1:3890` is given in the `PORTUNUS_SERVER_TRACER_LISTEN` environment variable:
+
+- portunus-server will listen on this address and proxy all incoming requests to the LDAP server verbatim.
+- All requests and responses going through this port will appear in portunus-server's log, thus acting as a way to trace all LDAP protocol activity.
+- If the LDAP server is configured to serve LDAPS, then this tracer will also serve LDAPS, using the same certificate and private key.
+
+**Do not use this facility in productive deployments.**
+This will log all LDAP messages verbatim, thus leaking user passwords into the server log.
 
 ### LDAP directory structure
 
