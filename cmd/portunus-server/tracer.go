@@ -4,12 +4,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -124,7 +126,9 @@ func handleLDAPTracerProxying(ctx context.Context, cancel func(), connIdx int64,
 		messages, err := ber.UnmarshalMany[ldapproto.Message](reqBuf[:msgLen])
 		if err == nil {
 			for _, message := range messages {
-				logg.Info("LDAP tracer: connection %d: decoded message from %s to %s: %#v", connIdx, readerName, writerName, message)
+				var buf bytes.Buffer
+				formatStructuredValueForDisplay(&buf, reflect.ValueOf(message))
+				logg.Info("LDAP tracer: connection %d: decoded message from %s to %s: %s", connIdx, readerName, writerName, buf.Bytes())
 			}
 		} else {
 			logg.Info("LDAP tracer: connection %d: could not decode messages from %s to %s: %s", connIdx, readerName, writerName, err.Error())
@@ -163,4 +167,32 @@ func formatMessageBytesForDisplay(buf []byte) string {
 		_, _ = out.WriteString("\x1B[0m")
 	}
 	return out.String()
+}
+
+// Mostly identical to fmt.Fprintf(w, "%#v", v.Interface()), but skips fields with zero values for brevity.
+func formatStructuredValueForDisplay(w *bytes.Buffer, v reflect.Value) {
+	switch v.Kind() {
+	case reflect.Struct:
+		fmt.Fprintf(w, "%T{", v.Interface())
+		hasFields := false
+		for f, fv := range v.Fields() {
+			if !f.IsExported() || !fv.IsValid() || fv.IsZero() {
+				continue
+			}
+			if hasFields {
+				_, _ = w.WriteString(", ")
+			} else {
+				hasFields = true
+			}
+			fmt.Fprintf(w, "%s:", f.Name)
+			formatStructuredValueForDisplay(w, fv)
+		}
+		_ = w.WriteByte('}')
+
+	case reflect.Interface:
+		formatStructuredValueForDisplay(w, v.Elem())
+
+	default:
+		fmt.Fprintf(w, "%#v", v)
+	}
 }
