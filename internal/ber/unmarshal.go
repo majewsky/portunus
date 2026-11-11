@@ -53,6 +53,25 @@ func Unmarshal[T any](message []byte) (T, error) {
 	return result, nil
 }
 
+// UnmarshalMany is like [Unmarshal], but keeps going after unmarshaling the first full value,
+// decoding further values until EOF is reached or an error occurs.
+func UnmarshalMany[T any](message []byte) ([]T, error) {
+	var (
+		result    []T
+		remainder = message
+		idx       = 0
+	)
+	for len(remainder) > 0 {
+		var current T
+		err := unmarshalFullValue(&remainder, reflect.ValueOf(&current).Elem())
+		if err != nil {
+			return result, fmt.Errorf("while unmarshaling %T[%d]: error at byte %d: %w", result, idx, len(message)-len(remainder), err)
+		}
+		result = append(result, current)
+	}
+	return result, nil
+}
+
 func unmarshalFullValue(pbuf *[]byte, target reflect.Value) error {
 	hdr, err := unmarshalHeader(pbuf)
 	if err != nil {

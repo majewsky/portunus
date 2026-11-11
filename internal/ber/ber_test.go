@@ -362,3 +362,27 @@ func TestConstructedValues(t *testing.T) {
 
 	// TODO: test coverage for error paths
 }
+
+func TestUnmarshalMany(t *testing.T) {
+	type record struct {
+		ID   int
+		Name string
+	}
+	const (
+		msg1 = "\x30\x0A" + "\x02\x01\x01" + "\x04\x05Alice"
+		msg2 = "\x30\x08" + "\x02\x01\x02" + "\x04\x03Bob"
+		msg3 = "\x30\x0A" + "\x02\x01\x03" + "\x04\x05Carol"
+	)
+
+	result, err := ber.UnmarshalMany[record]([]byte(msg1 + msg2 + msg3))
+	if assert.ErrEqual(t, err, nil) {
+		assert.Equal(t, result, []record{
+			{1, "Alice"},
+			{2, "Bob"},
+			{3, "Carol"},
+		})
+	}
+
+	_, err = ber.UnmarshalMany[record]([]byte(msg1 + msg2 + msg3)[:len(msg1)+len(msg2)+len(msg3)-1])
+	assert.ErrEqual(t, err, `while unmarshaling []ber_test.record[0]: error at byte 24: header with tag universal:16 declares 10 bytes of content, but only 9 bytes remain to be unmarshaled`)
+}
