@@ -58,14 +58,6 @@ const (
 // IsEnum implements the [ber.Enum] interface.
 func (mockEnum) IsEnum() bool { return true }
 
-// Validate implements the [ber.Enum] interface.
-func (e mockEnum) Validate() error {
-	if e == mockEnumOne || e == mockEnumTwo {
-		return nil
-	}
-	return fmt.Errorf("expected mockEnum to have value 1 or 2, but got %d", e)
-}
-
 type (
 	mockChoice struct {
 		mockChoiceString `ber:"application:0"`
@@ -153,8 +145,7 @@ func TestPrimitiveValues(t *testing.T) {
 
 	// enumerated integers [X.690, 8.4]
 	expectParses(t, mockEnumOne, "\x0A\x01\x01")
-	expectParses(t, mockEnumTwo, "\x0A\x01\x02")
-	expectParseError[mockEnum](t, "\x0A\x01\x03", "error at byte 3: expected mockEnum to have value 1 or 2, but got 3")
+	expectParses(t, mockEnum(3), "\x0A\x01\x03") // despite no such enum variant being declared (ber.Unmarshal() does not validate values)
 
 	// octet string [X.690, 8.7.2]
 	expectParses(t, "", "\x04\x00")

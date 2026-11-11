@@ -73,7 +73,6 @@ func castChoiceType(v reflect.Value) (out reflect.Value, ok bool) {
 // If this interface is implemented on a type, [Unmarshal] will expect values of this type to be encoded with tag ENUMERATED instead of INTEGER; see documentation over there.
 type Enum interface {
 	IsEnum() bool
-	Validatable
 }
 
 // SetOf wraps slice types that must be encoded with the tag SET OF instead of SEQUENCE OF.
@@ -87,13 +86,6 @@ type encodesWithSetOf interface {
 func (SetOf[T]) isSetOf() {}
 
 var _ encodesWithSetOf = SetOf[int]{}
-
-// Validatable is an interface for types that support validation during unmarshaling.
-//
-// When [Unmarshal] unmarshals into a type that implements this interface, it will call the Validate() method and abort if it returns an error.
-type Validatable interface {
-	Validate() error
-}
 
 // structInfo contains structural information about a struct type that is relevant for marshaling.
 type structInfo struct {

@@ -4,8 +4,6 @@
 package ldapproto
 
 import (
-	"fmt"
-
 	"github.com/majewsky/portunus/internal/ber"
 )
 
@@ -109,51 +107,3 @@ const (
 
 // IsEnum implements the [ber.Enum] interface.
 func (ResultCode) IsEnum() bool { return true }
-
-// Validate implements the [ber.Enum] interface.
-func (c ResultCode) Validate() error {
-	switch c {
-	case ResultCodeSuccess,
-		ResultCodeOperationsError,
-		ResultCodeProtocolError,
-		ResultCodeTimeLimitExceeded,
-		ResultCodeSizeLimitExceeded,
-		ResultCodeCompareFalse,
-		ResultCodeCompareTrue,
-		ResultCodeAuthMethodNotSupported,
-		ResultCodeStrongerAuthRequired,
-		ResultCodeReferral,
-		ResultCodeAdminLimitExceeded,
-		ResultCodeUnavailableCriticalExtension,
-		ResultCodeConfidentialityRequired,
-		ResultCodeSaslBindInProgress,
-		ResultCodeNoSuchAttribute,
-		ResultCodeUndefinedAttributeType,
-		ResultCodeInappropriateMatching,
-		ResultCodeConstraintViolation,
-		ResultCodeAttributeOrValueExists,
-		ResultCodeInvalidAttributeSyntax,
-		ResultCodeNoSuchObject,
-		ResultCodeAliasProblem,
-		ResultCodeInvalidDNSyntax,
-		ResultCodeAliasDereferencingProblem,
-		ResultCodeInappropriateAuthentication,
-		ResultCodeInvalidCredentials,
-		ResultCodeInsufficientAccessRights,
-		ResultCodeBusy,
-		ResultCodeUnavailable,
-		ResultCodeUnwillingToPerform,
-		ResultCodeLoopDetect,
-		ResultCodeNamingViolation,
-		ResultCodeObjectClassViolation,
-		ResultCodeNotAllowedOnNonLeaf,
-		ResultCodeNotAllowedOnRDN,
-		ResultCodeEntryAlreadyExists,
-		ResultCodeObjectClassModsProhibited,
-		ResultCodeAffectsMultipleDSAs,
-		ResultCodeOther:
-		return nil
-	default:
-		return fmt.Errorf("unacceptable value for ResultCode: %d", c)
-	}
-}

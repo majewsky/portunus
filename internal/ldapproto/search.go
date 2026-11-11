@@ -4,8 +4,6 @@
 package ldapproto
 
 import (
-	"fmt"
-
 	"github.com/majewsky/portunus/internal/ber"
 )
 
@@ -39,16 +37,6 @@ const (
 // IsEnum implements the [ber.Enum] interface.
 func (SearchScope) IsEnum() bool { return true }
 
-// Validate implements the [ber.Enum] interface.
-func (s SearchScope) Validate() error {
-	switch s {
-	case SearchScopeBaseObject, SearchScopeSingleLevel, SearchScopeWholeSubtree:
-		return nil
-	default:
-		return fmt.Errorf("unacceptable value for SearchScope: %d", s)
-	}
-}
-
 // DerefAliasesStrategy is an enum appearing in type [SearchRequest].
 type DerefAliasesStrategy int
 
@@ -67,16 +55,6 @@ const (
 
 // IsEnum implements the [ber.Enum] interface.
 func (DerefAliasesStrategy) IsEnum() bool { return true }
-
-// Validate implements the [ber.Enum] interface.
-func (s DerefAliasesStrategy) Validate() error {
-	switch s {
-	case NeverDerefAliases, DerefAliasesInSearching, DerefAliasesFindingBaseObject, DerefAliasesAlways:
-		return nil
-	default:
-		return fmt.Errorf("unacceptable value for DerefAliasesStrategy: %d", s)
-	}
-}
 
 // SearchResultEntry represents the SearchResultEntry type defined in [RFC 4511, section 4.5.2].
 // It is a choice for type [Operation].

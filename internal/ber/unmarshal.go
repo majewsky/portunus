@@ -258,12 +258,7 @@ func unmarshalInteger(pbuf *[]byte, hdr header, target reflect.Value, isSigned b
 		target.SetUint(unsignedValue)
 	}
 
-	if expectedTag == tagEnumerated {
-		targetAsEnum := target.Interface().(Enum) // this cast cannot fail because we checked Implements() earlier
-		return targetAsEnum.Validate()
-	} else {
-		return nil
-	}
+	return nil
 }
 
 // Unmarshals an OCTET STRING value [X.690, 8.7] into a string type.

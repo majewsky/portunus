@@ -10,7 +10,6 @@ package ldapproto
 
 import "github.com/majewsky/portunus/internal/ber"
 
-// TODO: Validate() everywhere, but remove enforcement during unmarshaling (some validations require specific ResultCode responses)
 // TODO: allow catching open-ended choices to handle them in a special way (e.g. AuthenticationChoice requires an authMethodNotSupported response)
 
 type (
