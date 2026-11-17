@@ -14,7 +14,7 @@ import "github.com/majewsky/portunus/internal/ber"
 
 type (
 	// String represents the LDAPSTRING type defined in [RFC 4511, section 4.1.2].
-	String string
+	String = string
 
 	// OID represents the LDAPOID type defined in [RFC 4511, section 4.1.2],
 	// corresponding to the <numericoid> production of [RFC 4512].
