@@ -273,6 +273,9 @@ func unmarshalString(pbuf *[]byte, hdr header, target reflect.Value, isByteStrin
 	}
 
 	if isByteString {
+		// NOTE: Do not optimize this into a target.Set() on a slice out of `pbuf`.
+		//       We do not want to rely on the original buffer not being reused after having read a message.
+		//       By going through type string, we have forced a fresh copy of the contained byte string.
 		target.Set(reflect.ValueOf([]byte(content)))
 	} else {
 		target.SetString(content)

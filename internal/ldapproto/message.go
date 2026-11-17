@@ -137,6 +137,6 @@ func (r IntermediateResponse) Into() Operation { return Operation{IntermediateRe
 // It appears in type [Message].
 type Control struct {
 	ControlType  OID
-	Criticiality bool   `ber:",optional"` // NOTE: actually declared with "DEFAULT FALSE"
+	Criticality  bool   `ber:",optional"` // NOTE: actually declared with "DEFAULT FALSE"
 	ControlValue []byte `ber:",optional"`
 }
