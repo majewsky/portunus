@@ -1,3 +1,6 @@
+# codeberg.org/cellsons/combi v0.0.0-20260422094304-2a83a553d8e0
+## explicit; go 1.26.1
+codeberg.org/cellsons/combi/pkg
 # github.com/Azure/go-ntlmssp v0.1.1
 ## explicit; go 1.24
 github.com/Azure/go-ntlmssp

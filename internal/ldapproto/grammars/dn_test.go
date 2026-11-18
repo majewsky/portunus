@@ -16,8 +16,8 @@ import (
 
 func TestDN(t *testing.T) {
 	// shorthands for use in the testcase constructions
-	attr := func(typeStr, valueStr string) grammars.Attribute {
-		return grammars.Attribute{typeStr, ldapproto.AttributeValue(valueStr)}
+	attr := func(typeStr, encodedValue string) grammars.Attribute {
+		return grammars.Attribute{typeStr, encodedValue}
 	}
 	rdn := func(attrs ...grammars.Attribute) grammars.RelativeDN {
 		return grammars.RelativeDN(attrs)

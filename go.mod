@@ -1,8 +1,9 @@
 module github.com/majewsky/portunus
 
-go 1.26
+go 1.26.1
 
 require (
+	codeberg.org/cellsons/combi v0.0.0-20260422094304-2a83a553d8e0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-ldap/ldap/v3 v3.4.12
 	github.com/gorilla/mux v1.8.1
