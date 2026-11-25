@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	. "go.xyrillian.de/gg/option"
@@ -39,6 +40,74 @@ type Attribute struct {
 	// (i.e. if the attribute type is given as an OID instead of a descriptor).
 	RawValue []byte
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// serialization
+
+// String returns the string representation of a [DN].
+func (dn DN) String() ldapproto.DN {
+	var b strings.Builder
+	for idx1, rdn := range dn {
+		if idx1 > 0 {
+			b.WriteByte(',')
+		}
+		for idx2, attr := range rdn {
+			if idx2 > 0 {
+				b.WriteByte('+')
+			}
+			attr.serializeTo(&b)
+		}
+	}
+	return ldapproto.DN(b.String())
+}
+
+func (attr Attribute) serializeTo(b *strings.Builder) {
+	// both OIDs and descriptors serialize without modification
+	b.WriteString(attr.Type)
+	b.WriteByte('=')
+
+	// we have either an EncodedValue or a RawValue or neither; only the first case is tedious, so handle the others first
+	if len(attr.RawValue) > 0 {
+		b.WriteByte('#')
+		hex.NewEncoder(b).Write(attr.RawValue) //nolint:errcheck // both b.Write() and hex.Encoder never produce errors
+		return
+	}
+	if attr.EncodedValue == "" {
+		return
+	}
+
+	// find the index of the last rune, we need this later to decide which characters must be escaped
+	_, size := utf8.DecodeLastRuneInString(attr.EncodedValue)
+	lastIndex := len(attr.EncodedValue) - size
+
+	for idx, r := range attr.EncodedValue {
+		if unicode.Is(unicode.C, r) {
+			// ^ NOTE: [RFC 4514, section 2.4] only demands that we escape '\000' as `\00`.
+			//         Escaping all other control characters, too, is a personal aesthetic choice.
+			var buf [4]byte
+			for idx2 := range utf8.EncodeRune(buf[:], r) {
+				fmt.Fprintf(b, "\\%02x", buf[idx2])
+			}
+			continue
+		}
+		var needsEscaping bool
+		switch r {
+		case ' ':
+			needsEscaping = idx == 0 || idx == lastIndex
+		case '#':
+			needsEscaping = idx == 0
+		case '"', '+', ',', ';', '<', '>', '\\':
+			needsEscaping = true
+		}
+		if needsEscaping {
+			b.WriteByte('\\')
+		}
+		b.WriteRune(r)
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// parsing
 
 // ParseDN parses the string representation of a [DN].
 func ParseDN(input ldapproto.DN) (DN, error) {

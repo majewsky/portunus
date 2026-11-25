@@ -4,6 +4,7 @@
 package grammars_test
 
 import (
+	"cmp"
 	"fmt"
 	"regexp"
 	"strings"
@@ -30,6 +31,7 @@ func rdn(attrs ...grammars.Attribute) grammars.RelativeDN {
 var dnTestCases = []struct {
 	Raw        ldapproto.DN
 	Structured grammars.DN
+	Normalized ldapproto.DN // contains expected output of Structured.String() if different from Raw
 	Error      any
 }{
 	// test the examples from [RFC 4514, section 4]
@@ -76,6 +78,7 @@ var dnTestCases = []struct {
 		Structured: grammars.DN{
 			rdn(attr("CN", "Lučić")),
 		},
+		Normalized: `CN=Lučić`,
 	},
 	// our own test cases (for coverage)
 	{
@@ -138,7 +141,7 @@ func TestDN(t *testing.T) {
 			}
 			if tc.Error == nil {
 				assert.Equal(t, actual, tc.Structured)
-				// TODO: test roundtripping once DN.String() implemented
+				assert.Equal(t, actual.String(), cmp.Or(tc.Normalized, tc.Raw))
 			}
 		})
 	}
@@ -176,6 +179,8 @@ func FuzzDNAcceptance(f *testing.F) {
 		if !utf8.ValidString(raw) {
 			return // not interesting
 		}
+
+		// check that `raw` only parses if and only if the regexp also accepts it
 		dn, err := grammars.ParseDN(ldapproto.DN(raw))
 		matches := rx.MatchString(raw)
 		t.Logf("input = %q", raw)
@@ -184,9 +189,17 @@ func FuzzDNAcceptance(f *testing.F) {
 		} else if !matches && err == nil {
 			t.Fatalf("regexp does not match, but ParseDN produces: %#v", dn)
 		}
-	})
-}
 
-func TestRememberToFuzz(t *testing.T) {
-	t.Fatal("delete this test once fuzzing has been run and does not yield new results")
+		if !matches {
+			return // subsequent test only applies to DNs that parse successfully
+		}
+
+		// for coverage of DN.String(), we cannot just check if dn.String() == raw, because this roundtrip is not idempotent;
+		// however, parsing the output of dn.String() produces a DN that ought to roundtrip
+		raw2 := dn.String()
+		dn2, err := grammars.ParseDN(raw2)
+		if !assert.ErrEqual(t, err, nil) {
+			assert.Equal(t, dn2.String(), raw2)
+		}
+	})
 }
